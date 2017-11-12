@@ -1,0 +1,3 @@
+[submodule "external/planning_algorithms"]
+	path = external/planning_algorithms
+	url = https://github.com/yuhangc/planning_algorithms
