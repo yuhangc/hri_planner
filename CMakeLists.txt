@@ -92,14 +92,21 @@ include_directories(
 ## specify Eigen3 package and directories
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIRS})
-message("======================")
-message("${EIGEN3_INCLUDE_DIRS}")
+
+## specify the json package and directories
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JSONCPP jsoncpp)
+include_directories(${JSONCPP_INCLUDE_DIRS})
+message("INCLUDE DIRS: ${JSONCPP_INCLUDE_DIRS}")
+message("LIBRARIES: ${JSONCPP_LIBRARIES}")
 
 ## Declare C++ libraries
 add_library(social_force
         include/hri_planner_sim/social_force.h
-        src/social_force.cpp)
-target_link_libraries(social_force ${catkin_LIBRARIES})
+        include/hri_planner_sim/social_force_sim.h
+        src/social_force.cpp
+        src/social_force_sim.cpp)
+target_link_libraries(social_force ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 
 ## Declare C++ executables
 # add_executable(social_force_sim )
