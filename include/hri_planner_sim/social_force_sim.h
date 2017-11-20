@@ -17,13 +17,11 @@
 #include <iostream>
 
 #include "ros/ros.h"
-#include "geometry_msgs/Vector3.h"
-#include "geometry_msgs/Pose2D.h"
-#include "sensor_msgs/Image.h"
-#include "std_msgs/Float32.h"
-#include "std_msgs/String.h"
-#include "nav_msgs/Odometry.h"
+#include "geometry_msgs/Twist.h"
+#include "geometry_msgs/Pose.h"
+#include "std_msgs/Bool.h"
 #include "gazebo_msgs/ModelStates.h"
+#include "gazebo_msgs/ModelState.h"
 
 #include "Eigen/Dense"
 
@@ -41,6 +39,7 @@ typedef struct {
     std::vector<std::vector<double> > hr_param;
     double max_v;
     double max_acc;
+    double height;
 } SFParam;
 
 // simulation class
@@ -58,6 +57,7 @@ private:
 
     // subscribers and publishers
     ros::Subscriber model_state_sub_;
+    ros::Subscriber start_sim_sub_;
     ros::Publisher model_state_pub_;
 
     // agent states
@@ -76,10 +76,12 @@ private:
 
     // callbacks
     void gazebo_model_states_callback(const gazebo_msgs::ModelStatesConstPtr &states_msg);
+    void start_sim_callback(const std_msgs::BoolConstPtr &start_sim_msg);
 
     // functions
     void load_config(const std::string &config_file_path);
     void init_agents();
+    void publish_states();
 };
 
 }

@@ -97,8 +97,8 @@ include_directories(${EIGEN3_INCLUDE_DIRS})
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(JSONCPP jsoncpp)
 include_directories(${JSONCPP_INCLUDE_DIRS})
-message("INCLUDE DIRS: ${JSONCPP_INCLUDE_DIRS}")
-message("LIBRARIES: ${JSONCPP_LIBRARIES}")
+# message("INCLUDE DIRS: ${JSONCPP_INCLUDE_DIRS}")
+# message("LIBRARIES: ${JSONCPP_LIBRARIES}")
 
 ## Declare C++ libraries
 add_library(social_force
@@ -109,7 +109,9 @@ add_library(social_force
 target_link_libraries(social_force ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 
 ## Declare C++ executables
-# add_executable(social_force_sim )
+add_executable(social_force_sim
+        src/nodes/social_force_sim_node.cpp)
+target_link_libraries(social_force_sim ${catkin_LIBRARIES} social_force)
 
 #############
 ## Install ##

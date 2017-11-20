@@ -20,6 +20,15 @@ double cross_prod_2d(const vec2d &vec1, const vec2d &vec2)
 }
 
 //-----------------------------------------------------------------------------------------
+void clip_vec(Eigen::Ref<Eigen::VectorXd> vec, const double max_norm)
+{
+    double vec_norm = vec.norm();
+
+    if (vec_norm > max_norm)
+        vec = vec * max_norm / vec_norm;
+}
+
+//-----------------------------------------------------------------------------------------
 vec2d social_force_interact(vec3d &pose_human, vec3d &vel_human,
                             vec3d &pose_agent, vec3d &vel_agent, const std::vector<double> &params)
 {
@@ -82,7 +91,10 @@ vec2d social_force_interact(vec3d &pose_human, vec3d &vel_human,
 vec2d social_force_hri(vec3d &pose_human, vec3d &vel_human,
                        vec3d &pose_robot, vec2d &vel_robot, const std::vector<double> &params)
 {
-    const double v_hat = vel_robot(0) + params[3];
+    double v_hat = vel_robot(0) + params[3];
+    if (v_hat < 0)
+        v_hat = 0.0;
+
     const double th = pose_robot(2);
     vec3d vel_agent(v_hat * std::cos(th), v_hat * std::sin(th), vel_robot(1));
 
@@ -94,7 +106,12 @@ vec2d social_force_goal(vec3d &pose_human, vec3d &vel_human,
                         vec3d &pose_goal, const double k, const double vd)
 {
     const vec2d pos_rel = pose_goal.head(2) - pose_human.head(2);
-    return k * (pos_rel / pos_rel.norm() * vd - vel_human.head(2));
+    const double d = pos_rel.norm();
+
+    if (d < sf_goal_reached_th)
+        return k * (-vel_human.head(2));
+    else
+        return k * (pos_rel / pos_rel.norm() * vd - vel_human.head(2));
 }
 
 }

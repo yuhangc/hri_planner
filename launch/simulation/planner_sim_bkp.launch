@@ -14,15 +14,15 @@
     <arg name="world_name" value="$(arg world_file)"/>
   </include>
   
-  <arg name="initial_pose_x" default="0.0"/>
+  <arg name="initial_pose_x" default="6.5"/>
   <arg name="initial_pose_y" default="0.0"/>
-  <arg name="initial_pose_a" default="1.57"/>
+  <arg name="initial_pose_a" default="3.14159265359"/>
   <arg name="urdf_file" default="$(find xacro)/xacro.py '$(find hri_planner)/resources/models/robots/asl_turtlebot.urdf.xacro'" />
   <param name="robot_description" command="$(arg urdf_file)" />
 
   <!-- Gazebo model spawner -->
   <node name="spawn_turtlebot_model" pkg="gazebo_ros" type="spawn_model"
-        args="-x '0.0' -y '0.0' -Y '1.57' -unpause -urdf -param robot_description -model turtlebot"/>
+        args="-x '0.0' -y '0.0' -Z '1.57' -unpause -urdf -param robot_description -model mobile_base"/>
 
   <!-- Velocity muxer -->
   <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
@@ -36,15 +36,23 @@
   <include file="$(find turtlebot_bringup)/launch/includes/kobuki/bumper2pc.launch.xml"/>
   
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
-    <param name="publish_frequency" type="double" value="100.0" />
+    <param name="publish_frequency" type="double" value="30.0" />
   </node>
+
+  <!-- Map server -->
+  <arg name="map_file" default="$(find hri_planner)/resources/maps/corridor_simple.yaml"/>
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+
+  <!-- Localization -->
+  <include file="$(find turtlebot_navigation)/launch/includes/amcl/amcl.launch.xml">
+    <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
+    <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
+    <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
+  </include>
+
+  <!-- Move base -->
+  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
 
   <!-- rviz launcher -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_rviz_launchers)/rviz/robot.rviz"/>
-
-  <!-- social force simulation -->
-  <node pkg="hri_planner" type="social_force_sim" name="social_force_sim" output="screen">
-      <param name="config_file" value="$(find hri_planner)/resources/sim_setting/default.json" />
-  </node>
-
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_rviz_launchers)/rviz/navigation.rviz"/>
 </launch>

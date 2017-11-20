@@ -21,12 +21,17 @@
 namespace SocialForce {
 
 const double social_force_max_dist = 5.0;
+const double social_force_damping_factor = 0.5;
+const double sf_goal_reached_th = 0.1;
 
 typedef Eigen::Vector2d vec2d;
 typedef Eigen::Vector3d vec3d;
 
 // helper function to calculate "cross product" for 2d vectors
 double cross_prod_2d(const vec2d &vec1, const vec2d &vec2);
+
+// helper function to clip a vector based on maximum length
+void clip_vec(Eigen::Ref<Eigen::VectorXd> vec, const double max_norm);
 
 // calculate interactive social force
 vec2d social_force_interact(vec3d &pose_human, vec3d &vel_human,

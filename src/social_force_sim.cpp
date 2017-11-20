@@ -23,7 +23,7 @@ SocialForceSimGazebo::SocialForceSimGazebo(ros::NodeHandle &nh, ros::NodeHandle 
     std::string config_file_path;
 
     // get the parameters
-    pnh.param<std::string>("config_file", config_file_path, "../../resources/sim_setting/default.json");
+    pnh.param<std::string>("config_file", config_file_path, "../resources/sim_setting/default.json");
 
     // load configuration
     load_config(config_file_path);
@@ -31,16 +31,24 @@ SocialForceSimGazebo::SocialForceSimGazebo(ros::NodeHandle &nh, ros::NodeHandle 
     // initialize all agents
     init_agents();
 
+    // initialize the flags
+    flag_start_sim_ = false;
+
     // setup the callbacks
-    model_state_sub_ = nh_.subscribe<gazebo_msgs::ModelStates>("/gazebo/GetModelStates", 1,
+    model_state_sub_ = nh_.subscribe<gazebo_msgs::ModelStates>("/gazebo/model_states", 1,
                                                                &SocialForceSimGazebo::gazebo_model_states_callback,
                                                                this);
-    model_state_pub_ = nh_.advertise<gazebo_msgs::ModelStates>("/gazebo/SetModelStates", 1);
+    start_sim_sub_ = nh_.subscribe<std_msgs::Bool>("/social_force_sim_start", 1,
+                                                   &SocialForceSimGazebo::start_sim_callback, this);
+    model_state_pub_ = nh_.advertise<gazebo_msgs::ModelState>("/gazebo/set_model_state", 1);
 }
 
 //----------------------------------------------------------------------------------
 void SocialForceSimGazebo::update(const double dt)
 {
+    if (!flag_start_sim_)
+        return;
+
     // loop through all agents
     for (int id = 0; id < num_agents_; id++) {
         vec2d force = social_force_goal(pose_agent_[id], vel_agent_[id],
@@ -57,7 +65,30 @@ void SocialForceSimGazebo::update(const double dt)
         // interact with robot
         force += social_force_hri(pose_agent_[id], vel_agent_[id],
                                   pose_robot_, vel_robot_, params_agent_[id].hr_param[state_agent_[id]]);
+
+        // add in damping
+        force -= social_force_damping_factor * vel_agent_[id].head(2);
+
+        std::cout << "force is: (" << force(0) << ", " << force(1) << ")" << std::endl;
+
+        // clip maximum acceleration
+        clip_vec(force, params_agent_[id].max_acc);
+
+        // update velocity
+        vec3d vel_new;
+        vel_new << vel_agent_[id](0) + force(0) * dt, vel_agent_[id](1) + force(1) * dt, 0.0;
+
+        clip_vec(vel_new, params_agent_[id].max_v);
+
+        // update position and velocity
+        pose_agent_[id] += 0.5 * dt * (vel_agent_[id] + vel_new);
+        pose_agent_[id](2) = std::atan2(vel_new(1), vel_new(0));
+
+        vel_agent_[id] = vel_new;
     }
+
+    // publish the new states
+    publish_states();
 }
 
 //----------------------------------------------------------------------------------
@@ -65,7 +96,7 @@ void SocialForceSimGazebo::gazebo_model_states_callback(const gazebo_msgs::Model
 {
     // loop through to find turtlebot states
     for (int i = 0; i < states_msg->name.size(); i++) {
-        if (states_msg->name[i] == "Turtlebot") {
+        if (states_msg->name[i] == "turtlebot") {
             //TODO: need to convert quaternion to 2D rotation
             double th = std::atan2(states_msg->pose[i].orientation.y,
                                    states_msg->pose[i].orientation.z) * 2.0;
@@ -74,12 +105,17 @@ void SocialForceSimGazebo::gazebo_model_states_callback(const gazebo_msgs::Model
                            th;
 
             vel_robot_ << states_msg->twist[i].linear.x,
-                          states_msg->twist[i].linear.y,
                           states_msg->twist[i].angular.z;
 
             break;
         }
     }
+}
+
+//----------------------------------------------------------------------------------
+void SocialForceSimGazebo::start_sim_callback(const std_msgs::BoolConstPtr &start_sim_msg)
+{
+    flag_start_sim_ = start_sim_msg->data;
 }
 
 //----------------------------------------------------------------------------------
@@ -96,30 +132,32 @@ void SocialForceSimGazebo::load_config(const std::string &config_file_path)
 
     // load parameters for all simulated humans
     for (int id = 0; id < num_agents_; id++) {
+        SFParam new_param;
+
         std::stringstream ss;
         ss << "human" << id;
 
         std::string agent_id = ss.str();
 
         // get goal
-        params_agent_[id].pose_goal << root[agent_id]["goal_x"].asDouble(),
-                                       root[agent_id]["goal_y"].asDouble(), 0.0;
+        new_param.pose_goal << root[agent_id]["goal_x"].asDouble(),
+                               root[agent_id]["goal_y"].asDouble(), 0.0;
 
         // get start pose
         vec3d pose_start;
-        pose_start << root[agent_id][0].asDouble(),
-                      root[agent_id][1].asDouble(),
-                      root[agent_id][2].asDouble();
+        pose_start << root[agent_id]["pose_start"][0].asDouble(),
+                      root[agent_id]["pose_start"][1].asDouble(),
+                      root[agent_id]["pose_start"][2].asDouble();
         pose_agent_.push_back(pose_start);
 
         // k and vd
-        params_agent_[id].k = root[agent_id]["k"].asDouble();
-        params_agent_[id].vd = root[agent_id]["vd"].asDouble();
+        new_param.k = root[agent_id]["k"].asDouble();
+        new_param.vd = root[agent_id]["vd"].asDouble();
 
         // social force parameter for human-human interaction
-        params_agent_[id].hh_param.push_back(root[agent_id]["hh_param"][0].asDouble());
-        params_agent_[id].hh_param.push_back(root[agent_id]["hh_param"][1].asDouble());
-        params_agent_[id].hh_param.push_back(root[agent_id]["hh_param"][2].asDouble());
+        new_param.hh_param.push_back(root[agent_id]["hh_param"][0].asDouble());
+        new_param.hh_param.push_back(root[agent_id]["hh_param"][1].asDouble());
+        new_param.hh_param.push_back(root[agent_id]["hh_param"][2].asDouble());
 
         // social force parameters for human-robot interaction
         for (int k = 0; k < 3; k++) {
@@ -128,12 +166,17 @@ void SocialForceSimGazebo::load_config(const std::string &config_file_path)
             hr_param.push_back(root[agent_id]["hr_param"][k][1].asDouble());
             hr_param.push_back(root[agent_id]["hr_param"][k][2].asDouble());
             hr_param.push_back(root[agent_id]["hr_param"][k][3].asDouble());
-            params_agent_[id].hr_param.push_back(hr_param);
+            new_param.hr_param.push_back(hr_param);
         }
 
         // maximum velocity/acceleration limit
-        params_agent_[id].max_v = root[agent_id]["max_v"].asDouble();
-        params_agent_[id].max_acc = root[agent_id]["max_acc"].asDouble();
+        new_param.max_v = root[agent_id]["max_v"].asDouble();
+        new_param.max_acc = root[agent_id]["max_acc"].asDouble();
+
+        // height
+        new_param.height = root[agent_id]["height"].asDouble();
+
+        params_agent_.push_back(new_param);
     }
 }
 
@@ -148,8 +191,38 @@ void SocialForceSimGazebo::init_agents()
         // set all agents to state 1
         state_agent_.push_back(1);
     }
+}
 
-    flag_start_sim_ = false;
+//----------------------------------------------------------------------------------
+void SocialForceSimGazebo::publish_states()
+{
+    gazebo_msgs::ModelState new_state;
+
+    for (int id = 0; id < num_agents_; id++) {
+        // add name of the agent
+        std::stringstream ss;
+        ss << "human" << id;
+
+        new_state.model_name = ss.str();
+
+        // add pose
+        new_state.pose.position.x = pose_agent_[id](0);
+        new_state.pose.position.y = pose_agent_[id](1);
+        new_state.pose.position.z = params_agent_[id].height;
+
+        const double th_disp = pose_agent_[id](2) + 1.57;
+        new_state.pose.orientation.x = 0.0;
+        new_state.pose.orientation.y = 0.0;
+        new_state.pose.orientation.z = std::sin(th_disp * 0.5);
+        new_state.pose.orientation.w = std::cos(th_disp * 0.5);
+
+        // add velocity
+        new_state.twist.linear.x = vel_agent_[id](0);
+        new_state.twist.linear.y = vel_agent_[id](1);
+        new_state.twist.angular.z = vel_agent_[id](2);
+
+        model_state_pub_.publish(new_state);
+    }
 }
 
 }

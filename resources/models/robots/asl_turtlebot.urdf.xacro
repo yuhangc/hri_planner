@@ -2,17 +2,17 @@
 <!--
     - Base      : kobuki
     - Stacks    : hexagons
-    - 3d Sensor : astra
+    - 3d Sensor : kinect
 -->    
 <robot name="turtlebot" xmlns:xacro="http://ros.org/wiki/xacro">
 
   <xacro:include filename="$(find kobuki_description)/urdf/kobuki.urdf.xacro" />
   <xacro:include filename="$(find turtlebot_description)/urdf/stacks/hexagons.urdf.xacro" />
-  <xacro:include filename="$(find turtlebot_description)/urdf/sensors/astra.urdf.xacro" />
+  <xacro:include filename="$(find turtlebot_description)/urdf/sensors/kinect.urdf.xacro" />
   
   <kobuki/>
   <stack_hexagons parent="base_link"/>
-  <sensor_astra parent="base_link"/>
+  <sensor_kinect parent="base_link"/>
 
   <joint name="hokuyo_joint" type="fixed">
     <origin xyz="0.11 0 .2" rpy="0 0 0"/>
