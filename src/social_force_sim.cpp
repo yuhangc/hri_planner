@@ -3,15 +3,13 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 11/19/2017
-// Last revision: 11/19/2017
+// Last revision: 11/20/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
 //----------------------------------------------------------------------------------
 #include <fstream>
 #include <sstream>
-#include <hri_planner_sim/social_force_sim.h>
-#include "json/json.h"
 
 #include "hri_planner_sim/social_force_sim.h"
 
@@ -69,7 +67,7 @@ void SocialForceSimGazebo::update(const double dt)
         // add in damping
         force -= social_force_damping_factor * vel_agent_[id].head(2);
 
-        std::cout << "force is: (" << force(0) << ", " << force(1) << ")" << std::endl;
+        // std::cout << "force is: (" << force(0) << ", " << force(1) << ")" << std::endl;
 
         // clip maximum acceleration
         clip_vec(force, params_agent_[id].max_acc);
@@ -119,6 +117,36 @@ void SocialForceSimGazebo::start_sim_callback(const std_msgs::BoolConstPtr &star
 }
 
 //----------------------------------------------------------------------------------
+void SocialForceSimGazebo::load_human_param(Json::Value &root, SFParam &new_param)
+{
+    // k and vd
+    new_param.k = root["k"].asDouble();
+    new_param.vd = root["vd"].asDouble();
+
+    // social force parameter for human-human interaction
+    new_param.hh_param.push_back(root["hh_param"][0].asDouble());
+    new_param.hh_param.push_back(root["hh_param"][1].asDouble());
+    new_param.hh_param.push_back(root["hh_param"][2].asDouble());
+
+    // social force parameters for human-robot interaction
+    for (int k = 0; k < 3; k++) {
+        std::vector<double> hr_param;
+        hr_param.push_back(root["hr_param"][k][0].asDouble());
+        hr_param.push_back(root["hr_param"][k][1].asDouble());
+        hr_param.push_back(root["hr_param"][k][2].asDouble());
+        hr_param.push_back(root["hr_param"][k][3].asDouble());
+        new_param.hr_param.push_back(hr_param);
+    }
+
+    // maximum velocity/acceleration limit
+    new_param.max_v = root["max_v"].asDouble();
+    new_param.max_acc = root["max_acc"].asDouble();
+
+    // height
+    new_param.height = root["height"].asDouble();
+}
+
+//----------------------------------------------------------------------------------
 void SocialForceSimGazebo::load_config(const std::string &config_file_path)
 {
     // load json file
@@ -150,31 +178,33 @@ void SocialForceSimGazebo::load_config(const std::string &config_file_path)
                       root[agent_id]["pose_start"][2].asDouble();
         pose_agent_.push_back(pose_start);
 
-        // k and vd
-        new_param.k = root[agent_id]["k"].asDouble();
-        new_param.vd = root[agent_id]["vd"].asDouble();
-
-        // social force parameter for human-human interaction
-        new_param.hh_param.push_back(root[agent_id]["hh_param"][0].asDouble());
-        new_param.hh_param.push_back(root[agent_id]["hh_param"][1].asDouble());
-        new_param.hh_param.push_back(root[agent_id]["hh_param"][2].asDouble());
-
-        // social force parameters for human-robot interaction
-        for (int k = 0; k < 3; k++) {
-            std::vector<double> hr_param;
-            hr_param.push_back(root[agent_id]["hr_param"][k][0].asDouble());
-            hr_param.push_back(root[agent_id]["hr_param"][k][1].asDouble());
-            hr_param.push_back(root[agent_id]["hr_param"][k][2].asDouble());
-            hr_param.push_back(root[agent_id]["hr_param"][k][3].asDouble());
-            new_param.hr_param.push_back(hr_param);
-        }
-
-        // maximum velocity/acceleration limit
-        new_param.max_v = root[agent_id]["max_v"].asDouble();
-        new_param.max_acc = root[agent_id]["max_acc"].asDouble();
-
-        // height
-        new_param.height = root[agent_id]["height"].asDouble();
+//        // k and vd
+//        new_param.k = root[agent_id]["k"].asDouble();
+//        new_param.vd = root[agent_id]["vd"].asDouble();
+//
+//        // social force parameter for human-human interaction
+//        new_param.hh_param.push_back(root[agent_id]["hh_param"][0].asDouble());
+//        new_param.hh_param.push_back(root[agent_id]["hh_param"][1].asDouble());
+//        new_param.hh_param.push_back(root[agent_id]["hh_param"][2].asDouble());
+//
+//        // social force parameters for human-robot interaction
+//        for (int k = 0; k < 3; k++) {
+//            std::vector<double> hr_param;
+//            hr_param.push_back(root[agent_id]["hr_param"][k][0].asDouble());
+//            hr_param.push_back(root[agent_id]["hr_param"][k][1].asDouble());
+//            hr_param.push_back(root[agent_id]["hr_param"][k][2].asDouble());
+//            hr_param.push_back(root[agent_id]["hr_param"][k][3].asDouble());
+//            new_param.hr_param.push_back(hr_param);
+//        }
+//
+//        // maximum velocity/acceleration limit
+//        new_param.max_v = root[agent_id]["max_v"].asDouble();
+//        new_param.max_acc = root[agent_id]["max_acc"].asDouble();
+//
+//        // height
+//        new_param.height = root[agent_id]["height"].asDouble();
+        // get the other parameters
+        load_human_param(root[agent_id], new_param);
 
         params_agent_.push_back(new_param);
     }

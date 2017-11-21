@@ -108,6 +108,11 @@ add_library(social_force
         src/social_force_sim.cpp)
 target_link_libraries(social_force ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 
+add_library(hri_planner
+        include/hri_planner/comm_planner.h
+        src/comm_planner.cpp)
+target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
+
 ## Declare C++ executables
 add_executable(social_force_sim
         src/nodes/social_force_sim_node.cpp)

@@ -24,6 +24,7 @@
 #include "gazebo_msgs/ModelState.h"
 
 #include "Eigen/Dense"
+#include "json/json.h"
 
 #include "hri_planner_sim/social_force.h"
 
@@ -79,6 +80,7 @@ private:
     void start_sim_callback(const std_msgs::BoolConstPtr &start_sim_msg);
 
     // functions
+    static void load_human_param(Json::Value &root, SFParam &new_param);
     void load_config(const std::string &config_file_path);
     void init_agents();
     void publish_states();
