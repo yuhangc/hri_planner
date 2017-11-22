@@ -46,8 +46,8 @@ private:
     int num_actions_;
     int num_states_;
 
-    // use one set of social force parameters for all humans
-    SocialForce::SFParam social_force_param_;
+    // belief over the hidden state
+    double state_belief_;
 
     // awareness level transition probabilities
     // state_trans_model_[a](l, l') represents probability of going to state l'
@@ -64,16 +64,22 @@ private:
     Eigen::Vector3d pose_robot_;
     Eigen::Vector2d vel_robot_;
 
+    // use one set of social force parameters for all humans
+    SocialForce::SFParam social_force_param_;
+
     // covariance of social force model
     Eigen::Matrix2d cov_sf_model_;
 
     // callbacks
+    void human_pose_vel_callback(const std_msgs::Float64MultiArrayConstPtr &human_pose_vel);
+    void robot_pose_vel_callback(const std_msgs::Float64MultiArrayConstPtr &robot_pose_vel);
 
     // functions
-    void belief_update();
-    double stoch_sf_tansition();
-
     void load_config(const std::string &config_file_path);
+
+    void belief_update();
+    void sf_tansition(const Eigen::Vector3d &pose_agent, Eigen::Vector3d &pose_new);
+    double stoch_sf_prob();
 };
 
 }
