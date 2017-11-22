@@ -23,6 +23,7 @@
 #include "std_msgs/Float64MultiArray.h"
 
 #include "Eigen/Dense"
+#include "json/json.h"
 
 #include "hri_planner_sim/social_force_sim.h"
 
@@ -32,7 +33,7 @@ namespace HRIPlanner {
 class CommPlanner {
 public:
     // constructor
-    CommPlanner();
+    CommPlanner(ros::NodeHandle &nh, ros::NodeHandle &pnh);
 
 private:
     // node handler
@@ -55,6 +56,8 @@ private:
     std::vector<Eigen::MatrixXd> state_trans_model_;
 
     // human states
+    int num_human_;
+    std::vector<int> id_observed_human_;
     std::vector<Eigen::Vector3d> pose_human_;
     std::vector<Eigen::Vector3d> vel_human_;
     std::vector<Eigen::Vector2d> goal_human_;
@@ -79,7 +82,7 @@ private:
 
     void belief_update();
     void sf_tansition(const Eigen::Vector3d &pose_agent, Eigen::Vector3d &pose_new);
-    double stoch_sf_prob();
+    double stoch_sf_prob(int agent_id, Eigen::Vector3d agent_pose);
 };
 
 }

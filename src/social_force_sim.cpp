@@ -95,7 +95,6 @@ void SocialForceSimGazebo::gazebo_model_states_callback(const gazebo_msgs::Model
     // loop through to find turtlebot states
     for (int i = 0; i < states_msg->name.size(); i++) {
         if (states_msg->name[i] == "turtlebot") {
-            //TODO: need to convert quaternion to 2D rotation
             double th = std::atan2(states_msg->pose[i].orientation.y,
                                    states_msg->pose[i].orientation.z) * 2.0;
             pose_robot_ << states_msg->pose[i].position.x,

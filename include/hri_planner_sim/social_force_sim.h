@@ -52,6 +52,9 @@ public:
     // main update function
     void update(const double dt);
 
+    // loading human parameter
+    static void load_human_param(Json::Value &root, SFParam &new_param);
+
 private:
     // node handler
     ros::NodeHandle nh_;
@@ -80,7 +83,6 @@ private:
     void start_sim_callback(const std_msgs::BoolConstPtr &start_sim_msg);
 
     // functions
-    static void load_human_param(Json::Value &root, SFParam &new_param);
     void load_config(const std::string &config_file_path);
     void init_agents();
     void publish_states();
