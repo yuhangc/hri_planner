@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 11/20/2017
-// Last revision: 11/20/2017
+// Last revision: 11/22/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include <iostream>
 
 #include "ros/ros.h"
@@ -21,6 +22,7 @@
 #include "geometry_msgs/Pose2D.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/Float64MultiArray.h"
+#include "hri_planner/TrackedHumans.h"
 
 #include "Eigen/Dense"
 #include "json/json.h"
@@ -29,6 +31,11 @@
 
 // hri planner namespace
 namespace HRIPlanner {
+
+typedef struct {
+    Eigen::Vector3d pose;
+    Eigen::Vector3d vel;
+} AgentPhysicalState;
 
 class CommPlanner {
 public:
@@ -47,8 +54,9 @@ private:
     int num_actions_;
     int num_states_;
 
-    // belief over the hidden state
-    double state_belief_;
+    // plan update rate
+    double dt_plan_;
+    double dt_sim_;
 
     // awareness level transition probabilities
     // state_trans_model_[a](l, l') represents probability of going to state l'
@@ -57,11 +65,12 @@ private:
 
     // human states
     int num_human_;
-    std::vector<int> id_observed_human_;
-    std::vector<Eigen::Vector3d> pose_human_;
-    std::vector<Eigen::Vector3d> vel_human_;
-    std::vector<Eigen::Vector2d> goal_human_;
-    std::vector<std::vector<double> > blief_human_;
+    std::vector<int> id_tracked_human_;
+    std::vector<AgentPhysicalState> pose_vel_tracked_human_;
+
+    std::unordered_map<int, AgentPhysicalState> physical_state_human_;
+    std::unordered_map<int, Eigen::Vector3d> goal_human_;
+    std::unordered_map<int, Eigen::VectorXd> belief_human_;
 
     // robot states
     Eigen::Vector3d pose_robot_;
@@ -71,18 +80,26 @@ private:
     SocialForce::SFParam social_force_param_;
 
     // covariance of social force model
-    Eigen::Matrix2d cov_sf_model_;
+    Eigen::Matrix2d cov_sf_;
+    Eigen::Matrix2d inv_cov_sf_;
 
     // callbacks
-    void human_pose_vel_callback(const std_msgs::Float64MultiArrayConstPtr &human_pose_vel);
+    void human_pose_vel_callback(const hri_planner::TrackedHumansConstPtr &tracked_humans);
     void robot_pose_vel_callback(const std_msgs::Float64MultiArrayConstPtr &robot_pose_vel);
 
     // functions
     void load_config(const std::string &config_file_path);
 
-    void belief_update();
-    void sf_tansition(const Eigen::Vector3d &pose_agent, Eigen::Vector3d &pose_new);
-    double stoch_sf_prob(int agent_id, Eigen::Vector3d agent_pose);
+    void belief_update(const int &comm_action);
+    void init_tracked_human(const int &agent_id, const AgentPhysicalState &agent_pose_vel);
+
+    void sf_transition(const int &agent_id,
+                      const int &agent_state,
+                      const std::unordered_map<int, AgentPhysicalState> &pose_vels,
+                      const double &dt,
+                      AgentPhysicalState &new_pose_vel);
+    double stoch_sf_prob(const int &agent_id, const int &agent_state,
+                         const Eigen::Vector3d &agent_pose);
 };
 
 }
