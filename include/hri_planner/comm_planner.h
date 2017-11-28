@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 11/20/2017
-// Last revision: 11/22/2017
+// Last revision: 11/27/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -21,6 +21,7 @@
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/Pose2D.h"
 #include "std_msgs/Bool.h"
+#include "std_msgs/Int32.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "hri_planner/TrackedHumans.h"
 
@@ -111,6 +112,8 @@ private:
                       AgentPhysicalState &new_pose_vel);
     double stoch_sf_prob(const int &agent_id, const int &agent_state,
                          const Eigen::Vector3d &agent_pose);
+
+    void publish_belief();
 };
 
 }

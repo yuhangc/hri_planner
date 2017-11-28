@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 11/20/2017
-// Last revision: 11/22/2017
+// Last revision: 11/27/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -28,7 +28,15 @@ CommPlanner::CommPlanner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     load_config(config_file_path);
 
     // setup publishers and subscribers
+    robot_pose_vel_sub_ = nh_.subscribe<std_msgs::Float64MultiArray>("/localization/robot_pose_vel", 1,
+                                                                     &CommPlanner::robot_pose_vel_callback,
+                                                                     this);
+    human_pose_vel_sub_ = nh_.subscribe<hri_planner::TrackedHumans>("/tracking/tracked_humans", 1,
+                                                                   &CommPlanner::human_pose_vel_callback,
+                                                                   this);
 
+    belief_pub_ = nh_.advertise<std_msgs::Float64MultiArray>("/planning/human_state_belief", 1);
+    action_pub_ = nh_.advertise<std_msgs::Int32>("/planning/opt_action", 1);
 }
 
 //----------------------------------------------------------------------------------
@@ -46,7 +54,7 @@ void CommPlanner::run()
         belief_update_measurement();
 
         // for debug purpose, publish the updated belief
-
+        publish_belief();
 
         // TODO: plan for the optimal communication action
         int a_opt = 0;
@@ -280,6 +288,23 @@ void CommPlanner::robot_pose_vel_callback(const std_msgs::Float64MultiArrayConst
             robot_pose_vel->data[2];
 
     vel_robot_ << robot_pose_vel->data[3], robot_pose_vel->data[4];
+}
+
+//----------------------------------------------------------------------------------
+void CommPlanner::publish_belief()
+{
+    std_msgs::Float64MultiArray belief_data;
+
+    // belief data is a vector of length n_human * (n_state + 1)
+    // the format is (id, belief, id, belief, ...)
+    for (auto &belief_iter: belief_human_) {
+        belief_data.data.push_back((double)belief_iter.first);
+        for (int s = 0; s < num_states_; s++) {
+            belief_data.data.push_back(belief_iter.second(s));
+        }
+    }
+
+    belief_pub_.publish(belief_data);
 }
 
 }

@@ -109,12 +109,20 @@ target_link_libraries(social_force ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 add_library(hri_planner
         include/hri_planner/comm_planner.h
         src/comm_planner.cpp)
-target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
+target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} social_force)
 
 ## Declare C++ executables
 add_executable(social_force_sim
         src/nodes/social_force_sim_node.cpp)
 target_link_libraries(social_force_sim ${catkin_LIBRARIES} social_force)
+
+add_executable(fake_tracker
+        src/nodes/fake_tracker.cpp)
+target_link_libraries(fake_tracker ${catkin_LIBRARIES})
+
+add_executable(comm_planner
+        src/nodes/comm_planner_node.cpp)
+target_link_libraries(comm_planner ${catkin_LIBRARIES} hri_planner)
 
 #############
 ## Install ##
