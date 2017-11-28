@@ -42,6 +42,9 @@ public:
     // constructor
     CommPlanner(ros::NodeHandle &nh, ros::NodeHandle &pnh);
 
+    // main function for planning
+    void run();
+
 private:
     // node handler
     ros::NodeHandle nh_;
@@ -50,6 +53,9 @@ private:
     ros::Subscriber human_pose_vel_sub_;
     ros::Subscriber robot_pose_vel_sub_;
 
+    ros::Publisher belief_pub_;
+    ros::Publisher action_pub_;
+
     // POMDP model parameters
     int num_actions_;
     int num_states_;
@@ -57,6 +63,9 @@ private:
     // plan update rate
     double dt_plan_;
     double dt_sim_;
+
+    // initial belief over states
+    Eigen::VectorXd init_belief_;
 
     // awareness level transition probabilities
     // state_trans_model_[a](l, l') represents probability of going to state l'
@@ -90,7 +99,9 @@ private:
     // functions
     void load_config(const std::string &config_file_path);
 
-    void belief_update(const int &comm_action);
+    void belief_update_measurement();
+    void belief_update_action(const int &comm_action,
+                              std::unordered_map<int, Eigen::VectorXd> &new_belief);
     void init_tracked_human(const int &agent_id, const AgentPhysicalState &agent_pose_vel);
 
     void sf_transition(const int &agent_id,

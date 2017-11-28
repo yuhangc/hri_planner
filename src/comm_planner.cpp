@@ -32,6 +32,38 @@ CommPlanner::CommPlanner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
 }
 
 //----------------------------------------------------------------------------------
+void CommPlanner::run()
+{
+    const double planning_rate = 1.0 / dt_plan_;
+    ros::Rate rate(planning_rate);
+
+    while (!ros::isShuttingDown()) {
+        // TODO: may want to queue up the callbacks since the planning loop rate
+        // TODO: is lower than sensing loop rate
+        ros::spinOnce();
+
+        // update belief based on measurement
+        belief_update_measurement();
+
+        // for debug purpose, publish the updated belief
+
+
+        // TODO: plan for the optimal communication action
+        int a_opt = 0;
+
+        // update belief based on action
+        std::unordered_map<int, Eigen::VectorXd> new_belief;
+        belief_update_action(a_opt, new_belief);
+
+        // copy belief over
+        for (auto &it: new_belief)
+            belief_human_[it.first] = it.second;
+
+        rate.sleep();
+    }
+}
+
+//----------------------------------------------------------------------------------
 void CommPlanner::load_config(const std::string &config_file_path)
 {
     // load json file
@@ -55,11 +87,23 @@ void CommPlanner::load_config(const std::string &config_file_path)
         state_trans_model_.push_back(m);
     }
 
+    // discrete time intervals for planning
+    dt_plan_ = root["dt_planning"].asDouble();
+    dt_sim_ = root["dt_forward_sim"].asDouble();
+
+    // initial belief
+    // FIXME: use only one set of fixed values for now
+    init_belief_.resize(num_states_);
+    for (int s = 0; s < num_states_; s++) {
+        init_belief_(s) = root["init_belief"][s].asDouble();
+    }
+
     // load the human parameters
     SocialForce::SocialForceSimGazebo::load_human_param(root["social_force_params"],
                                                         social_force_param_);
 
     // TODO: cheating for now - store all the goal positions ahead
+    // TODO: in the future this should be estimated online?
     // load goals for each human
     num_human_ = root["num_human"].asInt();
     for (int id = 0; id < num_human_; id++) {
@@ -77,7 +121,7 @@ void CommPlanner::sf_transition(const int &agent_id,
                                 AgentPhysicalState &new_pose_vel)
 {
     // get the state of the specified agent
-    AgentPhysicalState &state = physical_state_human_[agent_id];
+    const AgentPhysicalState &state = physical_state_human_[agent_id];
 
     // calculate force for goal
     Eigen::Vector2d force = SocialForce::social_force_goal(state.pose, state.vel,
@@ -124,18 +168,18 @@ double CommPlanner::stoch_sf_prob(const int &agent_id, const int &agent_state,
     Eigen::Vector3d pose_diff = agent_pose - pose_vel_exp.pose;
     Eigen::RowVector3d pose_diff_t = pose_diff.transpose();
 
-    return std::exp(-0.5 * pose_diff_t * inv_cov_sf_ * pose_diff);
+//    Eigen::MatrixXd prod = pose_diff_t.head(2) * inv_cov_sf_ * pose_diff.head(2);
+    return std::exp(-0.5 * pose_diff_t.head(2) * inv_cov_sf_ * pose_diff.head(2));
 }
 
 //----------------------------------------------------------------------------------
-void CommPlanner::belief_update(const int &comm_action)
-{
+void CommPlanner::belief_update_measurement(){
     // TODO: remove undetected human
     // TODO: for now, just track all humans that were detected
     const auto num_detected_human = (int) id_tracked_human_.size();
 
     // to store the new belief
-    std::unordered_map<int, Eigen::VectorXd> new_belief;
+//    std::unordered_map<int, Eigen::VectorXd> new_belief;
 
     for (int i = 0; i < num_detected_human; i++) {
         const int agent_id = id_tracked_human_[i];
@@ -146,35 +190,64 @@ void CommPlanner::belief_update(const int &comm_action)
             continue;
         }
 
-        Eigen::VectorXd belief_item(num_states_);
-        const Eigen::VectorXd &old_belief = belief_human_[agent_id];
+//        Eigen::VectorXd belief_item(num_states_);
+        Eigen::VectorXd &belief = belief_human_[agent_id];
 
         // update belief for each state
         double normalizer = 0.0;
 
         for (int s = 0; s < num_states_; s++) {
-            // forward transition model
-            for (int s_last = 0; s_last < num_states_; s_last++)
-                belief_item(s) += old_belief[s_last] * state_trans_model_[comm_action](s_last, s);
+//            // forward transition model
+//            for (int s_last = 0; s_last < num_states_; s_last++)
+//                belief_item(s) += old_belief[s_last] * state_trans_model_[comm_action](s_last, s);
 
             // measurement model
-            belief_item(s) *= stoch_sf_prob(agent_id, s, pose_vel_tracked_human_[i].pose);
+            belief(s) *= stoch_sf_prob(agent_id, s, pose_vel_tracked_human_[i].pose);
 
-            normalizer += belief_item(s);
+            normalizer += belief(s);
         }
 
         // normalize the belief
-        belief_item /= normalizer;
+        belief /= normalizer;
 
-        // update belief for tracked human
-        belief_human_[agent_id] = belief_item;
+//        // update belief for tracked human
+//        belief_human_[agent_id] = belief_item;
+    }
+}
+
+//----------------------------------------------------------------------------------
+void CommPlanner::belief_update_action(const int &comm_action,
+                                       std::unordered_map<int, Eigen::VectorXd> &new_belief)
+{
+    const auto num_detected_human = (int) id_tracked_human_.size();
+
+    // loop through all humans
+    for (int i = 0; i < num_detected_human; i++) {
+        const int agent_id = id_tracked_human_[i];
+
+        Eigen::VectorXd belief_item(num_states_);
+        Eigen::VectorXd &belief = belief_human_[agent_id];
+
+        // update belief for each state
+        for (int s = 0; s < num_states_; s++) {
+            belief_item(s) = 0.0;
+
+            // forward transition model
+            for (int s_last = 0; s_last < num_states_; s_last++)
+                belief_item(s) += belief(s_last) * state_trans_model_[comm_action](s_last, s);
+        }
+
+        // insert into new belief
+        new_belief.insert({agent_id, belief_item});
     }
 }
 
 //----------------------------------------------------------------------------------
 void CommPlanner::init_tracked_human(const int &agent_id, const AgentPhysicalState &agent_pose_vel)
 {
-
+    // TODO: initialize differently based on observation
+    physical_state_human_.insert({agent_id, agent_pose_vel});
+    belief_human_.insert({agent_id, init_belief_});
 }
 
 //----------------------------------------------------------------------------------
