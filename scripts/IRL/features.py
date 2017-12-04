@@ -23,20 +23,20 @@ class FeatureBase(object):
 
 
 class Velocity(FeatureBase):
-    def f(self, x, u, xr):
+    def f(self, x, u, xr, ur):
         """
         :param x: Tx(|A|x|X|) matrix 
         :param u: Tx(|A|x|U|) matrix
         """
         return -np.sum(np.square(u))
 
-    def grad(self, x, u, xr):
+    def grad(self, x, u, xr, ur):
         """ 
         :return: Tx|A|x|U| vector of the gradient with respect to u 
         """
         return -2.0 * u.flatten()
 
-    def hessian(self, x, u, xr):
+    def hessian(self, x, u, xr, ur):
         """ 
         :return: (Tx|A|x|U|)^2 matrix of the Hessian with respect to u 
         """
@@ -95,7 +95,7 @@ class GoalReward(FeatureBase):
         # save intermediate calculations
         self.r_matrix = None
 
-    def f(self, x, u, xr):
+    def f(self, x, u, xr, ur):
         self.T = x.shape[0]
         self.r_matrix = np.zeros((self.T, self.nA))
 
@@ -105,17 +105,17 @@ class GoalReward(FeatureBase):
 
         return np.sum(self.r_matrix)
 
-    def grad(self, x, u, xr):
-        return np.dot(self.dyn.jacobian().transpose(), self.grad_x(x, u))
+    def grad(self, x, u, xr, ur):
+        return np.dot(self.dyn.jacobian().transpose(), self.grad_x(x, u, xr, ur))
 
-    def hessian(self, x, u, xr):
+    def hessian(self, x, u, xr, ur):
         return np.dot(self.dyn.jacobian().transpose(),
-                      np.dot(self.hessian_x(x, u), self.dyn.jacobian()))
+                      np.dot(self.hessian_x(x, u, xr, ur), self.dyn.jacobian()))
 
-    def grad_x(self, x, u, xr):
+    def grad_x(self, x, u, xr, ur):
         # make sure that the intermediate calculation is there
         if self.r_matrix is None:
-            self.f(x, u, xr)
+            self.f(x, u, xr, ur)
 
         # calculate gradient
         grad = np.zeros_like(x)
@@ -127,10 +127,10 @@ class GoalReward(FeatureBase):
 
         return grad.flatten()
 
-    def hessian_x(self, x, u, xr):
+    def hessian_x(self, x, u, xr, ur):
         # make sure that the intermediate calculation is there
         if self.r_matrix is None:
-            self.f(x, u, xr)
+            self.f(x, u, xr, ur)
 
         # calculate Hessian
         hess = np.zeros((x.size, x.size))
@@ -162,35 +162,35 @@ class CollisionHR(FeatureBase):
         self.nA = None
         self.nX = None
 
-    def f(self, x, u, xr):
+    def f(self, x, u, xr, ur):
         self.T, self.nX = xr.shape
         self.nA = x.shape[1] / self.nX
 
         self.dists = self.dist_func.compute(x, xr)
         return -np.sum(1.0 / self.dists)
 
-    def grad(self, x, u, xr):
-        return -np.dot(self.dyn.jacobian().transpose(), self.grad_x(x, u, xr))
+    def grad(self, x, u, xr, ur):
+        return -np.dot(self.dyn.jacobian().transpose(), self.grad_x(x, u, xr, ur))
 
-    def hessian(self, x, u, xr):
+    def hessian(self, x, u, xr, ur):
         return -np.dot(self.dyn.jacobian().transpose(),
-                       np.dot(self.hessian_x(x, u, xr), self.dyn.jacobian()))
+                       np.dot(self.hessian_x(x, u, xr, ur), self.dyn.jacobian()))
 
-    def grad_dist(self, x, u, xr):
+    def grad_dist(self, x, u, xr, ur):
         if self.dists is None:
-            self.f(x, u, xr)
+            self.f(x, u, xr, ur)
 
         return 1.0 / self.dists**2
 
-    def hessian_dist(self, x, u, xr):
+    def hessian_dist(self, x, u, xr, ur):
         if self.dists is None:
-            self.f(x, u, xr)
+            self.f(x, u, xr, ur)
 
         return -2.0 / self.dists**3
 
-    def grad_x(self, x, u, xr):
+    def grad_x(self, x, u, xr, ur):
         grad = np.zeros_like(x)
-        self.grad_d = self.grad_dist(x, u, xr)
+        self.grad_d = self.grad_dist(x, u, xr, ur)
         self.grad_d_x = self.dist_func.grad()
 
         for a in range(self.nA):
@@ -199,14 +199,14 @@ class CollisionHR(FeatureBase):
 
         return grad.flatten()
 
-    def hessian_x(self, x, u, xr):
+    def hessian_x(self, x, u, xr, ur):
         # make sure that intermediate calculation is there
         if self.grad_d is None:
-            self.grad_x(x, u, xr)
+            self.grad_x(x, u, xr, ur)
 
         # calculate Hessian
         hess = np.zeros((x.size, x.size))
-        hess_d = self.hessian_dist(x, u, xr)
+        hess_d = self.hessian_dist(x, u, xr, ur)
         hess_d_x = self.dist_func.hessian()
 
         for t in range(self.T):
@@ -260,20 +260,20 @@ if __name__ == "__main__":
     # create the features
     # velocity feature
     f_vel = Velocity()
-    print "velocity feature: ", f_vel(xh, u_h)
-    print "velocity feature gradient: \n", f_vel.grad(xh, u_h)
-    print "velocity feature Hessian: \n", f_vel.hessian(xh, u_h)
+    print "velocity feature: ", f_vel(xh, u_h, xr, u_r)
+    print "velocity feature gradient: \n", f_vel.grad(xh, u_h, xr, u_r)
+    print "velocity feature Hessian: \n", f_vel.hessian(xh, u_h, xr, u_r)
 
     # goal reward
     R = np.linalg.norm(x_goal_human - x0_human)
     f_goal = GoalReward(dyn, x_goal_human, R)
-    print "goal reward feature: ", f_goal(xh, u_h)
-    print "goal reward feature gradient: \n", f_goal.grad(xh, u_h)
-    print "goal reward feature Hessian: \n", f_goal.hessian(xh, u_h)
+    print "goal reward feature: ", f_goal(xh, u_h, xr, u_r)
+    print "goal reward feature gradient: \n", f_goal.grad(xh, u_h, xr, u_r)
+    print "goal reward feature Hessian: \n", f_goal.hessian(xh, u_h, xr, u_r)
 
     # collision avoidance
     dist_func = EuclideanDist()
     f_collision = CollisionHR(dist_func, dyn)
-    print "collision feature: ", f_collision(xh, u_h, xr)
-    print "collision feature gradient: \n", f_collision.grad(xh, u_h, xr)
-    print "collision feature Hessian: \n", f_collision.hessian(xh, u_h, xr)
+    print "collision feature: ", f_collision(xh, u_h, xr, u_r)
+    print "collision feature gradient: \n", f_collision.grad(xh, u_h, xr, u_r)
+    print "collision feature Hessian: \n", f_collision.hessian(xh, u_h, xr, u_r)
