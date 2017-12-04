@@ -34,7 +34,7 @@ class LinearDynamics(object):
 
         for tx in range(T):
             for ty in range(tx, T):
-                self.J[tx*nX:tx*(nX+1), ty*nU:ty*(nU+1)] = self.dt * np.eye(nX, nU)
+                self.J[tx*nX:(tx+1)*nX, ty*nU:(ty+1)*nU] = self.dt * np.eye(nX, nU)
 
     def traj(self):
         return self.x
