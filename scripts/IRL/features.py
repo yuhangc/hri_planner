@@ -23,20 +23,20 @@ class FeatureBase(object):
 
 
 class Velocity(FeatureBase):
-    def f(self, x, u):
+    def f(self, x, u, xr):
         """
         :param x: Tx(|A|x|X|) matrix 
         :param u: Tx(|A|x|U|) matrix
         """
         return -np.sum(np.square(u))
 
-    def grad(self, x, u):
+    def grad(self, x, u, xr):
         """ 
         :return: Tx|A|x|U| vector of the gradient with respect to u 
         """
         return -2.0 * u.flatten()
 
-    def hessian(self, x, u):
+    def hessian(self, x, u, xr):
         """ 
         :return: (Tx|A|x|U|)^2 matrix of the Hessian with respect to u 
         """
@@ -95,7 +95,7 @@ class GoalReward(FeatureBase):
         # save intermediate calculations
         self.r_matrix = None
 
-    def f(self, x, u):
+    def f(self, x, u, xr):
         self.T = x.shape[0]
         self.r_matrix = np.zeros((self.T, self.nA))
 
@@ -105,17 +105,17 @@ class GoalReward(FeatureBase):
 
         return np.sum(self.r_matrix)
 
-    def grad(self, x, u):
+    def grad(self, x, u, xr):
         return np.dot(self.dyn.jacobian().transpose(), self.grad_x(x, u))
 
-    def hessian(self, x, u):
+    def hessian(self, x, u, xr):
         return np.dot(self.dyn.jacobian().transpose(),
                       np.dot(self.hessian_x(x, u), self.dyn.jacobian()))
 
-    def grad_x(self, x, u):
+    def grad_x(self, x, u, xr):
         # make sure that the intermediate calculation is there
         if self.r_matrix is None:
-            self.f(x, u)
+            self.f(x, u, xr)
 
         # calculate gradient
         grad = np.zeros_like(x)
@@ -127,10 +127,10 @@ class GoalReward(FeatureBase):
 
         return grad.flatten()
 
-    def hessian_x(self, x, u):
+    def hessian_x(self, x, u, xr):
         # make sure that the intermediate calculation is there
         if self.r_matrix is None:
-            self.f(x, u)
+            self.f(x, u, xr)
 
         # calculate Hessian
         hess = np.zeros((x.size, x.size))
