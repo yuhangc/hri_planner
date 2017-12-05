@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np
-# import features
+# import features as irl_features
 
 
 class MaxEntIRLLinReward(object):
@@ -160,6 +160,7 @@ class MaxEntIRL(object):
             r = []
             for d in range(self.n_demo):
                 r.append(reward_func[d].reward(th, self.x[d], self.u[d], self.xr[d], self.ur[d]) / self.T[d])
+            reward_hist.append(r)
 
             # calculate gradient
             grad_th = np.zeros_like(th)
