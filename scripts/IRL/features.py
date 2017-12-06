@@ -28,19 +28,19 @@ class Velocity(FeatureBase):
         :param x: Tx(|A|x|X|) matrix 
         :param u: Tx(|A|x|U|) matrix
         """
-        return -np.sum(np.square(u))
+        return np.sum(np.square(u))
 
     def grad(self, x, u, xr, ur):
         """ 
         :return: Tx|A|x|U| vector of the gradient with respect to u 
         """
-        return -2.0 * u.flatten()
+        return 2.0 * u.flatten()
 
     def hessian(self, x, u, xr, ur):
         """ 
         :return: (Tx|A|x|U|)^2 matrix of the Hessian with respect to u 
         """
-        return -2.0 * np.eye(u.size, dtype=float)
+        return 2.0 * np.eye(u.size, dtype=float)
 
 
 # FIXME: don't use this feature for now
@@ -167,14 +167,14 @@ class CollisionHR(FeatureBase):
         self.nA = x.shape[1] / self.nX
 
         self.dists = self.dist_func.compute(x, xr)
-        return -np.sum(1.0 / self.dists)
+        return np.sum(1.0 / self.dists)
 
     def grad(self, x, u, xr, ur):
-        return -np.dot(self.dyn.jacobian().transpose(), self.grad_x(x, u, xr, ur))
+        return np.dot(self.dyn.jacobian().transpose(), self.grad_x(x, u, xr, ur))
 
     def hessian(self, x, u, xr, ur):
-        return -np.dot(self.dyn.jacobian().transpose(),
-                       np.dot(self.hessian_x(x, u, xr, ur), self.dyn.jacobian()))
+        return np.dot(self.dyn.jacobian().transpose(),
+                      np.dot(self.hessian_x(x, u, xr, ur), self.dyn.jacobian()))
 
     def grad_dist(self, x, u, xr, ur):
         if self.dists is None:

@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 
 import numpy as np
+import matplotlib.pyplot as plt
+
 import features
+import dynamics
+import distance
+from irl import MaxEntIRLLinReward
+from irl import MaxEntIRL
 
 
 class IRLInitializerHRISimple(object):
@@ -11,6 +17,7 @@ class IRLInitializerHRISimple(object):
     """
     def __init__(self):
         # data dimensions
+        self.dt = 0.0
         self.n_demo = 0
         self.nA = 0
         self.nX = 0
@@ -18,49 +25,118 @@ class IRLInitializerHRISimple(object):
         self.nXr = 0
         self.nUr = 0
 
+        # human goals for each demonstration
+        self.x_goal = []
+        self.x0 = []
+        self.u = []
+
     def load_data(self, data_path):
         # load the meta data info
         file_name = data_path + "/meta_data.txt"
-        meta_data = np.loadtxt(file_name)
+        meta_data = np.loadtxt(file_name, skiprows=1)
 
-        self.n_demo = meta_data[0]
-        self.nA = meta_data[1]
-        self.nX = meta_data[2]
-        self.nU = meta_data[3]
-        self.nXr = meta_data[4]
-        self.nUr = meta_data[5]
+        self.dt = meta_data[0]
+        # self.n_demo = int(meta_data[1])
+        self.n_demo = 2
+        self.nA = int(meta_data[2])
+        self.nX = int(meta_data[3])
+        self.nU = int(meta_data[4])
+        self.nXr = int(meta_data[5])
+        self.nUr = int(meta_data[6])
 
+        # load the goals for each trial
+        file_name = data_path + "/human_goal.txt"
+        self.x_goal = np.loadtxt(file_name, delimiter=",")
+
+        # load data
         x = []
-        u = []
+        self.u = []
         xr = []
         ur = []
         T = []
 
-        # load data
         for d in range(self.n_demo):
             file_name = data_path + "/demo" + str(d) + ".txt"
-            demo_data = np.loadtxt(file_name)
+            demo_data = np.loadtxt(file_name, delimiter=",")
             col_start = 0
 
-            # human poses
+            # human poses and vels
             x.append(demo_data[:, col_start:(self.nA*self.nX)])
             col_start += self.nA * self.nX
 
-            u.append(demo_data[:, col_start:(col_start + self.nA*self.nU)])
+            self.u.append(demo_data[:, col_start:(col_start + self.nA*self.nU)])
             col_start += self.nA * self.nU
 
-            xr.append(demo_data[:, col_start:(col_start + self.nXr)])
+            # robot pose and vel
+            xr.append(demo_data[:, col_start:(col_start + self.nX)])
             col_start += self.nXr
 
             ur.append(demo_data[:, col_start:(col_start + self.nUr)])
 
             T.append(demo_data.shape[0])
 
-        return self.n_demo, x, u, xr, ur, T
+        # save the initial conditions
+        for d in range(self.n_demo):
+            self.x0.append(x[d][0])
+
+        return x, self.u, xr, ur, T
 
     def generate_rewards(self):
-        pass
+        """
+        :return: a list of reward functions
+        """
+        r_list = []
+
+        for d in range(self.n_demo):
+            f_list = []
+
+            # velocity feature
+            f_vel = features.Velocity()
+            f_list.append(f_vel)
+
+            # linear dynamics
+            dyn = dynamics.LinearDynamics(self.dt)
+            dyn.compute(self.x0[d], self.u[d])
+
+            # goal feature
+            R = 0.0
+            x_diff = self.x_goal[d] - self.x0[d]
+            for a in range(self.nA):
+                R += np.linalg.norm(x_diff[a*self.nX:(a+1)*self.nX])
+            R /= self.nA
+
+            f_goal = features.GoalReward(dyn, self.x_goal[d].reshape((self.nA, self.nX)), R)
+            f_list.append(f_goal)
+
+            # collision avoidance with robot
+            dist_func = distance.EuclideanDist()
+            f_collision_hr = features.CollisionHR(dist_func, dyn)
+            f_list.append(f_collision_hr)
+
+            # reward function
+            rfunc = MaxEntIRLLinReward(f_list)
+            r_list.append(rfunc)
+
+        return r_list
+
 
 if __name__ == "__main__":
-    # create the features
-    f_vel = features.Velocity()
+    # create the initializer
+    initializer = IRLInitializerHRISimple()
+
+    # create the IRL solver
+    irl_solver = MaxEntIRL(initializer)
+
+    # load data and initialize
+    irl_solver.init("/home/yuhang/Documents/irl_data/linear_dyn/human_priority")
+
+    # solve the IRL
+    th0 = np.array([-1.0, 1.0, -1.0])
+    th_opt, rhist = irl_solver.optimize(th0, lrate=0.001, verbose=True)
+
+    print "learned parameters: ", th_opt
+
+    # visualize the reward history
+    fig, ax = plt.subplots()
+    ax.plot(rhist, '-b', linewidth=2)
+    plt.show()

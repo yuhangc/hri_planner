@@ -70,23 +70,30 @@ class MaxEntIRLLinReward(object):
         Hinv = np.linalg.inv(H)
 
         # compute the gradient
-        h = Hinv * g
+        h = np.dot(Hinv, g)
 
         grad = np.zeros_like(th)
         for k in range(self.nfeature):
+            # aa = np.dot(h, self.f_grad[k])
+            # bb = -0.5 * np.dot(h, np.dot(self.f_hessian[k], h))
+            # cc = 0.5 * np.trace(Hinv * self.f_hessian[k])
+            # print aa, bb, cc
             grad[k] = np.dot(h, self.f_grad[k]) - \
                       0.5 * np.dot(h, np.dot(self.f_hessian[k], h)) + \
                       0.5 * np.trace(Hinv * self.f_hessian[k])
+            # print k, ", ", grad[k]
+
+        return grad
 
 
 class MaxEntIRL(object):
-    def __init__(self, reward, *reward_args):
+    def __init__(self, initializer):
         """
-        :param reward: the reward function class, used to initialize 
-        :param features: 
+        :param initializer: an initializer that loads data and generate reward functions
         """
-        self.reward = reward
-        self.reward_args = reward_args
+        # initializer
+        self.initializer = initializer
+
         self.n_demo = 0
 
         # data
@@ -96,60 +103,30 @@ class MaxEntIRL(object):
         self.ur = []
         self.T = []
 
-        # data dimensions
-        self.nA = 0
-        self.nX = 0
-        self.nU = 0
-        self.nXr = 0
-        self.nUr = 0
+        # rewards
+        self.rewards = None
 
-    def load_data(self, data_path):
-        # load the meta data info
-        file_name = data_path + "/meta_data.txt"
-        meta_data = np.loadtxt(file_name)
-
-        self.n_demo = meta_data[0]
-        self.nA = meta_data[1]
-        self.nX = meta_data[2]
-        self.nU = meta_data[3]
-        self.nXr = meta_data[4]
-        self.nUr = meta_data[5]
-
+    def init(self, data_path):
         # load data
-        for d in range(self.n_demo):
-            file_name = data_path + "/demo" + str(d) + ".txt"
-            demo_data = np.loadtxt(file_name)
-            col_start = 0
+        self.x, self.u, self.xr, self.ur, self.T = self.initializer.load_data(data_path)
+        self.n_demo = len(self.x)
 
-            # human poses
-            self.x.append(demo_data[:, col_start:(self.nA*self.nX)])
-            col_start += self.nA * self.nX
+        # generate reward functions
+        self.rewards = self.initializer.generate_rewards()
 
-            self.u.append(demo_data[:, col_start:(col_start + self.nA*self.nU)])
-            col_start += self.nA * self.nU
-
-            self.xr.append(demo_data[:, col_start:(col_start + self.nXr)])
-            col_start += self.nXr
-
-            self.ur.append(demo_data[:, col_start:(col_start + self.nUr)])
-
-            self.T.append(demo_data.shape[0])
-
-    def optimize(self, th0, method="gd"):
+    def optimize(self, th0, method="gd", n_iter=1000, lrate=0.05, verbose=False):
         if method == "gd":
-            self.optimize_gd(th0)
+            return self.optimize_gd(th0, n_iter, lrate, verbose)
         elif method == "sgd":
-            self.optimize_sgd(th0)
+            return self.optimize_sgd(th0, n_iter, lrate, verbose)
         else:
             raise Exception("Optimization method not recognized!")
 
-    def optimize_gd(self, th0, n_iter=1000, lrate=0.05):
-        # create a list of reward functions
-        reward_func = []
+    def optimize_gd(self, th0, n_iter=1000, lrate=0.05, verbose=False):
+        # initialize the reward gradients
         for d in range(self.n_demo):
-            reward_func.append(self.reward(self.reward_args))
             # this only needs to be done once!
-            reward_func[d].compute_feature_grads(self.x[d], self.u[d], self.xr[d], self.ur[d])
+            self.rewards[d].compute_feature_grads(self.x[d], self.u[d], self.xr[d], self.ur[d])
 
         # start iteration
         th = th0
@@ -157,20 +134,25 @@ class MaxEntIRL(object):
         reward_hist = []
         for it in range(n_iter):
             # calculate (time-normalized) reward
-            r = []
+            r = 0.0
             for d in range(self.n_demo):
-                r.append(reward_func[d].reward(th, self.x[d], self.u[d], self.xr[d], self.ur[d]) / self.T[d])
+                r += self.rewards[d].reward(th, self.x[d], self.u[d], self.xr[d], self.ur[d]) / self.T[d]
             reward_hist.append(r)
 
             # calculate gradient
             grad_th = np.zeros_like(th)
             for d in range(self.n_demo):
-                grad_th += reward_func[d].likelihood_grad(th) / self.T[d]
+                grad_th += self.rewards[d].likelihood_grad(th) / self.T[d]
 
             # gradient ascent
-            th += lrate * grad_th
+            th += lrate * grad_th / self.n_demo
 
-        return th
+            # print out info
+            if verbose and np.mod(it, 10) == 0:
+                print "Iteration ", it, ", total reward is: ", np.sum(r), \
+                    ", gradient magnitude: ", np.linalg.norm(grad_th)
 
-    def optimize_sgd(self, th0):
+        return th, reward_hist
+
+    def optimize_sgd(self, th0, n_iter=1000, lrate=0.05, verbose=False):
         pass
