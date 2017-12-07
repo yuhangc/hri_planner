@@ -33,8 +33,10 @@ class LinearDynamics(object):
         self.J = np.zeros((T*nX, T*nU))
 
         for tx in range(T):
-            for ty in range(tx, T):
+            for ty in range(0, tx+1):
                 self.J[tx*nX:(tx+1)*nX, ty*nU:(ty+1)*nU] = self.dt * np.eye(nX, nU)
+
+        return self.x
 
     def traj(self):
         return self.x

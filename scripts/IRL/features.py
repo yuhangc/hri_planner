@@ -114,23 +114,23 @@ class GoalReward(FeatureBase):
 
     def grad_x(self, x, u, xr, ur):
         # make sure that the intermediate calculation is there
-        if self.r_matrix is None:
-            self.f(x, u, xr, ur)
+        self.f(x, u, xr, ur)
 
         # calculate gradient
         grad = np.zeros_like(x)
 
         for a in range(self.nA):
-            xa = x[:, a*self.nX:(a+1)*self.nX] - self.x_goal[a]
+            xa = self.x_goal[a] - x[:, a*self.nX:(a+1)*self.nX]
+            # tmp0 = self.x_goal[a] - xa
+            # tmp = 2.0 / self.R2 * (self.x_goal[a] - xa)
             grad[:, a*self.nX:(a+1)*self.nX] = \
-                self.r_matrix[:, a:(a+1)] * (2.0 / self.R2 * (self.x_goal[a] - xa))
+                self.r_matrix[:, a:(a+1)] * (2.0 / self.R2 * xa)
 
         return grad.flatten()
 
     def hessian_x(self, x, u, xr, ur):
         # make sure that the intermediate calculation is there
-        if self.r_matrix is None:
-            self.f(x, u, xr, ur)
+        self.f(x, u, xr, ur)
 
         # calculate Hessian
         hess = np.zeros((x.size, x.size))
@@ -177,21 +177,23 @@ class CollisionHR(FeatureBase):
                       np.dot(self.hessian_x(x, u, xr, ur), self.dyn.jacobian()))
 
     def grad_dist(self, x, u, xr, ur):
-        if self.dists is None:
-            self.f(x, u, xr, ur)
+        self.dists = self.dist_func.compute(x, xr)
 
-        return 1.0 / self.dists**2
+        return -1.0 / self.dists**2
 
     def hessian_dist(self, x, u, xr, ur):
-        if self.dists is None:
-            self.f(x, u, xr, ur)
+        self.dists = self.dist_func.compute(x, xr)
 
-        return -2.0 / self.dists**3
+        return 2.0 / self.dists**3
 
     def grad_x(self, x, u, xr, ur):
         grad = np.zeros_like(x)
         self.grad_d = self.grad_dist(x, u, xr, ur)
         self.grad_d_x = self.dist_func.grad()
+
+        if self.nA is None:
+            self.T, self.nX = xr.shape
+            self.nA = x.shape[1] / self.nX
 
         for a in range(self.nA):
             grad[:, a*self.nX:(a+1)*self.nX] = \
@@ -201,8 +203,7 @@ class CollisionHR(FeatureBase):
 
     def hessian_x(self, x, u, xr, ur):
         # make sure that intermediate calculation is there
-        if self.grad_d is None:
-            self.grad_x(x, u, xr, ur)
+        self.grad_d = self.grad_dist(x, u, xr, ur)
 
         # calculate Hessian
         hess = np.zeros((x.size, x.size))

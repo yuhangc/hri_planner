@@ -47,12 +47,17 @@ class MaxEntIRLLinReward(object):
 
         for k in range(self.nfeature):
             g += th[k] * self.f_grad[k]
+            # Hf = th[k] * self.f_hessian[k]
+            # tmp = np.linalg.det(-Hf)
+            # heigs = np.sort(np.linalg.eigvals(-Hf))
             H += th[k] * self.f_hessian[k]
 
         # compute the approximate log-likelihood
         h = np.linalg.solve(H, g)
 
-        return 0.5 * (np.dot(g, h) + np.log(np.linalg.det(-H)) - self.du * np.log(2.0 * np.pi))
+        Hdet = np.linalg.det(-H)
+        # heigs = np.sort(np.linalg.eigvals(-H))
+        return 0.5 * (np.dot(g, h) + np.log(Hdet) - self.du * np.log(2.0 * np.pi))
 
     def likelihood_grad(self, th):
         """
@@ -131,13 +136,17 @@ class MaxEntIRL(object):
         # start iteration
         th = th0
 
-        reward_hist = []
+        lhist = []
         for it in range(n_iter):
             # calculate (time-normalized) reward
-            r = 0.0
+            # r = 0.0
+            # for d in range(self.n_demo):
+            #     r += self.rewards[d].reward(th, self.x[d], self.u[d], self.xr[d], self.ur[d]) / self.T[d]
+            # reward_hist.append(r)
+            log_l = 0.0
             for d in range(self.n_demo):
-                r += self.rewards[d].reward(th, self.x[d], self.u[d], self.xr[d], self.ur[d]) / self.T[d]
-            reward_hist.append(r)
+                log_l += self.rewards[d].likelihood_approx(th)
+            lhist.append(log_l)
 
             # calculate gradient
             grad_th = np.zeros_like(th)
@@ -149,10 +158,10 @@ class MaxEntIRL(object):
 
             # print out info
             if verbose and np.mod(it, 10) == 0:
-                print "Iteration ", it, ", total reward is: ", np.sum(r), \
+                print "Iteration ", it, ", log likelihood is: ", log_l, \
                     ", gradient magnitude: ", np.linalg.norm(grad_th)
 
-        return th, reward_hist
+        return th, lhist
 
     def optimize_sgd(self, th0, n_iter=1000, lrate=0.05, verbose=False):
         pass

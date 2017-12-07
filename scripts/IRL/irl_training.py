@@ -30,19 +30,22 @@ class IRLInitializerHRISimple(object):
         self.x0 = []
         self.u = []
 
+        # meta data
+        self.meta_data = None
+
     def load_data(self, data_path):
         # load the meta data info
         file_name = data_path + "/meta_data.txt"
-        meta_data = np.loadtxt(file_name, skiprows=1)
+        self.meta_data = np.loadtxt(file_name, skiprows=1)
 
-        self.dt = meta_data[0]
-        # self.n_demo = int(meta_data[1])
-        self.n_demo = 2
-        self.nA = int(meta_data[2])
-        self.nX = int(meta_data[3])
-        self.nU = int(meta_data[4])
-        self.nXr = int(meta_data[5])
-        self.nUr = int(meta_data[6])
+        self.dt = self.meta_data[0]
+        # self.n_demo = int(self.meta_data[1])
+        self.n_demo = 3
+        self.nA = int(self.meta_data[2])
+        self.nX = int(self.meta_data[3])
+        self.nU = int(self.meta_data[4])
+        self.nXr = int(self.meta_data[5])
+        self.nUr = int(self.meta_data[6])
 
         # load the goals for each trial
         file_name = data_path + "/human_goal.txt"
@@ -56,7 +59,7 @@ class IRLInitializerHRISimple(object):
         T = []
 
         for d in range(self.n_demo):
-            file_name = data_path + "/demo" + str(d) + ".txt"
+            file_name = data_path + "/demo" + str(d+1) + ".txt"
             demo_data = np.loadtxt(file_name, delimiter=",")
             col_start = 0
 
@@ -103,7 +106,7 @@ class IRLInitializerHRISimple(object):
             x_diff = self.x_goal[d] - self.x0[d]
             for a in range(self.nA):
                 R += np.linalg.norm(x_diff[a*self.nX:(a+1)*self.nX])
-            R /= self.nA
+            R /= self.nA * 2.0
 
             f_goal = features.GoalReward(dyn, self.x_goal[d].reshape((self.nA, self.nX)), R)
             f_list.append(f_goal)
@@ -119,6 +122,33 @@ class IRLInitializerHRISimple(object):
 
         return r_list
 
+    def generate_features(self, x0, x_goal):
+        f_list = []
+
+        # velocity feature
+        f_vel = features.Velocity()
+        f_list.append(f_vel)
+
+        # linear dynamics
+        dyn = dynamics.LinearDynamics(self.dt)
+
+        # goal feature
+        R = 0.0
+        x_diff = x_goal - x0
+        for a in range(self.nA):
+            R += np.linalg.norm(x_diff[a*self.nX:(a+1)*self.nX])
+        R /= self.nA * 2.0
+
+        f_goal = features.GoalReward(dyn, x_goal.reshape((self.nA, self.nX)), R)
+        f_list.append(f_goal)
+
+        # collision avoidance with robot
+        dist_func = distance.EuclideanDist()
+        f_collision_hr = features.CollisionHR(dist_func, dyn)
+        f_list.append(f_collision_hr)
+
+        return f_list, dyn
+
 
 if __name__ == "__main__":
     # create the initializer
@@ -131,12 +161,12 @@ if __name__ == "__main__":
     irl_solver.init("/home/yuhang/Documents/irl_data/linear_dyn/human_priority")
 
     # solve the IRL
-    th0 = np.array([-1.0, 1.0, -1.0])
-    th_opt, rhist = irl_solver.optimize(th0, lrate=0.001, verbose=True)
+    th0 = np.array([-5.0, 10.0, -0.1])
+    th_opt, lhist = irl_solver.optimize(th0, n_iter=2000, lrate=0.001, verbose=True)
 
     print "learned parameters: ", th_opt
 
     # visualize the reward history
     fig, ax = plt.subplots()
-    ax.plot(rhist, '-b', linewidth=2)
+    ax.plot(lhist, '-b', linewidth=2)
     plt.show()
