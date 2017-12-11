@@ -40,7 +40,7 @@ class IRLInitializerHRISimple(object):
 
         self.dt = self.meta_data[0]
         # self.n_demo = int(self.meta_data[1])
-        self.n_demo = 3
+        self.n_demo = 50
         self.nA = int(self.meta_data[2])
         self.nX = int(self.meta_data[3])
         self.nU = int(self.meta_data[4])
@@ -59,7 +59,7 @@ class IRLInitializerHRISimple(object):
         T = []
 
         for d in range(self.n_demo):
-            file_name = data_path + "/demo" + str(d+1) + ".txt"
+            file_name = data_path + "/demo" + str(d) + ".txt"
             demo_data = np.loadtxt(file_name, delimiter=",")
             col_start = 0
 
@@ -122,12 +122,16 @@ class IRLInitializerHRISimple(object):
 
         return r_list
 
-    def generate_features(self, x0, x_goal):
+    def generate_features(self, x0, u0, x_goal):
         f_list = []
 
         # velocity feature
         f_vel = features.Velocity()
         f_list.append(f_vel)
+
+        # acceleration feature
+        f_acc = features.Acceleration(u0, self.dt)
+        f_list.append(f_acc)
 
         # linear dynamics
         dyn = dynamics.LinearDynamics(self.dt)
@@ -137,7 +141,7 @@ class IRLInitializerHRISimple(object):
         x_diff = x_goal - x0
         for a in range(self.nA):
             R += np.linalg.norm(x_diff[a*self.nX:(a+1)*self.nX])
-        R /= self.nA * 2.0
+        R /= self.nA * 3.0
 
         f_goal = features.GoalReward(dyn, x_goal.reshape((self.nA, self.nX)), R)
         f_list.append(f_goal)

@@ -96,30 +96,31 @@ if __name__ == "__main__":
     initializer = IRLInitializerHRISimple()
 
     # load the data
-    x, u, xr, ur, T = initializer.load_data("/home/yuhang/Documents/irl_data/linear_dyn/human_priority")
+    x, u, xr, ur, T = initializer.load_data("/home/yuhang/Documents/irl_data/linear_dyn/robot_priority")
 
     # test and compare against one demo
-    d = 1
+    d = 3
 
     # create the features
     x0 = initializer.x0[d]
+    u0 = u[d][0]
     x_goal = initializer.x_goal[d]
-    features, dyn = initializer.generate_features(x0, x_goal)
+    features, dyn = initializer.generate_features(x0, u0, x_goal)
 
     # create a reward function
-    th = np.array([-5.0, 10.0, -0.1])
-    reward = IRLReward(features[0:2], dyn, th[0:2], initializer.meta_data, sign=-1)
+    th = np.array([-6.0, -0.5, 10.0, -0.1])
+    reward = IRLReward(features[0:4], dyn, th[0:4], initializer.meta_data, sign=-1)
     reward.set_data(x0, xr[d], ur[d])
 
     # set initial guess to be the actual human action
     u0 = u[d] + 0.1 * np.ones_like(u[d])
 
     # find the optimal trajectory
-    # res = minimize(reward, u0.flatten(), method="Newton-CG",
-    #                jac=reward.grad, hess=reward.hessian,
-    #                options={'xtol': 1e-8, 'disp': True})
-    res = minimize(reward, u0.flatten(), method="BFGS",
-                   jac=reward.grad, options={'disp': True})
+    res = minimize(reward, u0.flatten(), method="Newton-CG",
+                   jac=reward.grad, hess=reward.hessian,
+                   options={'xtol': 1e-8, 'disp': True})
+    # res = minimize(reward, u0.flatten(), method="BFGS",
+    #                jac=reward.grad, options={'disp': True})
 
     u_opt = res.x
     u_opt = u_opt.reshape(u[d].shape)
@@ -147,6 +148,7 @@ if __name__ == "__main__":
 
     # plot the trajectories
     fig, ax = plt.subplots()
+    ax.plot(xr[d][:, 0], xr[d][:, 1], '-', linewidth=2, color="salmon")
     ax.plot(x[d][:, 0], x[d][:, 1], '-b', linewidth=2, label="Measured")
     ax.plot(x_opt[:, 0], x_opt[:, 1], '--ok', linewidth=2, label="Predicted")
     plt.axis("equal")

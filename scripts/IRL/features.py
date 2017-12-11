@@ -43,31 +43,32 @@ class Velocity(FeatureBase):
         return 2.0 * np.eye(u.size, dtype=float)
 
 
-# FIXME: don't use this feature for now
-# TODO: need to double check the dimensionality before using
 class Acceleration(FeatureBase):
-    def __init__(self, dt):
+    def __init__(self, u0, dt):
         super(Acceleration, self).__init__()
+        self.u0 = u0
         self.dt = dt
 
-    def f(self, x, u):
+    def f(self, x, u, xr, ur):
         acc = np.diff(u, axis=0) / self.dt
-        return np.sum(np.square(acc))
+        acc0 = (u[0] - self.u0) / self.dt
+        return np.sum(np.square(acc)) + np.sum(np.square(acc0))
 
-    def grad(self, x, u):
+    def grad(self, x, u, xr, ur):
         acc = np.diff(u, axis=0) / self.dt
-        acc0 = np.pad(acc, ((1, 0), (0, 0)), "constant")
-        acc1 = np.pad(acc, ((0, 1), (0, 0)), "constant")
-        return 2.0 / self.dt * (acc0 - acc1).flatten()
+        acc0 = (u[0] - self.u0) / self.dt
+        acc_diff = np.diff(acc, axis=0)
 
-    def hessian(self, x, u):
+        return 2.0 / self.dt * np.vstack((acc0 - acc[0], -acc_diff, acc[-1])).flatten()
+
+    def hessian(self, x, u, xr, ur):
         T, du = u.shape
         s = (T - 1) * du
 
         # main diagonal
         main_diag = np.ones((s,), dtype=float) * 4.0
         main_diag_end = np.ones((du,), dtype=float) * 2.0
-        main_diag = np.hstack((main_diag_end, main_diag, main_diag_end)) / self.dt**2
+        main_diag = np.hstack((main_diag, main_diag_end)) / self.dt**2
 
         # off diagonal
         off_diag = np.ones((s,), dtype=float) * (-2.0) / self.dt**2
