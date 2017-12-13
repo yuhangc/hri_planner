@@ -39,8 +39,8 @@ class IRLInitializerHRISimple(object):
         self.meta_data = np.loadtxt(file_name, skiprows=1)
 
         self.dt = self.meta_data[0]
-        # self.n_demo = int(self.meta_data[1])
-        self.n_demo = 50
+        self.n_demo = int(self.meta_data[1])
+        # self.n_demo = 4
         self.nA = int(self.meta_data[2])
         self.nX = int(self.meta_data[3])
         self.nU = int(self.meta_data[4])
@@ -84,7 +84,7 @@ class IRLInitializerHRISimple(object):
 
         return x, self.u, xr, ur, T
 
-    def generate_rewards(self):
+    def generate_rewards(self, goal_reward="exponential"):
         """
         :return: a list of reward functions
         """
@@ -97,18 +97,25 @@ class IRLInitializerHRISimple(object):
             f_vel = features.Velocity()
             f_list.append(f_vel)
 
+            # acceleration feature
+            f_acc = features.Acceleration(self.u[d][0], self.dt)
+            f_list.append(f_acc)
+
             # linear dynamics
             dyn = dynamics.LinearDynamics(self.dt)
             dyn.compute(self.x0[d], self.u[d])
 
             # goal feature
-            R = 0.0
-            x_diff = self.x_goal[d] - self.x0[d]
-            for a in range(self.nA):
-                R += np.linalg.norm(x_diff[a*self.nX:(a+1)*self.nX])
-            R /= self.nA * 2.0
+            if goal_reward == "exponential":
+                R = 0.0
+                x_diff = self.x_goal[d] - self.x0[d]
+                for a in range(self.nA):
+                    R += np.linalg.norm(x_diff[a*self.nX:(a+1)*self.nX])
+                R /= self.nA * 3.0
 
-            f_goal = features.GoalReward(dyn, self.x_goal[d].reshape((self.nA, self.nX)), R)
+                f_goal = features.GoalReward(dyn, self.x_goal[d].reshape((self.nA, self.nX)), R)
+            else:
+                f_goal = features.GoalRewardLinear(dyn, self.x_goal[d].reshape((self.nA, self.nX)))
             f_list.append(f_goal)
 
             # collision avoidance with robot
@@ -122,7 +129,7 @@ class IRLInitializerHRISimple(object):
 
         return r_list
 
-    def generate_features(self, x0, u0, x_goal):
+    def generate_features(self, x0, u0, x_goal, goal_reward="exponential"):
         f_list = []
 
         # velocity feature
@@ -137,13 +144,16 @@ class IRLInitializerHRISimple(object):
         dyn = dynamics.LinearDynamics(self.dt)
 
         # goal feature
-        R = 0.0
-        x_diff = x_goal - x0
-        for a in range(self.nA):
-            R += np.linalg.norm(x_diff[a*self.nX:(a+1)*self.nX])
-        R /= self.nA * 3.0
+        if goal_reward == "exponential":
+            R = 0.0
+            x_diff = x_goal - x0
+            for a in range(self.nA):
+                R += np.linalg.norm(x_diff[a*self.nX:(a+1)*self.nX])
+            R /= self.nA * 3.0
 
-        f_goal = features.GoalReward(dyn, x_goal.reshape((self.nA, self.nX)), R)
+            f_goal = features.GoalReward(dyn, x_goal.reshape((self.nA, self.nX)), R)
+        else:
+            f_goal = features.GoalRewardLinear(dyn, x_goal.reshape((self.nA, self.nX)))
         f_list.append(f_goal)
 
         # collision avoidance with robot
@@ -165,8 +175,9 @@ if __name__ == "__main__":
     irl_solver.init("/home/yuhang/Documents/irl_data/linear_dyn/human_priority")
 
     # solve the IRL
-    th0 = np.array([-5.0, 10.0, -0.1])
-    th_opt, lhist = irl_solver.optimize(th0, n_iter=2000, lrate=0.001, verbose=True)
+    th0 = np.array([-5.72581118, -2.70393027,  8.02704263, -0.01])
+    # th0 = np.array([-7.0, 10.0, -0.3])
+    th_opt, lhist = irl_solver.optimize(th0, n_iter=2000, lrate=0.002, verbose=True)
 
     print "learned parameters: ", th_opt
 

@@ -111,13 +111,13 @@ class MaxEntIRL(object):
         # rewards
         self.rewards = None
 
-    def init(self, data_path):
+    def init(self, data_path, goal_reward="exponential"):
         # load data
         self.x, self.u, self.xr, self.ur, self.T = self.initializer.load_data(data_path)
         self.n_demo = len(self.x)
 
         # generate reward functions
-        self.rewards = self.initializer.generate_rewards()
+        self.rewards = self.initializer.generate_rewards(goal_reward)
 
     def optimize(self, th0, method="gd", n_iter=1000, lrate=0.05, verbose=False):
         if method == "gd":

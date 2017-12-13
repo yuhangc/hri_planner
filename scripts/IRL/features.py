@@ -149,6 +149,77 @@ class GoalReward(FeatureBase):
         return hess
 
 
+class GoalRewardLinear(FeatureBase):
+    def __init__(self, dyn, x_goal):
+        """
+        Implements an exponetially decaying reward centered at goal position
+        :param dyn: Dynamic update function (dyn.compute() is assumed to be called already)
+        :param x_goal: Goals for each agent |A|x|X| matrix
+        :param R: Decaying radius
+        """
+        super(GoalRewardLinear, self).__init__()
+        self.dyn = dyn
+        self.x_goal = x_goal
+
+        self.nA, self.nX = x_goal.shape
+        self.T = None
+
+        # save intermediate calculations
+        self.r_matrix = None
+
+    def goal_dists(self, x):
+        self.T = x.shape[0]
+        d_matrix = np.zeros((self.T, self.nA))
+
+        for a in range(self.nA):
+            xa = x[:, a*self.nX:(a+1)*self.nX] - self.x_goal[a]
+            d_matrix[:, a] = np.linalg.norm(xa, axis=1)
+
+        return d_matrix
+
+    def f(self, x, u, xr, ur):
+        d_matrix = self.goal_dists(x)
+
+        return np.sum(d_matrix)
+
+    def grad(self, x, u, xr, ur):
+        return np.dot(self.dyn.jacobian().transpose(), self.grad_x(x, u, xr, ur))
+
+    def hessian(self, x, u, xr, ur):
+        return np.dot(self.dyn.jacobian().transpose(),
+                      np.dot(self.hessian_x(x, u, xr, ur), self.dyn.jacobian()))
+
+    def grad_x(self, x, u, xr, ur):
+        # make sure that the intermediate calculation is there
+        d_matrix = self.goal_dists(x)
+
+        # calculate gradient
+        grad = np.zeros_like(x)
+
+        for a in range(self.nA):
+            xa = x[:, a*self.nX:(a+1)*self.nX] - self.x_goal[a]
+            grad[:, a*self.nX:(a+1)*self.nX] = xa / d_matrix[:, a:(a+1)]
+
+        return grad.flatten()
+
+    def hessian_x(self, x, u, xr, ur):
+        # make sure that the intermediate calculation is there
+        d_matrix = self.goal_dists(x)
+
+        # calculate Hessian
+        hess = np.zeros((x.size, x.size))
+
+        for t in range(len(x)):
+            for a in range(self.nA):
+                hx = t * (self.nA * self.nX) + a * self.nX
+                x_ta = x[t, a*self.nX:(a+1)*self.nX] - self.x_goal[a]
+
+                hess[hx:hx+self.nX, hx:hx+self.nX] = -np.outer(x_ta, x_ta) / d_matrix[t, a]**3
+                hess[hx:hx+self.nX, hx:hx+self.nX] += 1.0 / d_matrix[t, a]
+
+        return hess
+
+
 class CollisionHR(FeatureBase):
     def __init__(self, dist_func, dyn):
         super(CollisionHR, self).__init__()
