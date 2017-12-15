@@ -12,7 +12,7 @@ from irl import MaxEntIRL
 
 class IRLInitializerHRISimple(object):
     """
-    Initialize IRL with the simple HRI experiment data
+    Initialize top_view_tracker with the simple HRI experiment data
     Using velocity, goal, and collision avoidance features
     """
     def __init__(self):
@@ -168,13 +168,13 @@ if __name__ == "__main__":
     # create the initializer
     initializer = IRLInitializerHRISimple()
 
-    # create the IRL solver
+    # create the top_view_tracker solver
     irl_solver = MaxEntIRL(initializer)
 
     # load data and initialize
     irl_solver.init("/home/yuhang/Documents/irl_data/linear_dyn/human_priority")
 
-    # solve the IRL
+    # solve the top_view_tracker
     th0 = np.array([-5.72581118, -2.70393027,  8.02704263, -0.01])
     # th0 = np.array([-7.0, 10.0, -0.3])
     th_opt, lhist = irl_solver.optimize(th0, n_iter=2000, lrate=0.002, verbose=True)

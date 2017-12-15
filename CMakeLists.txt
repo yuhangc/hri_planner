@@ -91,6 +91,12 @@ include_directories(
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIRS})
 
+## specify openCV package and directories
+set(OpenCV_DIR "/home/yuhang/anaconda3/share/OpenCV")
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
+message("${OpenCV_INCLUDE_DIRS}")
+
 ## specify the json package and directories
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(JSONCPP jsoncpp)
@@ -112,17 +118,28 @@ add_library(hri_planner
 target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} social_force)
 
 ## Declare C++ executables
+# social force simulation
 add_executable(social_force_sim
-        src/nodes/social_force_sim_node.cpp)
+        src/planner_nodes/social_force_sim_node.cpp)
 target_link_libraries(social_force_sim ${catkin_LIBRARIES} social_force)
 
+# fake tracker of human pose
 add_executable(fake_tracker
-        src/nodes/fake_tracker.cpp)
+        src/planner_nodes/fake_tracker.cpp)
 target_link_libraries(fake_tracker ${catkin_LIBRARIES})
 
+# communication planner
 add_executable(comm_planner
-        src/nodes/comm_planner_node.cpp)
+        src/planner_nodes/comm_planner_node.cpp)
 target_link_libraries(comm_planner ${catkin_LIBRARIES} hri_planner)
+
+# video processor
+add_executable(video_processor
+        include/top_view_tracker/hat_tracker.h
+        include/top_view_tracker/video_processor.h
+        src/top_view_tracker/hat_tracker.cpp
+        src/top_view_tracker/video_processor.cpp)
+target_link_libraries(video_processor ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 #############
 ## Install ##
