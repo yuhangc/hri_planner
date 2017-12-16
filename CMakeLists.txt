@@ -92,7 +92,8 @@ find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIRS})
 
 ## specify openCV package and directories
-set(OpenCV_DIR "/home/yuhang/anaconda3/share/OpenCV")
+# force using the system opencv
+set(OpenCV_DIR "/usr/local/share/OpenCV")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 message("${OpenCV_INCLUDE_DIRS}")
