@@ -33,9 +33,11 @@ typedef struct {
     cv::Scalar cap_hsv_low;
     cv::Scalar cap_hsv_high;
 
-    // sizes in terms of pixels
-    int hat_top_radius;
-    int hat_cap_length;
+    // sizes in terms of number of pixels
+    int hat_size;
+    int cap_size;
+    int hat_area;
+    int cap_area;
 } HatTemplate;
 
 class HatTracker {
@@ -44,32 +46,43 @@ public:
     HatTracker();
 
     // potential initialization functions
-    void load_object_templates(const std::string &path);
+    void load_config(const std::string &path);
 
     // main tracking function
-    void track(const cv::Mat img_in);
+    void track(const cv::Mat im_in, bool flag_vis=true);
 
 private:
     // initial detection of objects
-    void detect_and_init_hat_single(const int &id, cv::Mat im_out=cv::Mat());
-    void detect_and_init_hats();
+    bool detect_and_init_hat(const int &id, cv::Mat im_out=cv::Mat());
+//    void detect_and_init_hats();
 
     // detection of hat top and cap
-    bool detect_hat_top(const HatTemplate &hat_temp, const cv::Rect &roi, cv::Rect &detection);
-    bool detect_hat_cap(const HatTemplate &hat_temp, const cv::Rect &roi, cv::Rect &detection);
+    double detect_hat_top(const HatTemplate &hat_temp, const cv::Rect &roi, cv::Rect &detection);
+    double detect_hat_cap(const HatTemplate &hat_temp, const cv::Rect &roi, cv::Rect &detection);
     void detect_hat_preprocess(const cv::Mat &im, const cv::Scalar &lb, const cv::Scalar &ub,
                                std::vector<std::vector<cv::Point>> &contours);
 
+    void get_cap_roi(const cv::Rect &hat_detection, const double qual, cv::Rect &cap_roi);
+
     // helper functions
-    static cv::Vec2d rect_center(const cv::Rect &rect);
+    void set_kf_cov(const double qual, cv::Mat &cov);
+
+    static cv::Vec2d rect_center(const cv::Rect &rect)
+    {
+        return cv::Vec2d(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
+    }
 
     // setting variables
     int n_hats_;
     std::vector<HatTemplate> hat_temps_;
 
+    double dt_;
+
+    double meas_noise_base_;
+
     // detection size factor thresholds
-    double factor_th_low_;
-    double factor_th_high_;
+    double ratio_th_low_;
+    double ratio_th_high_;
 
     // tracking variables
     std::vector<cv::Ptr<cv::KalmanFilter> > state_trackers_;

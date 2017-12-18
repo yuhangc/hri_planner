@@ -9,7 +9,48 @@
 //
 //----------------------------------------------------------------------------------
 
+#include <opencv2/core/utility.hpp>
+#include <opencv2/videoio.hpp>
+#include <opencv2/highgui.hpp>
+
 #include "top_view_tracker/video_processor.h"
+#include "top_view_tracker/hat_tracker.h"
+
+void test_hat_tracker(const std::string &test_path)
+{
+    // create a hat tracker object
+    tracking::HatTracker tracker;
+
+    // load configuration file
+    std::stringstream ss;
+    ss << test_path << "test_config.json";
+
+    tracker.load_config(ss.str());
+
+    // load the video file
+    ss.clear();
+    ss << test_path << "test_video.mp4";
+
+    cv::VideoCapture cap(ss.str());
+    if (!cap.isOpened()) {
+        std::cout << "Video not opened!!!!!" << std::endl;
+        return;
+    }
+
+    cv::Mat frame;
+    for (;;) {
+        // get video frame
+        cap >> frame;
+
+        if (frame.empty())
+            break;
+
+        tracker.track(frame);
+
+        //quit on ESC button
+        if(cv::waitKey(1)==27)break;
+    }
+}
 
 int main(int argc, char** argv)
 {

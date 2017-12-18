@@ -140,7 +140,7 @@ add_executable(video_processor
         include/top_view_tracker/video_processor.h
         src/top_view_tracker/hat_tracker.cpp
         src/top_view_tracker/video_processor.cpp)
-target_link_libraries(video_processor ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(video_processor ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${JSONCPP_LIBRARIES})
 
 #############
 ## Install ##
