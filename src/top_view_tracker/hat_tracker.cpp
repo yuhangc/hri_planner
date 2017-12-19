@@ -137,10 +137,10 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
             // define ROI based on prediction
             // FIXME: for now use a constant ROI size
             cv::Rect roi;
-            roi.x = (int) hat_state.at<double>(0);
-            roi.y = (int) hat_state.at<double>(1);
             roi.width = hat_temps_[id].hat_size << 1;
             roi.height = hat_temps_[id].hat_size << 1;
+            roi.x = (int) (hat_state.at<double>(0) - roi.width / 2.0);
+            roi.y = (int) (hat_state.at<double>(1) - roi.height / 2.0);
 
             // try to detect the hat within roi
             cv::Rect hat_detection;
@@ -197,10 +197,14 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
 //----------------------------------------------------------------------------------
 bool HatTracker::detect_and_init_hat(const int &id, cv::Mat im_out)
 {
+    int margin = 150;
+
     // detect hat top from the entire image
     cv::Rect hat_detection;
-    cv::Rect roi(0, 0, frame_.cols, frame_.rows);
+    cv::Rect roi(margin, 0, frame_.cols - (margin << 1), frame_.rows);
     const double hat_qual = detect_hat_top(hat_temps_[id], roi, hat_detection);
+
+    hat_detection.x += margin;
 
     if (hat_qual < 0) {
         std::cout << "Cannot find hat!" << std::endl;
@@ -212,7 +216,7 @@ bool HatTracker::detect_and_init_hat(const int &id, cv::Mat im_out)
     get_cap_roi(hat_detection, hat_qual, roi);
     const double cap_qual = detect_hat_cap(hat_temps_[id], roi, cap_detection);
 
-    if (cap_qual) {
+    if (cap_qual < 0) {
         std::cout << "Cannot find cap!" << std::endl;
         return false;
     }
@@ -222,8 +226,14 @@ bool HatTracker::detect_and_init_hat(const int &id, cv::Mat im_out)
     cv::Vec2d cap_center = rect_center(cap_detection);
 
     // initialize the Kalman Filter
-    state_trackers_[id]->statePost = hat_center;
+    state_trackers_[id]->statePost.at<double>(0) = hat_center[0];
+    state_trackers_[id]->statePost.at<double>(1) = hat_center[1];
+    state_trackers_[id]->statePost.at<double>(2) = 0.0;
+    state_trackers_[id]->statePost.at<double>(3) = 0.0;
+
     set_kf_cov(hat_qual, state_trackers_[id]->errorCovPost);
+    state_trackers_[id]->errorCovPost.at<double>(2, 2) = 1e2;
+    state_trackers_[id]->errorCovPost.at<double>(3, 3) = 1e2;
 
     // TODO: initialize orientation/cap tracking
 
@@ -245,8 +255,10 @@ bool HatTracker::detect_and_init_hat(const int &id, cv::Mat im_out)
 //}
 
 //----------------------------------------------------------------------------------
-double HatTracker::detect_hat_top(const HatTemplate &hat_temp, const cv::Rect &roi, cv::Rect &detection)
+double HatTracker::detect_hat_top(const HatTemplate &hat_temp, cv::Rect &roi, cv::Rect &detection)
 {
+    clip_roi(roi);
+
     cv::Mat im = frame_(roi);
     std::vector<std::vector<cv::Point>> contours;
 
@@ -285,17 +297,14 @@ double HatTracker::detect_hat_top(const HatTemplate &hat_temp, const cv::Rect &r
 }
 
 //----------------------------------------------------------------------------------
-double HatTracker::detect_hat_cap(const HatTemplate &hat_temp, const cv::Rect &roi, cv::Rect &detection)
+double HatTracker::detect_hat_cap(const HatTemplate &hat_temp, cv::Rect &roi, cv::Rect &detection)
 {
+    clip_roi(roi);
+
     cv::Mat im = frame_(roi);
     std::vector<std::vector<cv::Point>> contours;
 
     detect_hat_preprocess(im, hat_temp.cap_hsv_low, hat_temp.cap_hsv_high, contours);
-
-    // report lost if no contours found
-    if (contours.empty()) {
-        return false;
-    }
 
     // report lost if no contours found
     if (contours.empty()) {
@@ -338,9 +347,15 @@ void HatTracker::detect_hat_preprocess(const cv::Mat &im, const cv::Scalar &lb, 
     // convert to hsv color space
     cv::cvtColor(im, img_hsv, CV_BGR2HSV);
 
+//    cv::imshow("process", im);
+//    cv::waitKey(0);
+
     // create mask based on hat template
     cv::Mat color_mask;
     cv::inRange(img_hsv, lb, ub, color_mask);
+
+//    cv::imshow("process", color_mask);
+//    cv::waitKey(0);
 
     // filtering
     // opening filter to remove small objects (false positives)
@@ -360,17 +375,27 @@ void HatTracker::detect_hat_preprocess(const cv::Mat &im, const cv::Scalar &lb, 
 //----------------------------------------------------------------------------------
 void HatTracker::get_cap_roi(const cv::Rect &hat_detection, const double qual, cv::Rect &cap_roi)
 {
-    cap_roi.width = (int) ((hat_detection.width << 1) / qual);
-    cap_roi.height = (int) ((hat_detection.height << 1) / qual);
+    const double s = std::sqrt(qual);
+    cap_roi.width = (int) ((hat_detection.width << 1) / s);
+    cap_roi.height = (int) ((hat_detection.height << 1) / s);
 
-    cap_roi.x = std::max(0, hat_detection.x + (hat_detection.width - cap_roi.width) >> 1);
-    cap_roi.y = std::max(0, hat_detection.y + (hat_detection.height - cap_roi.height) >> 1);
+    cap_roi.x = std::max(0, hat_detection.x + ((hat_detection.width - cap_roi.width) >> 1));
+    cap_roi.y = std::max(0, hat_detection.y + ((hat_detection.height - cap_roi.height) >> 1));
 }
 
 //----------------------------------------------------------------------------------
 void HatTracker::set_kf_cov(const double qual, cv::Mat &cov)
 {
-    cv::setIdentity(cov, meas_noise_base_ / (qual * qual));
+    cv::setIdentity(cov, meas_noise_base_ / qual);
+}
+
+//----------------------------------------------------------------------------------
+void HatTracker::clip_roi(cv::Rect &roi)
+{
+    roi.x = std::min(roi.x, frame_.cols);
+    roi.y = std::min(roi.y, frame_.rows);
+    roi.width = std::min(roi.width, frame_.cols - roi.x);
+    roi.height = std::min(roi.height, frame_.rows - roi.y);
 }
 
 }

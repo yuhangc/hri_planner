@@ -57,8 +57,8 @@ private:
 //    void detect_and_init_hats();
 
     // detection of hat top and cap
-    double detect_hat_top(const HatTemplate &hat_temp, const cv::Rect &roi, cv::Rect &detection);
-    double detect_hat_cap(const HatTemplate &hat_temp, const cv::Rect &roi, cv::Rect &detection);
+    double detect_hat_top(const HatTemplate &hat_temp, cv::Rect &roi, cv::Rect &detection);
+    double detect_hat_cap(const HatTemplate &hat_temp, cv::Rect &roi, cv::Rect &detection);
     void detect_hat_preprocess(const cv::Mat &im, const cv::Scalar &lb, const cv::Scalar &ub,
                                std::vector<std::vector<cv::Point>> &contours);
 
@@ -66,6 +66,7 @@ private:
 
     // helper functions
     void set_kf_cov(const double qual, cv::Mat &cov);
+    void clip_roi(cv::Rect &roi);
 
     static cv::Vec2d rect_center(const cv::Rect &rect)
     {
