@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 12/14/2017
+// Last revision: 12/18/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -11,7 +11,6 @@
 
 #include <fstream>
 #include <sstream>
-#include <top_view_tracker/hat_tracker.h>
 
 #include "top_view_tracker/hat_tracker.h"
 
@@ -233,6 +232,8 @@ bool HatTracker::detect_and_init_hat(const int &id, cv::Mat im_out)
         cv::rectangle(im_out, hat_detection, CV_RGB(255,0,0), 2);
         cv::rectangle(im_out, cap_detection, CV_RGB(0, 0, 255), 2);
     }
+
+    return true;
 }
 
 ////----------------------------------------------------------------------------------

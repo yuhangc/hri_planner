@@ -1,0 +1,29 @@
+{
+    "num_hats": 2,
+    "hat0": {
+        "hat_hsv_low": [175, 100, 90],
+        "hat_hsv_high": [180, 255, 200],
+        "cap_hsv_low": [117, 180, 130],
+        "cap_hsv_high": [120, 255, 255],
+        "hat_size": 26,
+        "cap_size": 16
+    },
+
+    "hat1": {
+        "hat_hsv_low": [125, 160, 130],
+        "hat_hsv_high": [128, 255, 255],
+        "cap_hsv_low": [20, 108, 200],
+        "cap_hsv_high": [23, 160, 255],
+        "hat_size": 26,
+        "cap_size": 18
+    },
+
+    "FPS": 60,
+
+    "ratio_threshold_high": 1.2,
+    "ratio_threshold_low": 0.25,
+
+    "process_noise_pos": 0.01,
+    "process_noise_vel": 5.0,
+    "measurement_noise_base": 0.1
+}
