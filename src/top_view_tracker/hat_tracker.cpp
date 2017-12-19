@@ -61,7 +61,7 @@ void HatTracker::load_config(const std::string &path)
         new_hat.cap_size = root[ss.str()]["cap_size"].asInt();
 
         new_hat.hat_area = (int) (new_hat.hat_size * new_hat.hat_size * 3.14 / 4.0);
-        new_hat.cap_area = new_hat.cap_size * new_hat.cap_size >> 1;
+        new_hat.cap_area = new_hat.cap_size * new_hat.cap_size << 1;
 
         hat_temps_.push_back(new_hat);
     }
@@ -155,6 +155,18 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
             hat_detection.x += roi.x;
             hat_detection.y += roi.y;
 
+            // dynamically update the measurement covariance matrix
+            set_kf_cov(hat_qual, state_trackers_[id]->measurementNoiseCov);
+
+            // update Kalman filter
+            cv::Vec2d hat_center = rect_center(hat_detection);
+            state_trackers_[id]->correct(cv::Mat(hat_center));
+
+            // draw detection
+            if (flag_vis) {
+                cv::rectangle(im_out, hat_detection, CV_RGB(255,0,0), 2);
+            }
+
             // try to detect hat cap
             cv::Rect cap_detection;
             get_cap_roi(hat_detection, hat_qual, roi);
@@ -171,16 +183,8 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
 
             // draw the detections
             if (flag_vis) {
-                cv::rectangle(im_out, hat_detection, CV_RGB(255,0,0), 2);
                 cv::rectangle(im_out, cap_detection, CV_RGB(0, 0, 255), 2);
             }
-
-            // dynamically update the measurement covariance matrix
-            set_kf_cov(hat_qual, state_trackers_[id]->measurementNoiseCov);
-
-            // update Kalman filter
-            cv::Vec2d hat_center = rect_center(hat_detection);
-            state_trackers_[id]->correct(cv::Mat(hat_center));
 
             // TODO: update cap and orientation tracking
             cv::Vec2d cap_center = rect_center(cap_detection);
@@ -394,6 +398,8 @@ void HatTracker::clip_roi(cv::Rect &roi)
 {
     roi.x = std::min(roi.x, frame_.cols);
     roi.y = std::min(roi.y, frame_.rows);
+    roi.x = std::max(roi.x, 0);
+    roi.y = std::max(roi.y, 0);
     roi.width = std::min(roi.width, frame_.cols - roi.x);
     roi.height = std::min(roi.height, frame_.rows - roi.y);
 }

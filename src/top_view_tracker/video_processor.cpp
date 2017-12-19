@@ -38,6 +38,7 @@ void test_hat_tracker(const std::string &test_path)
     }
 
     cv::Mat frame;
+    int counter = 0;
     for (;;) {
         // get video frame
         cap >> frame;
@@ -45,6 +46,7 @@ void test_hat_tracker(const std::string &test_path)
         if (frame.empty())
             break;
 
+        counter++;
         tracker.track(frame);
 
         //quit on ESC button
