@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 12/17/2017
+// Last revision: 12/19/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -24,6 +24,9 @@
 
 #include <Eigen/Dense>
 #include <json/json.h>
+
+#define PI 3.14159265359
+#define PI2 6.28318530718
 
 namespace tracking {
 
@@ -64,13 +67,24 @@ private:
 
     void get_cap_roi(const cv::Rect &hat_detection, const double qual, cv::Rect &cap_roi);
 
+    void correct_rot_meas_range(const double ref, double &meas);
+
     // helper functions
     void set_kf_cov(const double qual, cv::Mat &cov);
+    void set_rot_kf_cov(const double cap_qual, const cv::Mat &vel, const cv::Mat &vel_cov, cv::Mat &rot_cov);
     void clip_roi(cv::Rect &roi);
 
     static cv::Vec2d rect_center(const cv::Rect &rect)
     {
         return cv::Vec2d(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
+    }
+
+    static void wrap_to_pi(double &ang)
+    {
+        while (ang >= PI)
+            ang -= PI2;
+        while (ang < -PI)
+            ang += PI2;
     }
 
     // setting variables
@@ -80,18 +94,22 @@ private:
     double dt_;
 
     double meas_noise_base_;
+    double rot_meas_noise_base_;
+    double rot_vel_noise_base_;
 
     // detection size factor thresholds
     double ratio_th_low_;
     double ratio_th_high_;
 
     // tracking variables
-    std::vector<cv::Ptr<cv::KalmanFilter> > state_trackers_;
+    std::vector<cv::Ptr<cv::KalmanFilter> > pos_trackers_;
+    std::vector<cv::Ptr<cv::KalmanFilter> > rot_trackers_;
     std::vector<cv::Vec2d> cap_state_;
     std::vector<double> hat_rot_;
 
     // other variables
     cv::Mat frame_;
+    cv::Mat global_mask_;
 
     // flags
     std::vector<bool> flag_hat_initialized_;
