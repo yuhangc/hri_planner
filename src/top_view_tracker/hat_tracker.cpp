@@ -11,6 +11,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <top_view_tracker/hat_tracker.h>
 
 #include "top_view_tracker/hat_tracker.h"
 
@@ -121,13 +122,13 @@ void HatTracker::load_config(const std::string &path)
         rot_tracker->transitionMatrix.at<double>(0, 1) = dt_;
 
         // set measurement matrix
-        rot_tracker->measurementMatrix = cv::Mat::zeros(meas_size, state_size, CV_64F);
+        rot_tracker->measurementMatrix = cv::Mat::zeros(rot_meas_size, rot_state_size, CV_64F);
         rot_tracker->measurementMatrix.at<double>(0, 0) = 1.0;
         rot_tracker->measurementMatrix.at<double>(1, 0) = 1.0;
 
         // process noise
         //! measurement noise will be updated dynamically
-        cv::setIdentity(rot_tracker->processNoiseCov, 0.1);
+        cv::setIdentity(rot_tracker->processNoiseCov, 0.01);
         rot_tracker->processNoiseCov.at<double>(1, 1) = 5.0;
 
         rot_trackers_.push_back(rot_tracker);
@@ -190,11 +191,6 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
                 hat_center = rect_center(hat_detection);
                 pos_trackers_[id]->correct(cv::Mat(hat_center));
 
-                // draw detection
-                if (flag_vis) {
-                    cv::rectangle(im_out, hat_detection, CV_RGB(255,0,0), 2);
-                }
-
                 // try to detect hat cap
                 cv::Rect cap_detection;
                 get_cap_roi(hat_detection, hat_qual, roi);
@@ -230,15 +226,59 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
 
             // measurement from velocity of hat
             const cv::Mat vel = pos_trackers_[id]->statePost.rowRange(2, 4);
-            rot_meas.at<double>(1) = std::atan2(vel.at<double>(0), vel.at<double>(1));
+            rot_meas.at<double>(1) = std::atan2(vel.at<double>(1), vel.at<double>(0));
 
+            // correct the measurements
+            correct_rot_meas_range(hat_rot.at<double>(0), rot_meas.at<double>(0));
+            correct_rot_meas_range(hat_rot.at<double>(0), rot_meas.at<double>(1));
+
+//            std::cout << "prediction:" << std::endl;
+//            std::cout << hat_rot << std::endl;
+//            std::cout << "measurement:" << std::endl;
+//            std::cout << rot_meas << std::endl;
             // get covariance of the measurements
             set_rot_kf_cov(cap_qual, vel,
                            pos_trackers_[id]->errorCovPost.rowRange(2, 4).colRange(2, 4),
                            rot_trackers_[id]->measurementNoiseCov);
 
+//            std::cout << "prediction covariance" << std::endl;
+//            std::cout << rot_trackers_[id]->errorCovPre << std::endl;
+//            std::cout << "measurement covariance" << std::endl;
+//            std::cout << rot_trackers_[id]->measurementNoiseCov << std::endl;
+//
+//            std::cout << "transition matrix" << std::endl;
+//            std::cout << rot_trackers_[id]->transitionMatrix << std::endl;
+//            std::cout << "measurement matrix:" << std::endl;
+//            std::cout << rot_trackers_[id]->measurementMatrix << std::endl;
+//            std::cout << "state pre:" << std::endl;
+//            std::cout << rot_trackers_[id]->statePre << std::endl;
+//            std::cout << "cov pre:" << std::endl;
+//            std::cout << rot_trackers_[id]->errorCovPre << std::endl;
             // measurement update
             rot_trackers_[id]->correct(rot_meas);
+            wrap_to_pi(rot_trackers_[id]->statePost.at<double>(0));
+
+            // draw the orientation
+            cv::Point2d pt1, pt2;
+            pt1.x = pos_trackers_[id]->statePost.at<double>(0);
+            pt1.y = pos_trackers_[id]->statePost.at<double>(1);
+            pt2.x = pt1.x + 20.0 * std::cos(rot_trackers_[id]->statePost.at<double>(0));
+            pt2.y = pt1.y + 20.0 * std::sin(rot_trackers_[id]->statePost.at<double>(0));
+
+//            std::cout << pt2 << std::endl;
+
+            // draw estimation
+            if (flag_vis) {
+                cv::Rect hat_pred;
+                hat_pred.width = hat_temps_[id].hat_size;
+                hat_pred.height = hat_temps_[id].hat_size;
+                hat_pred.x = (int) pos_trackers_[id]->statePost.at<double>(0) - hat_pred.width >> 1;
+                hat_pred.y = (int) pos_trackers_[id]->statePost.at<double>(1) - hat_pred.height >> 1;
+
+                cv::rectangle(im_out, hat_detection, CV_RGB(255,0,0), 2);
+            }
+
+            cv::arrowedLine(im_out, pt1, pt2, CV_RGB(0, 255, 0), 2);
         }
     }
 
@@ -275,6 +315,10 @@ bool HatTracker::detect_and_init_hat(const int &id, cv::Mat im_out)
         std::cout << "Cannot find cap!" << std::endl;
         return false;
     }
+
+    // tranform back to global image coordinate
+    cap_detection.x += roi.x;
+    cap_detection.y += roi.y;
 
     // calculate the centers
     cv::Vec2d hat_center = rect_center(hat_detection);
@@ -435,7 +479,7 @@ void HatTracker::detect_hat_preprocess(const cv::Mat &im, const cv::Scalar &lb, 
     cv::dilate(color_mask, color_mask, cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2, 2)));
     cv::erode(color_mask, color_mask, cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2, 2)));
 
-    cv::imshow("process", color_mask);
+//    cv::imshow("process", color_mask);
 //    cv::waitKey(1);
 
     // find contours in the image
@@ -470,9 +514,38 @@ void HatTracker::set_kf_cov(const double qual, cv::Mat &cov)
 }
 
 //----------------------------------------------------------------------------------
-void HatTracker::set_rot_kf_cov(const double qual, const cv::Mat &vel, const cv::Mat &vel_cov, cv::Mat &cov)
+void HatTracker::set_rot_kf_cov(const double cap_qual, const cv::Mat &vel, const cv::Mat &vel_cov, cv::Mat &cov)
 {
-    // TODO: implement this
+    // use sigmoid function as partition function
+    const double vel_mag = cv::norm(vel);
+    const double w = 0.5 / (1.0 + std::exp((vel_mag - 40.0)/20.0)) + 0.5;
+
+    // set covariance from cap detection
+    cv::setIdentity(cov);
+
+    if (cap_qual < 0)
+        cov.at<double>(0, 0) = 1e2;
+    else
+        cov.at<double>(0, 0) = rot_meas_noise_base_ * (1.0 / cap_qual) / w;
+
+    // compute covariance from velocity measurement
+    if (vel_mag < 10.0) {
+        cov.at<double>(1, 1) = 1e2;
+    } else {
+//        std::cout << "vel: " << vel << "  w: " << w << std::endl;
+//        std::cout << "vel cov: " << std::endl;
+//        std::cout << vel_cov << std::endl;
+        const double &vx = vel.at<double>(0);
+        const double &vy = vel.at<double>(1);
+
+        const double den = 1.0 / (vel_mag * vel_mag);
+        const double dvx = den * (-vy);
+        const double dvy = den * vx;
+
+        const double meas_vel_cov = dvx * dvx * vel_cov.at<double>(0, 0)
+                                    + dvy * dvy * vel_cov.at<double>(1, 1);
+        cov.at<double>(1, 1) = rot_vel_noise_base_ * meas_vel_cov / (1.0 - w);
+    }
 }
 
 //----------------------------------------------------------------------------------

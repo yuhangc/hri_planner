@@ -1,5 +1,5 @@
 {
-    "num_hats": 1,
+    "num_hats": 2,
     "hat0": {
         "hat_hsv_low": [175, 120, 90],
         "hat_hsv_high": [180, 255, 255],
@@ -25,5 +25,7 @@
 
     "process_noise_pos": 0.01,
     "process_noise_vel": 5.0,
-    "measurement_noise_base": 0.1
+    "measurement_noise_base": 0.1,
+    "rot_meas_noise_base": 0.01,
+    "rot_vel_noise_base": 1.0
 }
