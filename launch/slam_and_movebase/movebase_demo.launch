@@ -1,0 +1,7 @@
+<launch>
+  <!-- Move base -->
+  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
+
+  <!-- Rviz viewer -->
+  <include file="$(find turtlebot_rviz_launchers/launch/view_navigation.launch"/>
+</launch>
