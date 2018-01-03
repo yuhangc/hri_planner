@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 12/18/2017
+// Last revision: 12/20/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -11,17 +11,10 @@
 
 #include <fstream>
 #include <sstream>
-#include <top_view_tracker/hat_tracker.h>
 
 #include "top_view_tracker/hat_tracker.h"
 
 namespace tracking {
-
-//----------------------------------------------------------------------------------
-HatTracker::HatTracker()
-{
-
-}
 
 //----------------------------------------------------------------------------------
 void HatTracker::load_config(const std::string &path)
@@ -288,6 +281,12 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
         cv::waitKey(1);
     }
 }
+
+//----------------------------------------------------------------------------------
+//bool HatTracker::get_result(cv::Mat &pos, cv::Mat &rot)
+//{
+//
+//}
 
 //----------------------------------------------------------------------------------
 bool HatTracker::detect_and_init_hat(const int &id, cv::Mat im_out)

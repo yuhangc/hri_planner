@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 12/19/2017
+// Last revision: 12/20/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -45,14 +45,14 @@ typedef struct {
 
 class HatTracker {
 public:
-    // constructor
-    HatTracker();
-
     // potential initialization functions
     void load_config(const std::string &path);
 
     // main tracking function
     void track(const cv::Mat im_in, bool flag_vis=true);
+
+    // get methods
+//    bool get_tracking(std::vector<cv::Mat> &pose, std::vector<cv::Mat> &vel);
 
 private:
     // initial detection of objects
@@ -104,8 +104,6 @@ private:
     // tracking variables
     std::vector<cv::Ptr<cv::KalmanFilter> > pos_trackers_;
     std::vector<cv::Ptr<cv::KalmanFilter> > rot_trackers_;
-    std::vector<cv::Vec2d> cap_state_;
-    std::vector<double> hat_rot_;
 
     // other variables
     cv::Mat frame_;
