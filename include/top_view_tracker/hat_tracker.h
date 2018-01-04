@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 12/20/2017
+// Last revision: 01/03/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -52,7 +52,7 @@ public:
     void track(const cv::Mat im_in, bool flag_vis=true);
 
     // get methods
-//    bool get_tracking(std::vector<cv::Mat> &pose, std::vector<cv::Mat> &vel);
+    void get_tracking(std::vector<cv::Mat> &pose, std::vector<cv::Mat> &vel, std::vector<int> &hat_id);
 
 private:
     // initial detection of objects

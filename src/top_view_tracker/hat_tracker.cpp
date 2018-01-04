@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 12/20/2017
+// Last revision: 01/03/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -258,8 +258,6 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
             pt2.x = pt1.x + 20.0 * std::cos(rot_trackers_[id]->statePost.at<double>(0));
             pt2.y = pt1.y + 20.0 * std::sin(rot_trackers_[id]->statePost.at<double>(0));
 
-//            std::cout << pt2 << std::endl;
-
             // draw estimation
             if (flag_vis) {
                 cv::Rect hat_pred;
@@ -283,10 +281,27 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
 }
 
 //----------------------------------------------------------------------------------
-//bool HatTracker::get_result(cv::Mat &pos, cv::Mat &rot)
-//{
-//
-//}
+void HatTracker::get_tracking(std::vector<cv::Mat> &pose, std::vector<cv::Mat> &vel, std::vector<int> &hat_id)
+{
+    for (int id = 0; id < n_hats_; id++) {
+        // hat has to be initialized first
+        if (flag_hat_initialized_[id]) {
+            hat_id.push_back(id);
+
+            cv::Mat hat_pose(3, 1, CV_64F);
+            hat_pose.at<double>(0) = pos_trackers_[id]->statePost.at<double>(0);
+            hat_pose.at<double>(1) = pos_trackers_[id]->statePost.at<double>(1);
+            hat_pose.at<double>(2) = rot_trackers_[id]->statePost.at<double>(0);
+            pose.push_back(hat_pose);
+
+            cv::Mat hat_vel(3, 1, CV_64F);
+            hat_vel.at<double>(0) = pos_trackers_[id]->statePost.at<double>(2);
+            hat_vel.at<double>(1) = pos_trackers_[id]->statePost.at<double>(3);
+            hat_vel.at<double>(2) = rot_trackers_[id]->statePost.at<double>(1);
+            vel.push_back(hat_vel);
+        }
+    }
+}
 
 //----------------------------------------------------------------------------------
 bool HatTracker::detect_and_init_hat(const int &id, cv::Mat im_out)
