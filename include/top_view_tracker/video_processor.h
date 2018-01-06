@@ -28,13 +28,21 @@ namespace tracking {
 class VideoProcessor {
 public:
     // constructor
-    VideoProcessor();
+    VideoProcessor(ros::NodeHandle &nh, ros::NodeHandle &pnh);
 
+    // perform calibration
+    void extrensic_calibration(std::string &figure_path);
+
+    // process video
+    void process(std::string &path);
+
+    // bulk process
+    void process_all(std::string &path);
 
 private:
     // node handler
     ros::NodeHandle nh_;
-    
+
     // trackers
     tracking::HatTracker human_tracker_;
     aruco::MarkerDetector robot_tracker_;
@@ -43,6 +51,8 @@ private:
     float marker_size_;
     int marker_id_robot_;
     std::vector<int> marker_id_calibration_;
+
+    double fps_;
 
     // camera parameters
     aruco::CameraParameters cam_param_;
