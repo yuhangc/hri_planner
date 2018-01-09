@@ -20,7 +20,6 @@
 #include "ros/ros.h"
 
 #include "aruco/aruco.h"
-#include "aruco/cvdrawingutils.h"
 
 #include "top_view_tracker/hat_tracker.h"
 

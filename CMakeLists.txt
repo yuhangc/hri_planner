@@ -102,8 +102,10 @@ message("${OpenCV_INCLUDE_DIRS}")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(JSONCPP jsoncpp)
 include_directories(${JSONCPP_INCLUDE_DIRS})
-# message("INCLUDE DIRS: ${JSONCPP_INCLUDE_DIRS}")
-# message("LIBRARIES: ${JSONCPP_LIBRARIES}")
+
+# specify ARUCO package and directories
+find_package(aruco REQUIRED)
+include_directories(aruco_INCLUDE_DIRS)
 
 ## Declare C++ libraries
 add_library(social_force
@@ -140,7 +142,8 @@ add_executable(video_processor
         include/top_view_tracker/video_processor.h
         src/top_view_tracker/hat_tracker.cpp
         src/top_view_tracker/video_processor.cpp)
-target_link_libraries(video_processor ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${JSONCPP_LIBRARIES})
+target_link_libraries(video_processor ${catkin_LIBRARIES}
+        ${OpenCV_LIBRARIES} ${JSONCPP_LIBRARIES} aruco)
 
 #############
 ## Install ##

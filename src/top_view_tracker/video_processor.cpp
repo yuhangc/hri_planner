@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 12/18/2017
+// Last revision: 01/09/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -157,6 +157,7 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
         // TODO: report error if number of tracked human is wrong?
 
         // track robot
+        
     }
 }
 
