@@ -129,6 +129,9 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
 
     // process the entire video
     cv::Mat frame;
+    const double dt = 1.0 / fps_;
+    double tstamp = 0.0;
+
     for (;;) {
         cap >> frame;
 
@@ -157,8 +160,56 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
         // TODO: report error if number of tracked human is wrong?
 
         // track robot
-        
+        // detect markers
+        std::vector<aruco::Marker> markers = robot_tracker_.detect(frame, cam_param_, marker_size_);
+
+        // find the robot marker
+        cv::Mat rvec;
+        cv::Mat tvec;
+        for (auto &marker : markers) {
+            if (marker.id == marker_id_robot_) {
+                rvec = marker.Rvec;
+                tvec = marker.Tvec;
+            }
+        }
+
+        // convert to 2D pose
+        cv::Mat robot_pose(1, 3, CV_64F);
+        if (rvec.empty() || tvec.empty()) {
+            robot_pose = cv::Mat::zeros(1, 3, CV_64F);
+        } else {
+            // transform to world coordinate
+            cv::Mat rmat;
+            cv::Rodrigues(rvec, rmat);
+
+            cv::Mat t_world = cam_rmat_ * tvec + cam_tvec_;
+            cv::Mat r_world = cam_rmat_ * rmat;
+
+            // record pose
+            robot_pose.at<double>(0) = t_world.at<double>(0);
+            robot_pose.at<double>(1) = t_world.at<double>(1);
+            robot_pose.at<double>(2) = std::atan2(r_world.at<double>(1, 0), r_world.at<double>(0, 0));
+        }
+
+        // write to file
+        // time stamp
+        res << tstamp << ", ";
+
+        // human poses
+        for (auto &it : human_poses) {
+            res << it.second.at<double>(0) << ", ";
+            res << it.second.at<double>(1) << ", ";
+            res << it.second.at<double>(2) << ", ";
+        }
+
+        // robot pose
+        res << robot_pose.at<double>(0) << ", ";
+        res << robot_pose.at<double>(1) << ", ";
+        res << robot_pose.at<double>(2) << std::endl;
     }
+
+    // close file
+    res.close();
 }
 
 //----------------------------------------------------------------------------------
@@ -286,9 +337,25 @@ void save_one_frame(const std::string &test_path)
 
 int main(int argc, char** argv)
 {
-    std::string test_path = argv[1];
-    test_hat_tracker(test_path);
+//    std::string test_path = argv[1];
+//    test_hat_tracker(test_path);
 //    save_one_frame(test_path);
+
+    ros::init(argc, argv, "video_process");
+    ros::NodeHandle nh;
+    ros::NodeHandle pnh("~");
+
+    tracking::VideoProcessor processor(nh, pnh);
+
+    // get path parameter
+    std::string calibration_file;
+    std::string video_file;
+    std::string save_path;
+    ros::param::param<std::string>("~calibration_file", calibration_file, "calibration.jpg");
+    ros::param::param<std::string>("~video_file", video_file, "exp.mp4");
+    ros::param::param<std::string>("~save_path", save_path, "processed_data");
+
+    processor.extrensic_calibration(calibration_file);
 
     return 0;
 }
