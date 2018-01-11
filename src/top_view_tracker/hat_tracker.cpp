@@ -127,6 +127,9 @@ void HatTracker::load_config(const std::string &path)
         rot_trackers_.push_back(rot_tracker);
     }
 
+    // set default scale
+    disp_scale_ = 1.0;
+
     // initialize flags
     for (int id = 0; id < n_hats_; id++) {
         flag_hat_initialized_.push_back(false);
@@ -275,6 +278,7 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
 
     // display detection result if applicable
     if (flag_vis) {
+        cv::resize(im_out, im_out, cv::Size(), disp_scale_, disp_scale_);
         cv::imshow("detection", im_out);
         cv::waitKey(1);
     }

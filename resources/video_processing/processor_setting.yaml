@@ -1,5 +1,5 @@
 marker_size: 0.21
-marker_id_robot: 11
+marker_id_robot: 10
 
 num_calib_markers: 4
 calib_marker0:

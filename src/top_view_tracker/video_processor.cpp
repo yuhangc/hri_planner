@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 01/09/2017
+// Last revision: 01/10/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -37,8 +37,23 @@ VideoProcessor::VideoProcessor(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(n
     ros::param::param<float>("~marker_size", marker_size_, 0.19);
     ros::param::param<double>("~frame_rate", fps_, 60);
 
+    // load human heights
+    int n_human;
+    ros::param::param<int>("~num_human", n_human, 2);
+    for (int i = 0; i < n_human; i++) {
+        std::stringstream ss;
+        ss << "~human" << i;
+
+        double height;
+        ros::param::param<double>(ss.str(), height, 1.70);
+        human_heights_.insert({i, height});
+
+        ROS_INFO("Loaded human height %d: %f", i, height);
+    }
+
     // initialize the trackers
     human_tracker_.load_config(hat_tracker_config_file);
+    human_tracker_.set_disp_scale(0.5);
 
     robot_tracker_.setDictionary(dict);
 
@@ -80,6 +95,8 @@ bool VideoProcessor::extrensic_calibration(std::string &figure_path)
     for (auto &marker: markers) {
         if (marker_pos_world.count(marker.id)) {
             marker_pos_im.insert({marker.id, marker.getCenter()});
+            ROS_INFO("Marker %d center position: (%f, %f)",
+                     marker.id, marker.getCenter().x, marker.getCenter().y);
         }
     }
 
@@ -105,6 +122,16 @@ bool VideoProcessor::extrensic_calibration(std::string &figure_path)
     // convert to rotation matrix
     cv::Rodrigues(cam_rvec_, cam_rmat_);
 
+    // solvePnP gives us world->cam, we want cam->world
+    cam_rmat_ = cam_rmat_.t();
+    cam_tvec_ = -cam_rmat_ * cam_tvec_;
+    cam_rvec_ = -cam_rvec_;
+
+    // for debugging
+    std::cout << "camera 3D position: " << std::endl << cam_tvec_ << std::endl;
+    std::cout << "camera 3D rotation: " << std::endl;
+    std::cout << cam_rmat_ << std::endl;
+
     return true;
 }
 
@@ -112,6 +139,7 @@ bool VideoProcessor::extrensic_calibration(std::string &figure_path)
 void VideoProcessor::process(std::string &video_path, std::string &save_path)
 {
     // open video
+    ROS_INFO("Openning video %s", video_path.c_str());
     cv::VideoCapture cap(video_path);
 
     if (!cap.isOpened()) {
@@ -120,7 +148,7 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
     }
 
     // save result to file
-    std::ofstream res(save_path + "trajectories.txt");
+    std::ofstream res(save_path + "/trajectories.txt");
 
     if (!res.is_open()) {
         ROS_ERROR("Cannot open text file to save result!");
@@ -131,12 +159,16 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
     cv::Mat frame;
     const double dt = 1.0 / fps_;
     double tstamp = 0.0;
+    int counter = 0;
 
-    for (;;) {
+//    for (;;) {
+    for (int k = 0; k < 60; k++) {
         cap >> frame;
 
         if (frame.empty())
             break;
+
+        ROS_INFO("Processing frame %d...", counter);
 
         // track the humans/hats
         human_tracker_.track(frame, true);
@@ -178,6 +210,10 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
         if (rvec.empty() || tvec.empty()) {
             robot_pose = cv::Mat::zeros(1, 3, CV_64F);
         } else {
+            // convert type
+            tvec.convertTo(tvec, CV_64F);
+            rvec.convertTo(rvec, CV_64F);
+
             // transform to world coordinate
             cv::Mat rmat;
             cv::Rodrigues(rvec, rmat);
@@ -185,10 +221,14 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
             cv::Mat t_world = cam_rmat_ * tvec + cam_tvec_;
             cv::Mat r_world = cam_rmat_ * rmat;
 
+            // output info for debugging
+            ROS_INFO("Detected robot pose: (%f, %f, %f)",
+                     t_world.at<double>(0), t_world.at<double>(1), t_world.at<double>(2));
+
             // record pose
             robot_pose.at<double>(0) = t_world.at<double>(0);
             robot_pose.at<double>(1) = t_world.at<double>(1);
-            robot_pose.at<double>(2) = std::atan2(r_world.at<double>(1, 0), r_world.at<double>(0, 0));
+            robot_pose.at<double>(2) = std::atan2(r_world.at<double>(1, 1), r_world.at<double>(0, 1));
         }
 
         // write to file
@@ -206,6 +246,10 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
         res << robot_pose.at<double>(0) << ", ";
         res << robot_pose.at<double>(1) << ", ";
         res << robot_pose.at<double>(2) << std::endl;
+
+        // increase counters
+        tstamp += dt;
+        counter++;
     }
 
     // close file
@@ -355,7 +399,11 @@ int main(int argc, char** argv)
     ros::param::param<std::string>("~video_file", video_file, "exp.mp4");
     ros::param::param<std::string>("~save_path", save_path, "processed_data");
 
+    // first do extrinsic calibration
     processor.extrensic_calibration(calibration_file);
+
+    // then process the video
+    processor.process(video_file, save_path);
 
     return 0;
 }

@@ -54,6 +54,11 @@ public:
     // get methods
     void get_tracking(std::vector<cv::Mat> &pose, std::vector<cv::Mat> &vel, std::vector<int> &hat_id);
 
+    // set display scale
+    void set_disp_scale(const double scale) {
+        disp_scale_ = scale;
+    }
+
 private:
     // initial detection of objects
     bool detect_and_init_hat(const int &id, cv::Mat im_out=cv::Mat());
@@ -108,6 +113,8 @@ private:
     // other variables
     cv::Mat frame_;
     cv::Mat global_mask_;
+
+    double disp_scale_;
 
     // flags
     std::vector<bool> flag_hat_initialized_;
