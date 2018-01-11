@@ -103,8 +103,10 @@ private:
     double rot_vel_noise_base_;
 
     // detection size factor thresholds
-    double ratio_th_low_;
-    double ratio_th_high_;
+    double ratio_th_low_hat_;
+    double ratio_th_high_hat_;
+    double ratio_th_low_cap_;
+    double ratio_th_high_cap_;
 
     // tracking variables
     std::vector<cv::Ptr<cv::KalmanFilter> > pos_trackers_;

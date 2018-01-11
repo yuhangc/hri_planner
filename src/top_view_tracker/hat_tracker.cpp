@@ -65,8 +65,10 @@ void HatTracker::load_config(const std::string &path)
     dt_ = 1.0 / fps;
 
     // detection ratio thresholds
-    ratio_th_high_ = root["ratio_threshold_high"].asDouble();
-    ratio_th_low_ = root["ratio_threshold_low"].asDouble();
+    ratio_th_high_hat_ = root["ratio_threshold_high_hat"].asDouble();
+    ratio_th_low_hat_ = root["ratio_threshold_low_hat"].asDouble();
+    ratio_th_high_cap_ = root["ratio_threshold_high_cap"].asDouble();
+    ratio_th_low_cap_ = root["ratio_threshold_low_cap"].asDouble();
 
     // read in process noise and measurement noise matrices from config file
     double process_noise_pos = root["process_noise_pos"].asDouble();
@@ -330,7 +332,7 @@ bool HatTracker::detect_and_init_hat(const int &id, cv::Mat im_out)
     const double cap_qual = detect_hat_cap(hat_temps_[id], roi, cap_detection);
 
     if (cap_qual < 0) {
-        std::cout << "Cannot find cap!" << std::endl;
+        std::cout << "Cannot find cap " << id << " for initialization!" << std::endl;
         return false;
     }
 
@@ -394,8 +396,8 @@ double HatTracker::detect_hat_top(const HatTemplate &hat_temp, cv::Rect &roi, cv
     }
 
     // find the contour that is closest to the size of the cap, and within threshold
-    double size_th_low = ratio_th_low_ * hat_temp.hat_area;
-    double size_th_high = ratio_th_high_ * hat_temp.hat_area;
+    double size_th_low = ratio_th_low_hat_ * hat_temp.hat_area;
+    double size_th_high = ratio_th_high_hat_ * hat_temp.hat_area;
     double min_diff = 1e6;
     double area_detection = 0;
 
@@ -442,8 +444,8 @@ double HatTracker::detect_hat_cap(const HatTemplate &hat_temp, cv::Rect &roi, cv
     }
 
     // find the contour that is closest to the size of the cap, and within threshold
-    double size_th_low = ratio_th_low_ * hat_temp.cap_area;
-    double size_th_high = ratio_th_high_ * hat_temp.cap_area;
+    double size_th_low = ratio_th_low_cap_ * hat_temp.cap_area;
+    double size_th_high = ratio_th_high_cap_ * hat_temp.cap_area;
     double min_diff = 1e6;
     double area_detection = 0;
 

@@ -3,25 +3,27 @@
     "hat0": {
         "hat_hsv_low": [175, 120, 90],
         "hat_hsv_high": [180, 255, 255],
-        "cap_hsv_low": [115, 120, 100],
-        "cap_hsv_high": [122, 255, 255],
-        "hat_size": 22,
-        "cap_size": 9
+        "cap_hsv_low": [114, 100, 100],
+        "cap_hsv_high": [123, 255, 255],
+        "hat_size": 44,
+        "cap_size": 18
     },
 
     "hat1": {
         "hat_hsv_low": [122, 120, 80],
         "hat_hsv_high": [128, 255, 255],
-        "cap_hsv_low": [20, 60, 150],
-        "cap_hsv_high": [25, 200, 255],
-        "hat_size": 22,
-        "cap_size": 10
+        "cap_hsv_low": [19, 50, 100],
+        "cap_hsv_high": [26, 255, 255],
+        "hat_size": 44,
+        "cap_size": 18
     },
 
     "FPS": 60,
 
-    "ratio_threshold_high": 1.25,
-    "ratio_threshold_low": 0.20,
+    "ratio_threshold_high_hat": 1.25,
+    "ratio_threshold_low_hat": 0.20,
+    "ratio_threshold_high_cap": 1.5,
+    "ratio_threshold_low_cap": 0.08,
 
     "process_noise_pos": 0.01,
     "process_noise_vel": 5.0,

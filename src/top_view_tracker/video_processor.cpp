@@ -161,17 +161,18 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
     double tstamp = 0.0;
     int counter = 0;
 
-//    for (;;) {
-    for (int k = 0; k < 60; k++) {
+    for (;;) {
+//    for (int k = 0; k < 600; k++) {
         cap >> frame;
 
         if (frame.empty())
             break;
 
-        ROS_INFO("Processing frame %d...", counter);
+        if (counter % 10 == 0)
+            ROS_INFO("Processing frame %d...", counter);
 
         // track the humans/hats
-        human_tracker_.track(frame, true);
+        human_tracker_.track(frame, false);
 
         // get result
         std::vector<cv::Mat> poses;
@@ -187,6 +188,8 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
             calculate_pose_world(poses[i], human_heights_[ids[i]], pose_world);
 
             human_poses.insert({ids[i], pose_world});
+//            ROS_INFO("Detected pose for human %d: (%f, %f, %f)", ids[i],
+//                     pose_world.at<double>(0), pose_world.at<double>(1), pose_world.at<double>(2));
         }
 
         // TODO: report error if number of tracked human is wrong?
@@ -206,7 +209,7 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
         }
 
         // convert to 2D pose
-        cv::Mat robot_pose(1, 3, CV_64F);
+        cv::Mat robot_pose(3, 1, CV_64F);
         if (rvec.empty() || tvec.empty()) {
             robot_pose = cv::Mat::zeros(1, 3, CV_64F);
         } else {
@@ -222,8 +225,8 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
             cv::Mat r_world = cam_rmat_ * rmat;
 
             // output info for debugging
-            ROS_INFO("Detected robot pose: (%f, %f, %f)",
-                     t_world.at<double>(0), t_world.at<double>(1), t_world.at<double>(2));
+//            ROS_INFO("Detected robot pose: (%f, %f, %f)",
+//                     t_world.at<double>(0), t_world.at<double>(1), t_world.at<double>(2));
 
             // record pose
             robot_pose.at<double>(0) = t_world.at<double>(0);
@@ -250,6 +253,9 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
         // increase counters
         tstamp += dt;
         counter++;
+
+        //quit on ESC button
+        if(cv::waitKey(1)==27)break;
     }
 
     // close file
@@ -266,18 +272,27 @@ void VideoProcessor::process_all(std::string &path)
 void VideoProcessor::calculate_pose_world(const cv::Mat &pose_im, const double z0, cv::Mat &pose_world)
 {
     // first undistort the image coordinate
-    cv::Mat pos_undistort(1, 2, CV_64F);
-    cv::undistortPoints(pose_im.colRange(0, 2), pos_undistort, cam_param_.CameraMatrix, cam_param_.Distorsion);
+    std::vector<cv::Point2d> src;
+    std::vector<cv::Point2d> pos_undistort;
+
+    cv::Point2d pos1;
+    pos1.x = pose_im.at<double>(0);
+    pos1.y = pose_im.at<double>(1);
+    src.push_back(pos1);
+
+    cv::undistortPoints(src, pos_undistort, cam_param_.CameraMatrix, cam_param_.Distorsion);
 
     // obtain the truncated transformation matrix [R|t]
     cv::Mat T(3, 4, CV_64F);
-    T.rowRange(0, 3).colRange(0, 3) = cam_rmat_;
-    T.col(3) = cam_tvec_.t();
+    T.rowRange(0, 3).colRange(0, 3) = cam_rmat_.t();
+    T.col(3) = -cam_rmat_.t() * cam_tvec_;
+//    std::cout << "cam rotation matrix:" << std::endl << cam_rmat_ << std::endl;
+//    std::cout << "Tranformation matrix:" << std::endl << T << std::endl;
 
     // form the linear equation to solve for (x, y) in world frame
     cv::Mat M(2, 4, CV_64F);
-    M.row(0) = T.row(0) - pos_undistort.at<double>(0) * T.row(2);
-    M.row(1) = T.row(1) - pos_undistort.at<double>(1) * T.row(2);
+    M.row(0) = T.row(0) - pos_undistort[0].x * T.row(2);
+    M.row(1) = T.row(1) - pos_undistort[0].y * T.row(2);
 
     cv::Mat M1 = M.colRange(0, 2);
     cv::Mat M2 = M.colRange(2, 4);
@@ -285,6 +300,8 @@ void VideoProcessor::calculate_pose_world(const cv::Mat &pose_im, const double z
     cv::Mat b(2, 1, CV_64F);
     b.at<double>(0) = z0;
     b.at<double>(1) = 1.0;
+//    std::cout << "M matrix: " << std::endl << M << std::endl;
+//    std::cout << "b vector:" << std::endl << b << std::endl;
 
     // calculate position
     cv::Mat pos = -M1.inv() * M2 * b;
@@ -299,7 +316,7 @@ void VideoProcessor::calculate_pose_world(const cv::Mat &pose_im, const double z
     const double th_world = std::atan2(rvec_world.at<double>(1), rvec_world.at<double>(0));
 
     // write to result
-    pose_world = cv::Mat(1, 3, CV_64F);
+    pose_world = cv::Mat(3, 1, CV_64F);
     pose_world.at<double>(0) = pos.at<double>(0);
     pose_world.at<double>(1) = pos.at<double>(1);
     pose_world.at<double>(2) = th_world;
@@ -318,10 +335,11 @@ void test_hat_tracker(const std::string &test_path)
     ss << test_path << "/test_config.json";
 
     tracker.load_config(ss.str());
+    tracker.set_disp_scale(0.5);
 
     // load the video file
     ss.str("");
-    ss << test_path << "/test_video.mp4";
+    ss << test_path << "/human_priority.MP4";
 
     cv::VideoCapture cap(ss.str());
     if (!cap.isOpened()) {
