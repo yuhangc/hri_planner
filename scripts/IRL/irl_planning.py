@@ -102,7 +102,8 @@ def predict_single_trajectory(d, th, data_path):
     x0 = initializer.x0[d]
     u0 = u[d][0]
     x_goal = initializer.x_goal[d]
-    features, dyn = initializer.generate_features(x0, u0, x_goal)
+    features, dyn = initializer.generate_features_termination_cost(u0, x_goal)
+    # features, dyn = initializer.generate_features(x0, u0, x_goal)
     # features, dyn = initializer.generate_features(x0, u0, x_goal, goal_reward="linear")
 
     # create a reward function
@@ -145,7 +146,7 @@ def predict_single_trajectory(d, th, data_path):
 
     # plot the trajectories
     fig, ax = plt.subplots()
-    ax.plot(xr[d][:, 0], xr[d][:, 1], '-', linewidth=2, color="salmon", label="Robot")
+    ax.plot(xr[d][:, 0], xr[d][:, 1], '-o', linewidth=2, color="salmon", label="Robot")
     ax.plot(x[d][:, 0], x[d][:, 1], '-^b', linewidth=2, label="Measured")
     ax.plot(x_opt[:, 0], x_opt[:, 1], '--ok', linewidth=2, label="Predicted")
     ax.legend(loc='upper right')
@@ -236,8 +237,9 @@ if __name__ == "__main__":
     # th = np.array([-7.0, -0.5, 10.0, -0.3])
     # th = np.array([-5.87034223, -3.31171493, -4.03678902, -0.60558638])  # robot priority, linear goal reward
     # th = np.array([-4.77463267, -2.79225923,  9.38634603, -0.48302254])  # robot priority, exp goal reward
-    th = np.array([-3.46008392, -2.67728274,   9.26344071,  -2.61794507e-03])  # human priority, exp goal
+    # th = np.array([-3.46008392, -2.67728274,   9.26344071,  -2.61794507e-03])  # human priority, exp goal
+    th = np.array([-4.77463267, -0.1,  -50.0, -0.1])
 
-    # predict_single_trajectory(94, th, "/home/yuhang/Documents/irl_data/linear_dyn/human_priority")
+    predict_single_trajectory(3, th, "/home/yuhang/Documents/irl_data/linear_dyn/human_priority")
 
-    cross_validation(54, th, "/home/yuhang/Documents/irl_data/linear_dyn/human_priority")
+    # cross_validation(54, th, "/home/yuhang/Documents/irl_data/linear_dyn/human_priority")

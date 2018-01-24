@@ -215,9 +215,59 @@ class GoalRewardLinear(FeatureBase):
                 x_ta = x[t, a*self.nX:(a+1)*self.nX] - self.x_goal[a]
 
                 hess[hx:hx+self.nX, hx:hx+self.nX] = -np.outer(x_ta, x_ta) / d_matrix[t, a]**3
-                hess[hx:hx+self.nX, hx:hx+self.nX] += 1.0 / d_matrix[t, a]
+                hess[hx:hx+self.nX, hx:hx+self.nX] += 1.0 / d_matrix[t, a] * np.eye(self.nX)
 
         return hess
+
+
+class TerminationReward(FeatureBase):
+    def __init__(self, dyn, x_goal):
+        """
+        Implements an exponetially decaying reward centered at goal position
+        :param dyn: Dynamic update function (dyn.compute() is assumed to be called already)
+        :param x_goal: Goals for each agent |A|x|X| matrix
+        :param R: Decaying radius
+        """
+        super(TerminationReward, self).__init__()
+        self.dyn = dyn
+        self.x_goal = x_goal
+
+        self.nA, self.nX = x_goal.shape
+        self.T = None
+
+    def f(self, x, u, xr, ur):
+        T = x.shape[0]
+        goal_dist = np.linalg.norm(x[T-1] - self.x_goal)
+
+        return goal_dist
+
+    def grad(self, x, u, xr, ur):
+        T = x.shape[0]
+        grad_x = np.zeros_like(x[T-1])
+
+        for a in range(self.nA):
+            x_ta = x[T-1, a*self.nX:(a+1)*self.nX] - self.x_goal[a]
+            goal_dist = np.linalg.norm(x_ta)
+            grad_x[a*self.nX:(a+1)*self.nX] = x_ta / goal_dist
+
+        J = self.dyn.jacobian()
+        return np.dot(J[(self.nX * self.nA * (T-1)):(self.nX * self.nA * T)].transpose(), grad_x)
+
+    def hessian(self, x, u, xr, ur):
+        T = x.shape[0]
+
+        hess_x = np.eye(self.nA * self.nX)
+
+        for a in range(self.nA):
+            x_ta = x[T-1, a*self.nX:(a+1)*self.nX] - self.x_goal[a]
+            goal_dist = np.linalg.norm(x_ta)
+
+            hess_x[self.nX*a:self.nX*(a+1), self.nX*a:self.nX*(a+1)] = -np.outer(x_ta, x_ta) / goal_dist**3
+            hess_x[self.nX*a:self.nX*(a+1), self.nX*a:self.nX*(a+1)] += 1.0 / goal_dist * np.eye(self.nX)
+
+        J = self.dyn.jacobian()
+        Jt = J[(self.nX * self.nA * (T-1)):(self.nX * self.nA * T)]
+        return np.dot(Jt.transpose(), np.dot(hess_x, Jt))
 
 
 class CollisionHR(FeatureBase):
