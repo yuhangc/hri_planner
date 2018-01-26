@@ -35,7 +35,7 @@ class LinearDynamics(DynamicsBase):
     def __init__(self, dt):
         super(LinearDynamics, self).__init__(dt)
 
-    def compute(self, x0, u, flag_block_jacobian=True):
+    def compute(self, x0, u):
         """
         Compute the trajectory and Jacobian given control actions and initial state
         :param x0: initial state, |A|x|X| vector
@@ -69,9 +69,11 @@ class ConstAccDynamics(DynamicsBase):
         self.T = None
         self.nU = None
         self.nA = None
+        self.nX = None
 
         # for each agent, state is (x, y, vx, vy)
         self.nXs = 4
+        self.nUs = 4
 
         # linear dynamics matrices
         self.A = np.eye(4) + np.eye(4, 4, 2) * dt
@@ -84,10 +86,12 @@ class ConstAccDynamics(DynamicsBase):
         :param u: control actions, acceleration in this case, consists of (ax1, ay1, ..., axm, aym)xT
         """
         self.T, self.nU = u.shape
-        self.nA = x0.shape[0] / self.nXs
+        self.nX = x0.shape[0]
+        self.nA = self.nX / self.nXs
+
 
         # compute trajectory
-        self.x = np.zeros((self.T, x0.shape[0]))
+        self.x = np.zeros((self.T, self.nX))
         self.x[-1] = x0
 
         for t in range(self.T):
@@ -96,5 +100,19 @@ class ConstAccDynamics(DynamicsBase):
                      np.dot(self.A, self.x[t-1, (self.nXs * a):(self.nXs * (a+1))]) + \
                      np.dot(self.B, u[t, (self.nXs * a):(self.nXs * (a+1))])
 
-        # compute Jacobian (blocks)
-        
+        # compute Jacobian
+        self.J = np.zeros((self.T * self.nX, self.T * self.nU))
+
+        for t2 in range(self.T):
+            for t1 in range(t2, self.T):
+                for a in range(self.nA):
+                    x1 = t1 * self.nX + a * self.nXs
+                    y1 = t1 * self.nU + a * self.nUs
+
+                    if t1 == t2:
+                        self.J[x1:(x1+self.nXs), y1:(y1+self.nUs)] = self.B
+                    else:
+                        x0 = (t1 - 1) * self.nX + a * self.nXs
+                        y0 = (t1 - 1) * self.nU + a * self.nUs
+                        self.J[x1:(x1+self.nXs), y1:(y1+self.nUs)] = \
+                            self.A * self.J[x0:(x0+self.nXs), y0:(y0+self.nUs)]
