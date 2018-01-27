@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
-import features
+import features_const_vel
 import dynamics
 import distance
 from irl_training import IRLInitializerHRISimple

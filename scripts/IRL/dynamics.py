@@ -73,7 +73,7 @@ class ConstAccDynamics(DynamicsBase):
 
         # for each agent, state is (x, y, vx, vy)
         self.nXs = 4
-        self.nUs = 4
+        self.nUs = 2
 
         # linear dynamics matrices
         self.A = np.eye(4) + np.eye(4, 4, 2) * dt
@@ -88,7 +88,6 @@ class ConstAccDynamics(DynamicsBase):
         self.T, self.nU = u.shape
         self.nX = x0.shape[0]
         self.nA = self.nX / self.nXs
-
 
         # compute trajectory
         self.x = np.zeros((self.T, self.nX))
@@ -107,12 +106,12 @@ class ConstAccDynamics(DynamicsBase):
             for t1 in range(t2, self.T):
                 for a in range(self.nA):
                     x1 = t1 * self.nX + a * self.nXs
-                    y1 = t1 * self.nU + a * self.nUs
+                    y1 = t2 * self.nU + a * self.nUs
 
                     if t1 == t2:
                         self.J[x1:(x1+self.nXs), y1:(y1+self.nUs)] = self.B
                     else:
                         x0 = (t1 - 1) * self.nX + a * self.nXs
-                        y0 = (t1 - 1) * self.nU + a * self.nUs
+                        # tmp = np.dot(self.A, self.J[x0:(x0+self.nXs), y1:(y1+self.nUs)])
                         self.J[x1:(x1+self.nXs), y1:(y1+self.nUs)] = \
-                            self.A * self.J[x0:(x0+self.nXs), y0:(y0+self.nUs)]
+                            np.dot(self.A, self.J[x0:(x0+self.nXs), y1:(y1+self.nUs)])
