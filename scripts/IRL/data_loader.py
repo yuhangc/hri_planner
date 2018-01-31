@@ -72,6 +72,9 @@ class DataLoader(object):
             ax.plot(self.xh_raw[:, xs], self.xh_raw[:, xs+1], color=plt.cm.viridis(a*0.5+0.3), lw=2)
 
         ax.plot(self.xr_raw[:, 0], self.xr_raw[:, 1], '-k', lw=2)
+        ax.set_xlabel("x(m)")
+        ax.set_ylabel("y(m)")
+        plt.axis("equal")
         plt.show()
 
     def generate_irl_data(self):
@@ -99,7 +102,7 @@ class DataLoader(object):
         if step < 1:
             raise Exception("Desired frequency is larger than original!!")
 
-        return traj[::step, :]
+        return traj[::step]
 
     def down_sample_trajectories(self):
         self.t = self.__down_sample_trajectory__(self.t_raw, self.fps_raw, self.fps)
@@ -138,20 +141,22 @@ class DataLoader(object):
                 # position
                 traj_full[t, stx:(stx+self.nUs)] = traj[t, stx:(stx+self.nUs)]
 
+        return traj_full, acc
+
     def plot_traj_time_stats(self, t, x_h, u_h):
         # create |A| subplots
-        fig, axes = plt.subplots(self.nA, 1)
+        fig, axes = plt.subplots(self.nA, 2)
 
         for a in range(self.nA):
             # compute velocity and acceleration magnitude
-            stx = a * self.nX
-            stu = a * self.nU
-            vel = np.linalg.norm(x_h[:, (stx+self.nUs):(stx+self.nXs)], axis=1)
-            acc = np.linalg.norm(u_h[:, stu:(stu+self.nUs)], axis=1)
+            stx = a * self.nXs
+            stu = a * self.nUs
 
             # plot the velocity and acceleration
-            axes[a].plot(t, vel, '-b', lw=2)
-            axes[a].plot(t, acc, '-r', lw=2)
+            axes[a, 0].plot(t, x_h[:, stx+2], '-b', lw=1)
+            axes[a, 1].plot(t, u_h[:, stu], '-r', lw=1)
+            axes[a, 0].plot(t, x_h[:, stx+3], '--b', lw=1)
+            axes[a, 1].plot(t, u_h[:, stu+1], '--r', lw=1)
 
         plt.show()
 
@@ -163,4 +168,13 @@ if __name__ == "__main__":
     loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/human_first", 1)
     loader.plot_raw()
 
-    # down sample trajectories
+    # select and down sample trajectories
+    loader.select_data()
+    loader.down_sample_trajectories()
+
+    # obtain human velocities and accelerations
+    x0 = loader.xh[0]
+    xh_full, uh = loader.calculate_human_velacc(x0, loader.xh, 0.5)
+
+    # plot the time stats of human trajectory
+    loader.plot_traj_time_stats(loader.t, xh_full, uh)
