@@ -8,6 +8,7 @@ class DataLoader(object):
     def __init__(self):
         # data dimensions
         self.dt = 0.0
+        self.T = 0
         self.nA = 0
         self.nX = 0
         self.nU = 0
@@ -20,12 +21,19 @@ class DataLoader(object):
 
         # store the data in variables
         self.t = None
+        self.xh = None
+        self.xr = None
+        self.uh = None
+        self.ur = None
+        self.t_raw = None
         self.xh_raw = None
         self.xr_raw = None
         self.x_goal = None
 
         # meta data
         self.meta_data = None
+        self.fps_raw = 0
+        self.fps = 2
 
     def load_data_raw(self, data_path, demo_id):
         # load the meta data info
@@ -39,6 +47,7 @@ class DataLoader(object):
         self.nU = self.nA * self.nUs
         self.nXrf = int(self.meta_data[3])
         self.nUr = int(self.meta_data[4])
+        self.fps_raw = int(self.meta_data[5])
 
         # load the goals for each trial
         file_name = data_path + "/human_goal.txt"
@@ -49,7 +58,8 @@ class DataLoader(object):
         data_raw = np.loadtxt(file_name, delimiter=",")
 
         # separate human data and robot data
-        self.t = data_raw[:, 0]
+        self.T = len(data_raw)
+        self.t_raw = data_raw[:, 0]
         self.xh_raw = data_raw[:, 1:(1+self.nA*self.nXf)]
         self.xr_raw = data_raw[:, (1+self.nA*self.nXf):(1+self.nA*self.nXf+self.nXrf)]
 
@@ -64,9 +74,93 @@ class DataLoader(object):
         ax.plot(self.xr_raw[:, 0], self.xr_raw[:, 1], '-k', lw=2)
         plt.show()
 
+    def generate_irl_data(self):
+        """
+        Method to do all necessary pre-processes for IRL
+        :return: 
+        """
+        pass
+
+    def select_data(self):
+        self.xh = np.zeros((self.T, self.nX))
+
+        # only use position information from human
+        for a in range(self.nA):
+            stx = a * self.nXs
+            stx_raw = a * self.nXf
+            self.xh[:, stx:(stx+2)] = self.xh_raw[:, stx_raw:(stx_raw+2)]
+
+        # use position and orientation of robot
+        self.xr = self.xr_raw.copy()
+
+    @staticmethod
+    def __down_sample_trajectory__(traj, freq_orig, freq_goal):
+        step = freq_orig / freq_goal
+        if step < 1:
+            raise Exception("Desired frequency is larger than original!!")
+
+        return traj[::step, :]
+
+    def down_sample_trajectories(self):
+        self.t = self.__down_sample_trajectory__(self.t_raw, self.fps_raw, self.fps)
+        self.xh = self.__down_sample_trajectory__(self.xh, self.fps_raw, self.fps)
+        self.xr = self.__down_sample_trajectory__(self.xr, self.fps_raw, self.fps)
+
+    def calculate_human_velacc(self, x0, traj, dt):
+        """
+        :param x0: initial poses and velocities of size (|A|x4)x1
+        :param traj: trajectories (with 0 velocities) of size |T|x(|A|x4)
+        :param dt: time step
+        :return: traj of size |T|x(|A|x4) and control/acc of size |T|x(|A|x2)
+        """
+        T = len(traj)
+        traj_full = np.zeros((T, self.nX))
+        acc = np.zeros((T, self.nU))
+
+        for t in range(T):
+            if t == 0:
+                x_prev = x0
+            else:
+                x_prev = traj_full[t-1]
+
+            for a in range(self.nA):
+                stx = a * self.nXs
+                sta = a * self.nUs
+
+                # acceleration
+                acc[t, sta:(sta+self.nUs)] = (traj[t, stx:(stx+self.nUs)] - x_prev[stx:(stx+self.nUs)] -
+                                              x_prev[(stx+self.nUs):(stx+self.nXs)] * dt) / (0.5 * dt**2)
+
+                # velocity
+                traj_full[t, (stx+self.nUs):(stx+self.nXs)] = x_prev[(stx+self.nUs):(stx+self.nXs)] + \
+                                                              dt * acc[t, sta:(sta+self.nUs)]
+
+                # position
+                traj_full[t, stx:(stx+self.nUs)] = traj[t, stx:(stx+self.nUs)]
+
+    def plot_traj_time_stats(self, t, x_h, u_h):
+        # create |A| subplots
+        fig, axes = plt.subplots(self.nA, 1)
+
+        for a in range(self.nA):
+            # compute velocity and acceleration magnitude
+            stx = a * self.nX
+            stu = a * self.nU
+            vel = np.linalg.norm(x_h[:, (stx+self.nUs):(stx+self.nXs)], axis=1)
+            acc = np.linalg.norm(u_h[:, stu:(stu+self.nUs)], axis=1)
+
+            # plot the velocity and acceleration
+            axes[a].plot(t, vel, '-b', lw=2)
+            axes[a].plot(t, acc, '-r', lw=2)
+
+        plt.show()
+
 
 if __name__ == "__main__":
     loader = DataLoader()
 
+    # load and plot raw data
     loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/human_first", 1)
     loader.plot_raw()
+
+    # down sample trajectories

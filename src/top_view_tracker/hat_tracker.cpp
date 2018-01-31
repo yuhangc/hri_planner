@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 01/03/2018
+// Last revision: 01/30/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -15,6 +15,23 @@
 #include "top_view_tracker/hat_tracker.h"
 
 namespace tracking {
+
+//----------------------------------------------------------------------------------
+void wrap_to_pi(double &ang)
+{
+    while (ang >= PI)
+        ang -= PI2;
+    while (ang < -PI)
+        ang += PI2;
+}
+
+//----------------------------------------------------------------------------------
+void correct_rot_meas_range(const double ref, double &meas)
+{
+    double diff = meas - ref;
+    wrap_to_pi(diff);
+    meas = ref + diff;
+}
 
 //----------------------------------------------------------------------------------
 void HatTracker::load_config(const std::string &path)
@@ -517,14 +534,6 @@ void HatTracker::get_cap_roi(const cv::Rect &hat_detection, const double qual, c
 
     cap_roi.x = std::max(0, hat_detection.x + ((hat_detection.width - cap_roi.width) >> 1));
     cap_roi.y = std::max(0, hat_detection.y + ((hat_detection.height - cap_roi.height) >> 1));
-}
-
-//----------------------------------------------------------------------------------
-void HatTracker::correct_rot_meas_range(const double ref, double &meas)
-{
-    double diff = meas - ref;
-    wrap_to_pi(diff);
-    meas = ref + diff;
 }
 
 //----------------------------------------------------------------------------------

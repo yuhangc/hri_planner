@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 01/03/2018
+// Last revision: 01/30/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -67,6 +67,10 @@ private:
     std::vector<cv::Mat> human_vel_;
     cv::Mat robot_pose_;
     cv::Mat robot_vel_;
+
+    // use a simple Kalman filter to handle occasional lost of robot tracking
+    cv::Ptr<cv::KalmanFilter> robot_pose_filter_;
+    bool flag_filter_initialized_;
 
     // helper functions
     void calculate_pose_world(const cv::Mat &pose_im, const double z0, cv::Mat &pose_world);

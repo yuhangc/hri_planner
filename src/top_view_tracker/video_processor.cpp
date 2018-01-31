@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 01/10/2017
+// Last revision: 01/30/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -58,6 +58,35 @@ VideoProcessor::VideoProcessor(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(n
     robot_tracker_.setDictionary(dict);
 
     cam_param_.readFromXMLFile(camera_info_file);
+
+    // initialize the Kalman filter for robot pose tracking
+    int state_size = 6;
+    int meas_size = 3;
+    int ctrl_size = 0;
+
+    robot_pose_filter_ = new cv::KalmanFilter(state_size, meas_size, ctrl_size, CV_64F);
+
+    // set transition matrix
+    cv::setIdentity(robot_pose_filter_->transitionMatrix);
+    robot_pose_filter_->transitionMatrix.at<double>(0, 3) = 1.0 / fps_;
+    robot_pose_filter_->transitionMatrix.at<double>(1, 4) = 1.0 / fps_;
+    robot_pose_filter_->transitionMatrix.at<double>(2, 5) = 1.0 / fps_;
+
+    // set measurement matrix
+    robot_pose_filter_->measurementMatrix = cv::Mat::zeros(meas_size, state_size, CV_64F);
+    robot_pose_filter_->measurementMatrix.at<double>(0, 0) = 1.0;
+    robot_pose_filter_->measurementMatrix.at<double>(1, 1) = 1.0;
+    robot_pose_filter_->measurementMatrix.at<double>(2, 2) = 1.0;
+
+    // process noise covariance matrix
+    cv::setIdentity(robot_pose_filter_->processNoiseCov.rowRange(0, 2).colRange(0, 2), 1e-6);
+    cv::setIdentity(robot_pose_filter_->processNoiseCov.rowRange(3, 5).colRange(3, 5), 1e-2);
+    robot_pose_filter_->processNoiseCov.at<double>(2, 2) = 1e-6;
+    robot_pose_filter_->processNoiseCov.at<double>(5, 5) = 1e-2;
+
+    //! use fixed measurement covariance matrix for now
+    cv::setIdentity(robot_pose_filter_->measurementNoiseCov, 1e-4);
+    flag_filter_initialized_ = false;
 }
 
 //----------------------------------------------------------------------------------
@@ -162,7 +191,7 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
     int counter = 0;
 
     for (;;) {
-//    for (int k = 0; k < 600; k++) {
+//    for (int k = 0; k < 5000; k++) {
         cap >> frame;
 
         if (frame.empty())
@@ -201,17 +230,27 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
         // find the robot marker
         cv::Mat rvec;
         cv::Mat tvec;
+        cv::Point2f marker_center;
+        bool flag_robot_detected = false;
         for (auto &marker : markers) {
             if (marker.id == marker_id_robot_) {
                 rvec = marker.Rvec;
                 tvec = marker.Tvec;
+                marker_center = marker.getCenter();
+
+                flag_robot_detected = true;
+                break;
             }
         }
 
         // convert to 2D pose
-        cv::Mat robot_pose(3, 1, CV_64F);
-        if (rvec.empty() || tvec.empty()) {
-            robot_pose = cv::Mat::zeros(1, 3, CV_64F);
+        cv::Mat pose_meas(3, 1, CV_64F);
+        if (!flag_robot_detected) {
+            // simply do nothing
+            ROS_WARN("Robot not detected in current frame!");
+            pose_meas.at<double>(0) = -1;
+            pose_meas.at<double>(1) = -1;
+            pose_meas.at<double>(2) = -1;
         } else {
             // convert type
             tvec.convertTo(tvec, CV_64F);
@@ -220,18 +259,64 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
             // transform to world coordinate
             cv::Mat rmat;
             cv::Rodrigues(rvec, rmat);
-
-            cv::Mat t_world = cam_rmat_ * tvec + cam_tvec_;
+//
+//            cv::Mat t_world = cam_rmat_ * tvec + cam_tvec_;
             cv::Mat r_world = cam_rmat_ * rmat;
+
+            // transform to world coordinate assuming a fixed height
+            cv::Mat pose_im(3, 1, CV_64F);
+            cv::Mat t_world;
+
+            pose_im.at<double>(0) = marker_center.x;
+            pose_im.at<double>(1) = marker_center.y;
+
+            calculate_pose_world(pose_im, 0.4, t_world);
 
             // output info for debugging
 //            ROS_INFO("Detected robot pose: (%f, %f, %f)",
 //                     t_world.at<double>(0), t_world.at<double>(1), t_world.at<double>(2));
 
             // record pose
-            robot_pose.at<double>(0) = t_world.at<double>(0);
-            robot_pose.at<double>(1) = t_world.at<double>(1);
-            robot_pose.at<double>(2) = std::atan2(r_world.at<double>(1, 1), r_world.at<double>(0, 1));
+            if (!flag_filter_initialized_) {
+                // initialize the filter
+                robot_pose_filter_->statePost.at<double>(0) = t_world.at<double>(0);
+                robot_pose_filter_->statePost.at<double>(1) = t_world.at<double>(1);
+                robot_pose_filter_->statePost.at<double>(2) =
+                        std::atan2(r_world.at<double>(1, 1), r_world.at<double>(0, 1));
+                robot_pose_filter_->statePost.at<double>(3) = 0.0;
+                robot_pose_filter_->statePost.at<double>(4) = 0.0;
+                robot_pose_filter_->statePost.at<double>(5) = 0.0;
+
+                cv::setIdentity(robot_pose_filter_->errorCovPost.rowRange(0, 3).colRange(0, 3), 1e-4);
+                cv::setIdentity(robot_pose_filter_->errorCovPost.rowRange(3, 6).colRange(3, 6), 1e2);
+
+                // set flag
+                flag_filter_initialized_ = true;
+            } else {
+                // obtain measurement
+                pose_meas.at<double>(0) = t_world.at<double>(0);
+                pose_meas.at<double>(1) = t_world.at<double>(1);
+                pose_meas.at<double>(2) = std::atan2(r_world.at<double>(1, 1), r_world.at<double>(0, 1));
+
+                // filter out outliers
+                cv::Mat diff = robot_pose_filter_->statePost.rowRange(0, 3) - pose_meas;
+                wrap_to_pi(diff.at<double>(2));
+                if (cv::norm(diff) > 0.5) {
+                    ROS_WARN("Measurement is an outlier!");
+                    pose_meas.at<double>(0) = -1;
+                    pose_meas.at<double>(1) = -1;
+                    pose_meas.at<double>(2) = -1;
+                } else {
+                    // correct the orientation measurement range
+                    correct_rot_meas_range(robot_pose_filter_->statePre.at<double>(2), pose_meas.at<double>(2));
+
+                    // update Kalman Filter
+                    robot_pose_filter_->correct(pose_meas);
+
+                    // wrap orientation to [-pi, pi]
+                    wrap_to_pi(robot_pose_filter_->statePost.at<double>(2));
+                }
+            }
         }
 
         // write to file
@@ -246,13 +331,21 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
         }
 
         // robot pose
-        res << robot_pose.at<double>(0) << ", ";
-        res << robot_pose.at<double>(1) << ", ";
-        res << robot_pose.at<double>(2) << std::endl;
+        res << robot_pose_filter_->statePost.at<double>(0) << ", ";
+        res << robot_pose_filter_->statePost.at<double>(1) << ", ";
+        res << robot_pose_filter_->statePost.at<double>(2) << std::endl;
+//        res << robot_pose_filter_->statePost.at<double>(2) << ", ";
+//        res << robot_pose_filter_->statePost.at<double>(3) << ", ";
+//        res << robot_pose_filter_->statePost.at<double>(4) << ", ";
+//        res << robot_pose_filter_->statePost.at<double>(5) << ", ";
+//        res << pose_meas.at<double>(0) << ", " << pose_meas.at<double>(1) << ", " << pose_meas.at<double>(2) << std::endl;
 
         // increase counters
         tstamp += dt;
         counter++;
+
+        // prediction step of the robot pose filter
+        robot_pose_filter_->predict();
 
         //quit on ESC button
         if(cv::waitKey(1)==27)break;

@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 01/03/2018
+// Last revision: 01/30/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -30,6 +30,11 @@
 
 namespace tracking {
 
+// helper functions
+void wrap_to_pi(double &ang);
+void correct_rot_meas_range(const double ref, double &meas);
+
+// structure to store hat tracking parameters
 typedef struct {
     cv::Scalar hat_hsv_low;
     cv::Scalar hat_hsv_high;
@@ -72,8 +77,6 @@ private:
 
     void get_cap_roi(const cv::Rect &hat_detection, const double qual, cv::Rect &cap_roi);
 
-    void correct_rot_meas_range(const double ref, double &meas);
-
     // helper functions
     void set_kf_cov(const double qual, cv::Mat &cov);
     void set_rot_kf_cov(const double cap_qual, const cv::Mat &vel, const cv::Mat &vel_cov, cv::Mat &rot_cov);
@@ -82,14 +85,6 @@ private:
     static cv::Vec2d rect_center(const cv::Rect &rect)
     {
         return cv::Vec2d(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
-    }
-
-    static void wrap_to_pi(double &ang)
-    {
-        while (ang >= PI)
-            ang -= PI2;
-        while (ang < -PI)
-            ang += PI2;
     }
 
     // setting variables
