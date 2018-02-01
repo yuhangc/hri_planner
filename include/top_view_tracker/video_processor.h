@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 01/30/2018
+// Last revision: 01/31/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -74,6 +74,8 @@ private:
 
     // helper functions
     void calculate_pose_world(const cv::Mat &pose_im, const double z0, cv::Mat &pose_world);
+    void calculate_pose_vel_world(const cv::Mat &pose_im, const cv::Mat &vel_im,
+                                  const double z0, cv::Mat &pose_vel_world);
 };
 
 } // namespace

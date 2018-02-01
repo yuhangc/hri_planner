@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 12/14/2017
-// Last revision: 01/30/2017
+// Last revision: 01/31/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -190,8 +190,8 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
     double tstamp = 0.0;
     int counter = 0;
 
-    for (;;) {
-//    for (int k = 0; k < 5000; k++) {
+//    for (;;) {
+    for (int k = 0; k < 5000; k++) {
         cap >> frame;
 
         if (frame.empty())
@@ -213,10 +213,15 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
         // convert to world frame
         std::map<int, cv::Mat> human_poses;
         for (int i = 0; i < poses.size(); i++) {
-            cv::Mat pose_world;
-            calculate_pose_world(poses[i], human_heights_[ids[i]], pose_world);
+//            cv::Mat pose_world;
+//            calculate_pose_world(poses[i], human_heights_[ids[i]], pose_world);
+//
+//            human_poses.insert({ids[i], pose_world});
 
-            human_poses.insert({ids[i], pose_world});
+            cv::Mat pose_vel_world;
+            calculate_pose_vel_world(poses[i], vels[i], human_heights_[ids[i]], pose_vel_world);
+            human_poses.insert({ids[i], pose_vel_world});
+
 //            ROS_INFO("Detected pose for human %d: (%f, %f, %f)", ids[i],
 //                     pose_world.at<double>(0), pose_world.at<double>(1), pose_world.at<double>(2));
         }
@@ -328,17 +333,19 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
             res << it.second.at<double>(0) << ", ";
             res << it.second.at<double>(1) << ", ";
             res << it.second.at<double>(2) << ", ";
+            res << it.second.at<double>(3) << ", ";
+            res << it.second.at<double>(4) << ", ";
+            res << it.second.at<double>(5) << ", ";
         }
 
         // robot pose
         res << robot_pose_filter_->statePost.at<double>(0) << ", ";
         res << robot_pose_filter_->statePost.at<double>(1) << ", ";
-        res << robot_pose_filter_->statePost.at<double>(2) << std::endl;
+//        res << robot_pose_filter_->statePost.at<double>(2) << std::endl;
 //        res << robot_pose_filter_->statePost.at<double>(2) << ", ";
-//        res << robot_pose_filter_->statePost.at<double>(3) << ", ";
-//        res << robot_pose_filter_->statePost.at<double>(4) << ", ";
-//        res << robot_pose_filter_->statePost.at<double>(5) << ", ";
-//        res << pose_meas.at<double>(0) << ", " << pose_meas.at<double>(1) << ", " << pose_meas.at<double>(2) << std::endl;
+        res << robot_pose_filter_->statePost.at<double>(3) << ", ";
+        res << robot_pose_filter_->statePost.at<double>(4) << ", ";
+        res << robot_pose_filter_->statePost.at<double>(5) << std::endl;
 
         // increase counters
         tstamp += dt;
@@ -413,6 +420,31 @@ void VideoProcessor::calculate_pose_world(const cv::Mat &pose_im, const double z
     pose_world.at<double>(0) = pos.at<double>(0);
     pose_world.at<double>(1) = pos.at<double>(1);
     pose_world.at<double>(2) = th_world;
+}
+
+//----------------------------------------------------------------------------------
+void VideoProcessor::calculate_pose_vel_world(const cv::Mat &pose_im, const cv::Mat &vel_im, const double z0,
+                                              cv::Mat &pose_vel_world)
+{
+    pose_vel_world = cv::Mat(6, 1, CV_64F);
+
+    // convert position first
+    cv::Mat pose_world;
+    calculate_pose_world(pose_im, z0, pose_world);
+
+    pose_world.copyTo(pose_vel_world.rowRange(0, 3));
+
+    // calculate a "secondary" point based on velocity
+    const double dt = 0.02;
+    cv::Mat pose_im2(3, 1, CV_64F);
+    pose_im2 = pose_im + vel_im * dt;
+
+    // transform secondary point position to world frame
+    cv::Mat pose_world2;
+    calculate_pose_world(pose_im2, z0, pose_world2);
+
+    // calculate velocity
+    pose_vel_world.rowRange(3, 6) = (pose_world2 - pose_world) / dt;
 }
 
 } // namespace

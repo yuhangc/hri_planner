@@ -35,19 +35,19 @@ class DataLoader(object):
         self.fps_raw = 0
         self.fps = 2
 
-    def load_data_raw(self, data_path, demo_id):
+    def load_data_raw(self, data_path, demo_id, max_range=-1):
         # load the meta data info
         file_name = data_path + "/meta_data.txt"
         self.meta_data = np.loadtxt(file_name, skiprows=1)
 
         self.dt = 1.0 / self.meta_data[0]
+        self.fps_raw = int(self.meta_data[0])
         self.nA = int(self.meta_data[1])
         self.nXf = int(self.meta_data[2])
         self.nX = self.nA * self.nXs
         self.nU = self.nA * self.nUs
         self.nXrf = int(self.meta_data[3])
         self.nUr = int(self.meta_data[4])
-        self.fps_raw = int(self.meta_data[5])
 
         # load the goals for each trial
         file_name = data_path + "/human_goal.txt"
@@ -56,6 +56,10 @@ class DataLoader(object):
         # load data
         file_name = data_path + "/trajectories" + str(demo_id) + ".txt"
         data_raw = np.loadtxt(file_name, delimiter=",")
+
+        # cut data if max_range is set
+        if max_range > 0:
+            data_raw = data_raw[0:max_range]
 
         # separate human data and robot data
         self.T = len(data_raw)
@@ -75,7 +79,7 @@ class DataLoader(object):
         ax.set_xlabel("x(m)")
         ax.set_ylabel("y(m)")
         plt.axis("equal")
-        plt.show()
+        # plt.show()
 
     def generate_irl_data(self):
         """
@@ -92,6 +96,7 @@ class DataLoader(object):
             stx = a * self.nXs
             stx_raw = a * self.nXf
             self.xh[:, stx:(stx+2)] = self.xh_raw[:, stx_raw:(stx_raw+2)]
+            self.xh[:, (stx+2):(stx+4)] = self.xh_raw[:, (stx_raw+3):(stx_raw+5)]
 
         # use position and orientation of robot
         self.xr = self.xr_raw.copy()
@@ -108,6 +113,20 @@ class DataLoader(object):
         self.t = self.__down_sample_trajectory__(self.t_raw, self.fps_raw, self.fps)
         self.xh = self.__down_sample_trajectory__(self.xh, self.fps_raw, self.fps)
         self.xr = self.__down_sample_trajectory__(self.xr, self.fps_raw, self.fps)
+
+    def plot_human_traj(self):
+        # plot the raw human and robot trajectories
+        fig, ax = plt.subplots()
+
+        for a in range(self.nA):
+            xs = a * self.nXs
+            ax.plot(self.xh[:, xs], self.xh[:, xs+1], color=plt.cm.viridis(a*0.5+0.3),
+                    lw=2, marker='o', markersize=10, fillstyle="none")
+
+        ax.set_xlabel("x(m)")
+        ax.set_ylabel("y(m)")
+        plt.axis("equal")
+        # plt.show()
 
     def calculate_human_velacc(self, x0, traj, dt):
         """
@@ -145,7 +164,7 @@ class DataLoader(object):
 
     def plot_traj_time_stats(self, t, x_h, u_h):
         # create |A| subplots
-        fig, axes = plt.subplots(self.nA, 2)
+        fig, axes = plt.subplots(3, self.nA)
 
         for a in range(self.nA):
             # compute velocity and acceleration magnitude
@@ -153,28 +172,44 @@ class DataLoader(object):
             stu = a * self.nUs
 
             # plot the velocity and acceleration
-            axes[a, 0].plot(t, x_h[:, stx+2], '-b', lw=1)
-            axes[a, 1].plot(t, u_h[:, stu], '-r', lw=1)
-            axes[a, 0].plot(t, x_h[:, stx+3], '--b', lw=1)
-            axes[a, 1].plot(t, u_h[:, stu+1], '--r', lw=1)
+            axes[0, a].plot(t, x_h[:, stx], '-k', lw=1, label="pos_x")
+            axes[1, a].plot(t, x_h[:, stx+2], '-b', lw=1, label="vel_x")
+            axes[2, a].plot(t, u_h[:, stu], '-r', lw=1, label="acc_x")
+            axes[0, a].plot(t, x_h[:, stx+1], '--k', lw=1, label="pos_y")
+            axes[1, a].plot(t, x_h[:, stx+3], '--b', lw=1, label="vel_y")
+            axes[2, a].plot(t, u_h[:, stu+1], '--r', lw=1, label="acc_y")
+
+            # add title/legends
+            axes[0, a].set_title("positions subject" + str(a))
+            axes[1, a].set_title("velocities subject" + str(a))
+            axes[2, a].set_title("acceleration subject" + str(a))
+            axes[0, a].legend()
+            axes[1, a].legend()
+            axes[2, a].legend()
 
         plt.show()
+
+    def segment_trajectories(self):
+        pass
 
 
 if __name__ == "__main__":
     loader = DataLoader()
 
     # load and plot raw data
-    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/human_first", 1)
-    loader.plot_raw()
+    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/human_first", 1, max_range=5000)
+    # loader.plot_raw()
 
     # select and down sample trajectories
     loader.select_data()
     loader.down_sample_trajectories()
+    loader.plot_human_traj()
 
     # obtain human velocities and accelerations
-    x0 = loader.xh[0]
-    xh_full, uh = loader.calculate_human_velacc(x0, loader.xh, 0.5)
+    # x0 = loader.xh[0]
+    # xh_full, uh = loader.calculate_human_velacc(x0, loader.xh, 0.5)
+    uh = np.zeros((len(loader.t), loader.nU))
 
     # plot the time stats of human trajectory
-    loader.plot_traj_time_stats(loader.t, xh_full, uh)
+    loader.plot_traj_time_stats(loader.t, loader.xh, uh)
+    plt.show()
