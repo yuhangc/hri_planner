@@ -1,0 +1,43 @@
+# human heights
+num_human: 1
+
+human0: 1.78
+
+# path settings
+calibration_file: /home/yuhang/Videos/irl/pilot3/calibration.JPG
+video_file: /home/yuhang/Videos/irl/pilot3/human_priority.MP4
+save_path: /home/yuhang/Videos/irl/pilot3
+
+# camera extrensic calibration
+marker_size: 0.21
+marker_id_robot: 10
+
+num_calib_markers: 4
+calib_marker0:
+  id: 40
+  x: 0.0
+  y: 0.0
+
+calib_marker1:
+  id: 50
+  x: 0.0
+  y: 6.93
+
+calib_marker2:
+  id: 60
+  x: 4.46
+  y: 6.93
+
+calib_marker3:
+  id: 70
+  x: 4.46
+  y: 0.0
+
+# goal and obstacle markers
+num_obstacles: 1
+marker_id_obs0: 11
+
+num_goals: 2
+marker_id_goal0: 40
+marker_id_goal1: 50
+

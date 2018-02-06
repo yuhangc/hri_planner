@@ -172,20 +172,36 @@ class DataLoader(object):
             stu = a * self.nUs
 
             # plot the velocity and acceleration
-            axes[0, a].plot(t, x_h[:, stx], '-k', lw=1, label="pos_x")
-            axes[1, a].plot(t, x_h[:, stx+2], '-b', lw=1, label="vel_x")
-            axes[2, a].plot(t, u_h[:, stu], '-r', lw=1, label="acc_x")
-            axes[0, a].plot(t, x_h[:, stx+1], '--k', lw=1, label="pos_y")
-            axes[1, a].plot(t, x_h[:, stx+3], '--b', lw=1, label="vel_y")
-            axes[2, a].plot(t, u_h[:, stu+1], '--r', lw=1, label="acc_y")
+            if self.nA > 1:
+                axes[0, a].plot(t, x_h[:, stx], '-k', lw=1, label="pos_x")
+                axes[1, a].plot(t, x_h[:, stx+2], '-b', lw=1, label="vel_x")
+                axes[2, a].plot(t, u_h[:, stu], '-r', lw=1, label="acc_x")
+                axes[0, a].plot(t, x_h[:, stx+1], '--k', lw=1, label="pos_y")
+                axes[1, a].plot(t, x_h[:, stx+3], '--b', lw=1, label="vel_y")
+                axes[2, a].plot(t, u_h[:, stu+1], '--r', lw=1, label="acc_y")
 
-            # add title/legends
-            axes[0, a].set_title("positions subject" + str(a))
-            axes[1, a].set_title("velocities subject" + str(a))
-            axes[2, a].set_title("acceleration subject" + str(a))
-            axes[0, a].legend()
-            axes[1, a].legend()
-            axes[2, a].legend()
+                # add title/legends
+                axes[0, a].set_title("positions subject" + str(a))
+                axes[1, a].set_title("velocities subject" + str(a))
+                axes[2, a].set_title("acceleration subject" + str(a))
+                axes[0, a].legend()
+                axes[1, a].legend()
+                axes[2, a].legend()
+            else:
+                axes[0].plot(t, x_h[:, stx], '-k', lw=1, label="pos_x")
+                axes[1].plot(t, x_h[:, stx+2], '-b', lw=1, label="vel_x")
+                axes[2].plot(t, u_h[:, stu], '-r', lw=1, label="acc_x")
+                axes[0].plot(t, x_h[:, stx+1], '--k', lw=1, label="pos_y")
+                axes[1].plot(t, x_h[:, stx+3], '--b', lw=1, label="vel_y")
+                axes[2].plot(t, u_h[:, stu+1], '--r', lw=1, label="acc_y")
+
+                # add title/legends
+                axes[0].set_title("positions subject" + str(a))
+                axes[1].set_title("velocities subject" + str(a))
+                axes[2].set_title("acceleration subject" + str(a))
+                axes[0].legend()
+                axes[1].legend()
+                axes[2].legend()
 
         plt.show()
 
@@ -197,8 +213,8 @@ if __name__ == "__main__":
     loader = DataLoader()
 
     # load and plot raw data
-    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/human_first", 1, max_range=5000)
-    # loader.plot_raw()
+    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/pilot3", "_hp", max_range=2000)
+    loader.plot_raw()
 
     # select and down sample trajectories
     loader.select_data()

@@ -92,6 +92,9 @@ VideoProcessor::VideoProcessor(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(n
 //----------------------------------------------------------------------------------
 bool VideoProcessor::extrensic_calibration(std::string &figure_path)
 {
+    // set tracking mode
+    robot_tracker_.setDetectionMode(aruco::DM_NORMAL);
+
     // load calibration parameters
     int n_markers;
     std::map<int, cv::Point3d> marker_pos_world;
@@ -118,6 +121,8 @@ bool VideoProcessor::extrensic_calibration(std::string &figure_path)
 
     // detect the markers
     std::vector<aruco::Marker> markers = robot_tracker_.detect(im, cam_param_, marker_size_);
+//    cv::imshow("test", robot_tracker_.getThresholdedImage());
+//    cv::waitKey(0);
 
     // match with calibration
     std::map<int, cv::Point2d> marker_pos_im;
@@ -167,6 +172,9 @@ bool VideoProcessor::extrensic_calibration(std::string &figure_path)
 //----------------------------------------------------------------------------------
 void VideoProcessor::process(std::string &video_path, std::string &save_path)
 {
+    // set tracking mode
+    robot_tracker_.setDetectionMode(aruco::DM_NORMAL);
+
     // open video
     ROS_INFO("Openning video %s", video_path.c_str());
     cv::VideoCapture cap(video_path);
@@ -190,8 +198,8 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
     double tstamp = 0.0;
     int counter = 0;
 
-//    for (;;) {
-    for (int k = 0; k < 5000; k++) {
+    for (;;) {
+//    for (int k = 0; k < 2000; k++) {
         cap >> frame;
 
         if (frame.empty())
@@ -325,27 +333,30 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
         }
 
         // write to file
-        // time stamp
-        res << tstamp << ", ";
+        // do not write to file if human's not correctly tracked
+        if (!human_poses.empty()) {
+            // time stamp
+            res << tstamp << ", ";
 
-        // human poses
-        for (auto &it : human_poses) {
-            res << it.second.at<double>(0) << ", ";
-            res << it.second.at<double>(1) << ", ";
-            res << it.second.at<double>(2) << ", ";
-            res << it.second.at<double>(3) << ", ";
-            res << it.second.at<double>(4) << ", ";
-            res << it.second.at<double>(5) << ", ";
-        }
+            // human poses
+            for (auto &it : human_poses) {
+                res << it.second.at<double>(0) << ", ";
+                res << it.second.at<double>(1) << ", ";
+                res << it.second.at<double>(2) << ", ";
+                res << it.second.at<double>(3) << ", ";
+                res << it.second.at<double>(4) << ", ";
+                res << it.second.at<double>(5) << ", ";
+            }
 
-        // robot pose
-        res << robot_pose_filter_->statePost.at<double>(0) << ", ";
-        res << robot_pose_filter_->statePost.at<double>(1) << ", ";
+            // robot pose
+            res << robot_pose_filter_->statePost.at<double>(0) << ", ";
+            res << robot_pose_filter_->statePost.at<double>(1) << ", ";
 //        res << robot_pose_filter_->statePost.at<double>(2) << std::endl;
-//        res << robot_pose_filter_->statePost.at<double>(2) << ", ";
-        res << robot_pose_filter_->statePost.at<double>(3) << ", ";
-        res << robot_pose_filter_->statePost.at<double>(4) << ", ";
-        res << robot_pose_filter_->statePost.at<double>(5) << std::endl;
+            res << robot_pose_filter_->statePost.at<double>(2) << ", ";
+            res << robot_pose_filter_->statePost.at<double>(3) << ", ";
+            res << robot_pose_filter_->statePost.at<double>(4) << ", ";
+            res << robot_pose_filter_->statePost.at<double>(5) << std::endl;
+        }
 
         // increase counters
         tstamp += dt;
