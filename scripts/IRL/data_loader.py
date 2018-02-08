@@ -7,6 +7,14 @@ import matplotlib.patches as mpatch
 from data_filter import OptimalFilter
 
 
+def wrap2pi(ang):
+    while ang >= np.pi:
+        ang -= 2.0 * np.pi
+    while ang < -np.pi:
+        ang += 2.0 * np.pi
+    return ang
+
+
 class DataLoader(object):
     def __init__(self):
         # data dimensions
@@ -42,11 +50,14 @@ class DataLoader(object):
         # filter
         self.traj_filter = None
         self.T_block = 19
+        self.n_block = 0
         self.t_block = []
         self.xh_block = []
         self.xr_block = []
         self.uh_block = []
         self.ur_block = []
+        self.xh0 = []
+        self.xr0 = []
 
     def load_data_raw(self, data_path, demo_id, max_range=-1):
         # load the meta data info
@@ -94,13 +105,6 @@ class DataLoader(object):
         plt.axis("equal")
         # plt.show()
 
-    def generate_irl_data(self):
-        """
-        Method to do all necessary pre-processes for IRL
-        :return: 
-        """
-        pass
-
     def select_data(self):
         self.xh = np.zeros((self.T, self.nX))
 
@@ -112,7 +116,7 @@ class DataLoader(object):
             self.xh[:, (stx+2):(stx+4)] = self.xh_raw[:, (stx_raw+3):(stx_raw+5)]
 
         # use position and orientation of robot
-        self.xr = self.xr_raw.copy()
+        self.xr = self.xr_raw[:, 0:3].copy()
 
     @staticmethod
     def __down_sample_trajectory__(traj, freq_orig, freq_goal):
@@ -200,16 +204,18 @@ class DataLoader(object):
             # append data
             self.xh_block.append(self.xh[a:(b+1)])
             self.xr_block.append(self.xr[a:(b+1)])
+            self.n_block += 1
 
-    def filter_trajectories(self, w):
+    def filter_human_trajectories(self, w):
         # create a filter
         self.traj_filter = OptimalFilter(self.dt, w, self.T_block-1)
 
         # filter all trajectories
-        for i in range(len(self.xh_block)):
+        for i in range(self.n_block):
             traj = self.xh_block[i]
 
             # set goal
+            self.xh0.append(traj[0])
             self.traj_filter.set_end_points(traj[0], traj[self.T_block-1])
 
             # filter
@@ -244,6 +250,33 @@ class DataLoader(object):
             self.uh_block.append(np.asarray(u))
 
             print "optimized trajectory: ", i
+
+    def filter_robot_trajectories(self, offset):
+        for i, xr in enumerate(self.xr_block):
+            ur = np.zeros((xr.shape[0]-1, self.nUr))
+            for t in range(self.T_block):
+                # fix the offset between the marker and the robot
+                th = xr[t, 2]
+                R = np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
+                xr[t, 0:2] += np.dot(R, offset)
+
+                # calculate control
+                if t > 0:
+                    ur[t-1, 0] = np.linalg.norm(xr[t, 0:2] - xr[t-1, 0:2]) / self.dt
+                    ur[t-1, 1] = wrap2pi(xr[t, 2] - xr[t-1, 2]) / self.dt
+
+            self.ur_block.append(ur)
+            self.xr0.append(xr[0])
+            self.xr_block[i] = xr[1:]
+
+            # axes.plot(xr[:, 0], xr[:, 1], 'k', lw=2)
+            #
+            # fig, axes = plt.subplots()
+            # axes.plot(xr[:, 2], 'b-')
+            # axes.plot(ur[:, 0], 'k-')
+            # axes.plot(ur[:, 1], 'k--')
+
+            # plt.show()
 
     def calculate_human_velacc(self, x0, traj, dt):
         """
@@ -322,6 +355,18 @@ class DataLoader(object):
 
         plt.show()
 
+    def save_trajectories(self, save_path):
+        for i in range(self.n_block):
+            # open file
+            file_name = save_path + "/block" + str(i) + ".txt"
+
+            data_to_save = np.hstack((self.xh_block[i], self.uh_block[i], self.xr_block[i], self.ur_block[i]))
+            np.savetxt(file_name, data_to_save, delimiter=',')
+
+        # save the initial conditions
+        self.xh0 = np.asarray(self.xh0)
+        self.xr0 = np.asarray(self.xr0)
+        np.savetxt(save_path + "/init.txt", np.hstack((self.xh0, self.xr0)), delimiter=',')
 
 if __name__ == "__main__":
     loader = DataLoader()
@@ -344,5 +389,10 @@ if __name__ == "__main__":
     # loader.plot_traj_time_stats(loader.t, loader.xh, uh)
     plt.show()
 
+    # segment and filter trajectories
     loader.segment_trajectories()
-    loader.filter_trajectories(w=[1.0, 0.1, 0.1, 1.0])
+    loader.filter_robot_trajectories(np.array([0.085, 0]))
+    loader.filter_human_trajectories(w=[1.0, 0.1, 0.1, 1.0])
+
+    # save data to file
+    loader.save_trajectories("/home/yuhang/Documents/irl_data/winter18/pilot3/processed")
