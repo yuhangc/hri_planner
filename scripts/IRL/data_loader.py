@@ -2,12 +2,15 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatch
+
+from data_filter import OptimalFilter
 
 
 class DataLoader(object):
     def __init__(self):
         # data dimensions
-        self.dt = 0.0
+        self.dt_raw = 0.0
         self.T = 0
         self.nA = 0
         self.nX = 0
@@ -34,13 +37,23 @@ class DataLoader(object):
         self.meta_data = None
         self.fps_raw = 0
         self.fps = 2
+        self.dt = 1.0 / float(self.fps)
+
+        # filter
+        self.traj_filter = None
+        self.T_block = 19
+        self.t_block = []
+        self.xh_block = []
+        self.xr_block = []
+        self.uh_block = []
+        self.ur_block = []
 
     def load_data_raw(self, data_path, demo_id, max_range=-1):
         # load the meta data info
         file_name = data_path + "/meta_data.txt"
         self.meta_data = np.loadtxt(file_name, skiprows=1)
 
-        self.dt = 1.0 / self.meta_data[0]
+        self.dt_raw = 1.0 / self.meta_data[0]
         self.fps_raw = int(self.meta_data[0])
         self.nA = int(self.meta_data[1])
         self.nXf = int(self.meta_data[2])
@@ -123,10 +136,114 @@ class DataLoader(object):
             ax.plot(self.xh[:, xs], self.xh[:, xs+1], color=plt.cm.viridis(a*0.5+0.3),
                     lw=2, marker='o', markersize=10, fillstyle="none")
 
+            # plot circles for goal
+            ax.add_patch(mpatch.Circle((self.x_goal[0, xs], self.x_goal[0, xs+1]), 0.25, fill=False))
+            ax.add_patch(mpatch.Circle((self.x_goal[1, xs], self.x_goal[1, xs+1]), 0.25, fill=False))
+
         ax.set_xlabel("x(m)")
         ax.set_ylabel("y(m)")
         plt.axis("equal")
         # plt.show()
+
+    def segment_trajectories(self):
+        segs = None
+        for a in range(self.nA):
+            stx = a * self.nXs
+            xh = self.xh[:, stx:(stx+2)]
+            # calculate distances to goals
+            dist_goal0 = np.linalg.norm(xh - np.tile(self.x_goal[0, stx:(stx+2)], (xh.shape[0], 1)), axis=1)
+            dist_goal1 = np.linalg.norm(xh - np.tile(self.x_goal[1, stx:(stx+2)], (xh.shape[0], 1)), axis=1)
+
+            # thresholding
+            dist_goal0 = dist_goal0 < 1.0
+            dist_goal1 = dist_goal1 < 1.0
+
+            # find transitions
+            dist_goal0 = np.diff(dist_goal0)
+            dist_goal1 = np.diff(dist_goal1)
+            pos0 = np.where(dist_goal0 >= 1.0)[0]
+            pos1 = np.where(dist_goal1 >= 1.0)[0]
+
+            # find boundaries
+            new_seg = []
+            for a, b in zip(pos0, pos1):
+                new_seg.append(np.array([min(a, b), max(a, b)]))
+            new_seg = np.asarray(new_seg)
+
+            # merge all segs
+            if segs is None:
+                segs = np.copy(new_seg)
+            else:
+                segs[:, 0] = np.min(np.vstack((segs[:, 0], new_seg[:, 0])), axis=0)
+                segs[:, 1] = np.max(np.vstack((segs[:, 1], new_seg[:, 1])), axis=0)
+
+            # print segs
+            # print segs[:, 1] - segs[:, 0]
+            # print segs.shape
+
+            # fig, axes = plt.subplots()
+            # axes.plot(dist_goal0, '-b')
+            # axes.plot(dist_goal1, '--b')
+            # plt.show()
+
+        # generate all trajectory segments
+        for a, b in segs:
+            len_block = b - a + 1
+
+            # fill up the block to length T_block
+            ext = (self.T_block - len_block) / 2
+            a -= ext
+            b += self.T_block - len_block - ext
+
+            print a, b, b - a + 1
+
+            # append data
+            self.xh_block.append(self.xh[a:(b+1)])
+            self.xr_block.append(self.xr[a:(b+1)])
+
+    def filter_trajectories(self, w):
+        # create a filter
+        self.traj_filter = OptimalFilter(self.dt, w, self.T_block-1)
+
+        # filter all trajectories
+        for i in range(len(self.xh_block)):
+            traj = self.xh_block[i]
+
+            # set goal
+            self.traj_filter.set_end_points(traj[0], traj[self.T_block-1])
+
+            # filter
+            x_filtered, u = self.traj_filter.filter_data(traj[1:])
+            x_plt = np.asarray(x_filtered)
+            u_plt = np.asarray(u)
+
+            # plot for verification
+            # fig, axes = plt.subplots(3, 1)
+            #
+            # axes[0].plot(x_plt[:, 0], '-k')
+            # axes[0].plot(x_plt[:, 1], '--k')
+            # axes[0].plot(traj[1:, 0], '-b')
+            # axes[0].plot(traj[1:, 1], '--b')
+            #
+            # axes[1].plot(x_plt[:, 2], '-k')
+            # axes[1].plot(x_plt[:, 3], '--k')
+            # axes[1].plot(traj[1:, 2], '-b')
+            # axes[1].plot(traj[1:, 3], '--b')
+            #
+            # axes[2].plot(u_plt[:, 0], '-k')
+            # axes[2].plot(u_plt[:, 1], '--k')
+            #
+            # fig, axes = plt.subplots()
+            # axes.plot(x_plt[:, 0], x_plt[:, 1], '-k', lw=2, marker='o', markersize=10, fillstyle="none")
+            # axes.plot(traj[1:, 0], traj[1:, 1], '-b', lw=2, marker='o', markersize=10, fillstyle="none")
+            #
+            # plt.show()
+
+            # update trajectory
+            self.xh_block[i] = np.asarray(x_filtered)
+            self.uh_block.append(np.asarray(u))
+
+            print "optimized trajectory: ", i
 
     def calculate_human_velacc(self, x0, traj, dt):
         """
@@ -205,16 +322,13 @@ class DataLoader(object):
 
         plt.show()
 
-    def segment_trajectories(self):
-        pass
-
 
 if __name__ == "__main__":
     loader = DataLoader()
 
     # load and plot raw data
-    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/pilot3", "_hp", max_range=2000)
-    loader.plot_raw()
+    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/pilot3", "_hp", max_range=-1)
+    # loader.plot_raw()
 
     # select and down sample trajectories
     loader.select_data()
@@ -227,5 +341,8 @@ if __name__ == "__main__":
     uh = np.zeros((len(loader.t), loader.nU))
 
     # plot the time stats of human trajectory
-    loader.plot_traj_time_stats(loader.t, loader.xh, uh)
+    # loader.plot_traj_time_stats(loader.t, loader.xh, uh)
     plt.show()
+
+    loader.segment_trajectories()
+    loader.filter_trajectories(w=[1.0, 0.1, 0.1, 1.0])

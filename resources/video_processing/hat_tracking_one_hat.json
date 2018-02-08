@@ -19,7 +19,7 @@
 
     "process_noise_pos": 0.01,
     "process_noise_vel": 5.0,
-    "measurement_noise_base": 0.1,
+    "measurement_noise_base": 1.0,
     "rot_meas_noise_base": 0.01,
     "rot_vel_noise_base": 1.0
 }
