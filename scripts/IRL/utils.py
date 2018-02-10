@@ -37,7 +37,7 @@ def hessian(f, x):
     return jacobian(grad(f, x), x)
 
 
-class Maximizer(object):
+class Minimizer(object):
     def __init__(self, f, vs, g={}, pre=None, gen=None, method='bfgs', eps=1, iters=100000, debug=False, inf_ignore=np.inf):
         self.inf_ignore = inf_ignore
         self.debug = debug
@@ -90,7 +90,7 @@ class Maximizer(object):
             return s
         self.f_and_df = f_and_df
 
-    def argmax(self, vals={}, bounds={}):
+    def argmin(self, vals={}, bounds={}):
         if not isinstance(bounds, dict):
             bounds = {v: bounds for v in self.vs}
         B = []
@@ -110,7 +110,7 @@ class Maximizer(object):
             opt = scipy.optimize.minimize(self.f_and_df, x0=x0, method=self.method, jac=True).x
         return {v: opt[a:b] for v, (a, b) in zip(self.vs, self.sz)}
 
-    def maximize(self, *args, **vargs):
-        result = self.argmax(*args, **vargs)
+    def minimize(self, *args, **vargs):
+        result = self.argmin(*args, **vargs)
         for v, res in result.iteritems():
             v.set_value(res)

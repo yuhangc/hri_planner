@@ -24,7 +24,7 @@ class OptimalFilter(object):
         self.x_pred = None
         self.gen()
 
-        self.optimizer = utils.Maximizer(self.cost(), self.u)
+        self.optimizer = utils.Minimizer(self.cost(), self.u)
 
     def gen(self):
         # generate the trajectory function
@@ -57,7 +57,7 @@ class OptimalFilter(object):
         # TODO: set initial values
 
         # prepare to optimize
-        self.optimizer.maximize()
+        self.optimizer.minimize()
 
         # return optimal trajectory and control
         return self.get_traj_control()
