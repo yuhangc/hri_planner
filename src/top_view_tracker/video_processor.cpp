@@ -90,7 +90,7 @@ VideoProcessor::VideoProcessor(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(n
 }
 
 //----------------------------------------------------------------------------------
-bool VideoProcessor::extrensic_calibration(std::string &figure_path)
+bool VideoProcessor::extrensic_calibration(const std::string &figure_path)
 {
     // set tracking mode
     robot_tracker_.setDetectionMode(aruco::DM_NORMAL);
@@ -167,6 +167,60 @@ bool VideoProcessor::extrensic_calibration(std::string &figure_path)
     std::cout << cam_rmat_ << std::endl;
 
     return true;
+}
+
+//----------------------------------------------------------------------------------
+void VideoProcessor::detect_static_obs(const std::string &figure_path)
+{
+    // set tracking mode
+    robot_tracker_.setDetectionMode(aruco::DM_NORMAL);
+
+    // load calibration parameters
+    int n_obs;
+    std::map<int, double> obs_height;
+
+    ros::param::param<int>("~num_obstacles", n_obs, 1);
+    for (int i = 0; i < n_obs; i++) {
+        std::stringstream ss;
+        ss << "~obs_marker" << i;
+
+        int id;
+        double height;
+        ros::param::param<int>(ss.str() + "/id", id, i);
+        ros::param::param<double>(ss.str() + "/height", height, 0.5);
+
+        obs_height.insert({id, height});
+
+        ROS_INFO("Loaded obstacle %d, id is: %d, height is %f", i, id, height);
+    }
+
+    // read in image
+    cv::Mat im = cv::imread(figure_path);
+
+    // detect the markers
+    std::vector<aruco::Marker> markers = robot_tracker_.detect(im, cam_param_, marker_size_);
+
+    // match with calibration
+    std::map<int, cv::Point2d> obs_pos_im;
+    for (auto &marker: markers) {
+        if (obs_height.count(marker.id)) {
+            obs_pos_im.insert({marker.id, marker.getCenter()});
+            ROS_INFO("Marker %d center position: (%f, %f)",
+                     marker.id, marker.getCenter().x, marker.getCenter().y);
+        }
+    }
+
+    // convert to world pose and record/output
+    for (auto &obs : obs_pos_im) {
+        cv::Mat obs_pose(3, 1, CV_64F);
+        obs_pose.at<double>(0) = obs.second.x;
+        obs_pose.at<double>(1) = obs.second.y;
+
+        cv::Mat obs_pose_world;
+        calculate_pose_world(obs_pose, obs_height[obs.first], obs_pose_world);
+        ROS_INFO("Obstacle %d world position is (%f, %f)", obs.first,
+                 obs_pose_world.at<double>(0), obs_pose_world.at<double>(1));
+    }
 }
 
 //----------------------------------------------------------------------------------
@@ -555,6 +609,11 @@ int main(int argc, char** argv)
 
     // first do extrinsic calibration
     processor.extrensic_calibration(calibration_file);
+
+    // find the obstacle positions
+    processor.detect_static_obs(calibration_file);
+    std::cout << "press enter to continue...";
+    std::getchar();
 
     // then process the video
     processor.process(video_file, save_path);

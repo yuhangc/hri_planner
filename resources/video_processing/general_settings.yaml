@@ -35,7 +35,9 @@ calib_marker3:
 
 # goal and obstacle markers
 num_obstacles: 1
-marker_id_obs0: 11
+obs_marker0:
+  id: 120
+  height: 0.5
 
 num_goals: 2
 marker_id_goal0: 40

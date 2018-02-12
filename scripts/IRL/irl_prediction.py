@@ -9,7 +9,7 @@ import utils
 
 
 class IRLPredictorBase(object):
-    def __init__(self, dyn, meta_data, sign=-1):
+    def __init__(self, dyn, meta_data, sign=1):
         """
         :param dyn: dynamics/transition model
         :param meta_data: [time step, planning horizon]
@@ -48,7 +48,7 @@ class IRLPredictorBase(object):
 
         # optimizer
         if sign > 0:
-            self.optimizer = utils.Minimizer(self.reward(), self.uh)
+            self.optimizer = utils.Minimizer(self.reward(), self.uh, debug=False)
         else:
             self.optimizer = utils.Minimizer(-self.reward(), self.uh)
 
@@ -74,18 +74,21 @@ class IRLPredictorBase(object):
             self.ur[t].set_value(ur[t])
 
     def set_param(self, th_cumu, th_term):
-        self.th_cumu = th_cumu
-        self.th_term = th_term
+        self.th_cumu.set_value(np.asarray(th_cumu))
+        self.th_term.set_value(np.asarray(th_term))
 
     def reward(self):
         # cumulative rewards
         r_cumu = []
-        for feature, w in zip(self.f_cumu, self.th_cumu):
-            r_cumu.append(w * sum([feature(self.xh[t], self.uh[t], self.xr[t], self.ur[t]) for t in range(self.T)]))
+        for i, feature in enumerate(self.f_cumu):
+            r_cumu.append(self.th_cumu[i] *
+                          sum([feature(self.xh[t], self.uh[t], self.xr[t], self.ur[t]) for t in range(self.T)]))
+        # for feature, w in zip(self.f_cumu, self.th_cumu):
+        #     r_cumu.append(w * sum([feature(self.xh[t], self.uh[t], self.xr[t], self.ur[t]) for t in range(self.T)]))
 
         # termination reward
-        r_term = [w * feature(self.xh[self.T-1], self.uh[self.T-1])
-                  for feature, w in zip(self.f_term, self.th_term)]
+        r_term = [self.th_term[i] * feature(self.xh[self.T-1], self.uh[self.T-1])
+                  for i, feature in enumerate(self.f_term)]
 
         return sum(r_cumu) + sum(r_term)
 
@@ -96,11 +99,11 @@ class IRLPredictorBase(object):
         x_val = self.x0.get_value()
         for t in range(self.T):
             u_val = self.uh[t].get_value()
-            x_val = self.dyn.forward_dynamics_np(x_val, u_val, self.dt)
+            x_val = self.dyn.forward_dyn_np(x_val, u_val, self.dt)
             xout.append(x_val)
             uout.append(u_val)
 
-        return xout, uout
+        return np.asarray(xout), np.asarray(uout)
 
     def predict(self, uh0):
         # set initial value
@@ -120,14 +123,18 @@ class IRLPredictor(IRLPredictorBase):
         self.f_cumu.append(features.velocity())
         self.f_cumu.append(features.acceleration())
         self.f_cumu.append(features.collision_hr(0.5))
+        self.f_cumu.append(features.collision_hr_dynamic(0.3, 0.25, 1.0))
+        self.f_cumu.append(features.collision_obs(0.5, [2.055939, 3.406737]))
 
         # define all the termination features
         self.f_term = []
         self.f_term.append(features.goal_reward_term(self.x_goal))
 
         # define the weights
-        self.th_cumu = [1.0, 1.0, 0.5]
-        self.th_term = [10.0]
+        self.th_cumu = utils.vector(len(self.f_cumu))
+        self.th_term = utils.vector(len(self.f_term))
+        self.th_cumu.set_value(np.array([1.0, 1.0, 0.5, 0.05, 0.5]))
+        self.th_term.set_value(np.array([10.0]))
 
 
 def predict_single_trajectory(predictor, path, id):
@@ -151,7 +158,7 @@ def predict_single_trajectory(predictor, path, id):
     predictor.set_robot_data(xr, ur)
 
     # set initial controls - randomly perturb uh
-    u0 = uh + np.random.randn(uh.shape[0], uh.shape[1])
+    u0 = uh + 0.0 * np.random.randn(uh.shape[0], uh.shape[1])
 
     # plan the trajectory
     x_opt, u_opt = predictor.predict(u0)
@@ -161,6 +168,8 @@ def predict_single_trajectory(predictor, path, id):
     axes.plot(xh[:, 0], xh[:, 1], '--ok', lw=1, fillstyle="none")
     axes.plot(x_opt[:, 0], x_opt[:, 1], '-ok', lw=2, fillstyle="none")
     axes.plot(xr[:, 0], xr[:, 1], '-or', lw=1, fillstyle="none")
+    axes.axis("equal")
+    plt.show()
 
 
 def traj_dist_avg(x1, x2):

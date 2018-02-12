@@ -16,6 +16,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <unordered_set>
 
 #include "ros/ros.h"
 
@@ -31,7 +32,10 @@ public:
     VideoProcessor(ros::NodeHandle &nh, ros::NodeHandle &pnh);
 
     // perform calibration
-    bool extrensic_calibration(std::string &figure_path);
+    bool extrensic_calibration(const std::string &figure_path);
+
+    // get obstacle
+    void detect_static_obs(const std::string &figure_path);
 
     // process video
     void process(std::string &video_path, std::string &save_path);
