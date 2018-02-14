@@ -133,7 +133,7 @@ class IRLPredictor(IRLPredictorBase):
         # define the weights
         self.th_cumu = utils.vector(len(self.f_cumu))
         self.th_term = utils.vector(len(self.f_term))
-        self.th_cumu.set_value(np.array([1.0, 1.0, 0.5, 0.05, 0.5]))
+        self.th_cumu.set_value(np.array([1.0, 1.0, 0.5, 0.2, 0.5]))
         self.th_term.set_value(np.array([10.0]))
 
 
@@ -158,7 +158,7 @@ def predict_single_trajectory(predictor, path, id):
     predictor.set_robot_data(xr, ur)
 
     # set initial controls - randomly perturb uh
-    u0 = uh + 0.0 * np.random.randn(uh.shape[0], uh.shape[1])
+    u0 = uh + 0.1 * np.random.randn(uh.shape[0], uh.shape[1])
 
     # plan the trajectory
     x_opt, u_opt = predictor.predict(u0)
@@ -187,8 +187,8 @@ if __name__ == "__main__":
     dyn = dynamics_th.DynamicsConstAacc()
     predictor = IRLPredictor(dyn, [0.5, 18])
 
-    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed", 0)
-    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed", 1)
-    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed", 2)
-    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed", 3)
-    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed", 4)
+    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp", 0)
+    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp", 1)
+    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp", 2)
+    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp", 3)
+    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp", 4)
