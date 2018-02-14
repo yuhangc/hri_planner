@@ -5,7 +5,7 @@ human0: 1.78
 
 # path settings
 calibration_file: /home/yuhang/Videos/irl/pilot3/calibration.JPG
-video_file: /home/yuhang/Videos/irl/pilot3/human_priority.MP4
+video_file: /home/yuhang/Videos/irl/pilot3/robot_priority.MP4
 save_path: /home/yuhang/Videos/irl/pilot3
 
 # camera extrensic calibration

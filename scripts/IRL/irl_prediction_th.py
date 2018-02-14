@@ -3,8 +3,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import features
-import dynamics
+import features_th
+import dynamics_th
 import utils
 
 
@@ -120,15 +120,15 @@ class IRLPredictor(IRLPredictorBase):
     def gen_features(self):
         # define all the cumulative features
         self.f_cumu = []
-        self.f_cumu.append(features.velocity())
-        self.f_cumu.append(features.acceleration())
-        self.f_cumu.append(features.collision_hr(0.5))
-        self.f_cumu.append(features.collision_hr_dynamic(0.3, 0.25, 1.0))
-        self.f_cumu.append(features.collision_obs(0.5, [2.055939, 3.406737]))
+        self.f_cumu.append(features_th.velocity())
+        self.f_cumu.append(features_th.acceleration())
+        self.f_cumu.append(features_th.collision_hr(0.5))
+        self.f_cumu.append(features_th.collision_hr_dynamic(0.3, 0.25, 1.0))
+        self.f_cumu.append(features_th.collision_obs(0.5, [2.055939, 3.406737]))
 
         # define all the termination features
         self.f_term = []
-        self.f_term.append(features.goal_reward_term(self.x_goal))
+        self.f_term.append(features_th.goal_reward_term(self.x_goal))
 
         # define the weights
         self.th_cumu = utils.vector(len(self.f_cumu))
@@ -184,7 +184,7 @@ def cross_validation(d_divide, th, data_path):
 
 
 if __name__ == "__main__":
-    dyn = dynamics.DynamicsConstAacc()
+    dyn = dynamics_th.DynamicsConstAacc()
     predictor = IRLPredictor(dyn, [0.5, 18])
 
     predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed", 0)

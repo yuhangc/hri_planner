@@ -252,8 +252,8 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
     double tstamp = 0.0;
     int counter = 0;
 
-//    for (;;) {
-    for (int k = 0; k < 2000; k++) {
+    for (;;) {
+//    for (int k = 0; k < 2000; k++) {
         cap >> frame;
 
         if (frame.empty())

@@ -372,7 +372,7 @@ if __name__ == "__main__":
     loader = DataLoader()
 
     # load and plot raw data
-    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/pilot3", "_hp", max_range=-1)
+    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/pilot3", "_rp", max_range=-1)
     # loader.plot_raw()
 
     # select and down sample trajectories
@@ -395,4 +395,4 @@ if __name__ == "__main__":
     loader.filter_human_trajectories(w=[1.0, 0.1, 0.1, 1.0])
 
     # save data to file
-    loader.save_trajectories("/home/yuhang/Documents/irl_data/winter18/pilot3/processed")
+    loader.save_trajectories("/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp")
