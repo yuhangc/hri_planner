@@ -154,6 +154,7 @@ class CollisionHRDynamic(GaussianReward):
         self.l = l
 
         self.T = self.dyn.T
+        self.dt = 0.5
 
     def f(self, x, u, xr, ur):
         # transform x and x_target
@@ -161,10 +162,10 @@ class CollisionHRDynamic(GaussianReward):
         for t in range(self.T):
             # compute center
             th = xr[t, 2]
-            xc = np.array([xr[0] + ur[0] * dt * np.cos(th), xr[1] + ur[0] * dt * np.sin(th)])
+            xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
 
             # compute Gaussian length and width
-            gradius = np.array([self.w, self.l + ur[0] * 2.0 * self.l])
+            gradius = np.array([self.w, self.l + ur[t, 0] * 2.0 * self.l])
 
             # transform points
             R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
@@ -174,8 +175,73 @@ class CollisionHRDynamic(GaussianReward):
         return self._f(x_trans, np.array([0.0, 0.0]))
 
     def grad(self, x, u, xr, ur):
-        pass
+        return np.dot(self.dyn.jacobian().transpose(), self.grad_x(x, u, xr, ur))
 
+    def hessian(self, x, u, xr, ur):
+        return np.dot(self.dyn.jacobian().transpose(),
+                      np.dot(self.hessian_x(x, u, xr, ur), self.dyn.jacobian()))
+
+    def grad_x(self, x, u, xr, ur):
+        # transform x and x_target
+        x_trans = np.zeros_like(x)
+        J = []
+        for t in range(self.T):
+            # compute center
+            th = xr[t, 2]
+            xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
+
+            # compute Gaussian length and width
+            gradius = np.array([self.w, self.l + ur[t, 0] * 2.0 * self.l])
+
+            # transform points
+            R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
+            x_trans[t, 0:2] = np.dot(R, x[t, 0:2] - xc) / gradius
+
+            # store intermediate computation
+            R[0] /= gradius[0]
+            R[1] /= gradius[1]
+            J.append(R)
+
+        # get normalized Gaussian gradient
+        grad = self._grad_x(x_trans, np.array([0.0, 0.0]))
+
+        # transform by rotation matrix
+        for t in range(self.T):
+            stx = t * self.nX
+            grad[stx:(stx+2)] = np.dot(J[t].transpose(), grad[stx:(stx+2)])
+
+        return grad
+
+    def hessian_x(self, x, u, xr, ur):
+        # transform x and x_target
+        x_trans = np.zeros_like(x)
+        J = []
+        for t in range(self.T):
+            # compute center
+            th = xr[t, 2]
+            xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
+
+            # compute Gaussian length and width
+            gradius = np.array([self.w, self.l + ur[t, 0] * 2.0 * self.l])
+
+            # transform points
+            R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
+            x_trans[t, 0:2] = np.dot(R, x[t, 0:2] - xc) / gradius
+
+            # store intermediate computation
+            R[0] /= gradius[0]
+            R[1] /= gradius[1]
+            J.append(R)
+
+        # get normalized Gaussian hessian
+        hess = self._hessian_x(x_trans, np.array([0.0, 0.0]))
+
+        # transform
+        for t in range(self.T):
+            stx = t * self.nX
+            hess[stx:(stx+2), stx:(stx+2)] = np.dot(J[t].transpose(), np.dot(hess[stx:(stx+2), stx:(stx+2)], J[t]))
+
+        return hess
 
 
 class CollisionObs(GaussianReward):
@@ -210,7 +276,7 @@ class TerminationReward(FeatureBase):
         grad_x = x_diff / (np.linalg.norm(x_diff) + self.reg)
 
         J = self.dyn.jacobian()
-        rs = self.dyn.nX * (T-1)
+        rs = self.dyn.nX * (self.T-1)
 
         return np.dot(J[rs:(rs+2)].transpose(), grad_x)
 
@@ -220,7 +286,7 @@ class TerminationReward(FeatureBase):
 
         hess_x = -np.outer(x_diff, x_diff) / d**3 + np.eye(2) / d
 
-        rs = self.dyn.nX * (T-1)
+        rs = self.dyn.nX * (self.T-1)
         J = self.dyn.jacobian()
         Jt = J[rs:(rs+2)]
         return np.dot(Jt.transpose(), np.dot(hess_x, Jt))
@@ -232,8 +298,8 @@ if __name__ == "__main__":
     x0_human = np.array([0.0, 0.0, 0.0, 0.0])
     x_goal_human = np.array([0.0, 7.5, 0.0, 0.0])
 
-    x0_robot = np.array([-2.0, 4.0])
-    x_goal_robot = np.array([3.0, 4.0])
+    x0_robot = np.array([-2.0, 4.0, 0.0])
+    x_goal_robot = np.array([3.0, 4.0, 0.0])
 
     dt = 0.5
     t_end = 5.0
@@ -304,6 +370,12 @@ if __name__ == "__main__":
     print "collision feature: ", f_collision(xh, acc, x_robot, u_r)
     print "collision feature gradient: \n", f_collision.grad(xh, acc, x_robot, u_r)
     print "collision feature Hessian: \n", f_collision.hessian(xh, acc, x_robot, u_r)
+
+    # dynamic collision avoidance with robot
+    f_collision_dyn = CollisionHRDynamic(dyn, 0.25, 0.25)
+    print "dyn collision feature: ", f_collision_dyn(xh, acc, x_robot, u_r)
+    print "dyn collision feature gradient: \n", f_collision_dyn.grad(xh, acc, x_robot, u_r)
+    print "dyn collision feature Hessian: \n", f_collision_dyn.hessian(xh, acc, x_robot, u_r)
 
     # collision avoidance with obstacle
     f_obs = CollisionObs(dyn, 0.3, np.array([1.0, 3.5]))

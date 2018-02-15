@@ -210,12 +210,15 @@ class DataLoader(object):
         # create a filter
         self.traj_filter = OptimalFilter(self.dt, w, self.T_block-1)
 
+        self.x_goal = []
+
         # filter all trajectories
         for i in range(self.n_block):
             traj = self.xh_block[i]
 
             # set goal
             self.xh0.append(traj[0])
+            self.x_goal.append(traj[self.T_block-1, 0:2])
             self.traj_filter.set_end_points(traj[0], traj[self.T_block-1])
 
             # filter
@@ -224,32 +227,47 @@ class DataLoader(object):
             u_plt = np.asarray(u)
 
             # plot for verification
-            # fig, axes = plt.subplots(3, 1)
-            #
-            # axes[0].plot(x_plt[:, 0], '-k')
-            # axes[0].plot(x_plt[:, 1], '--k')
-            # axes[0].plot(traj[1:, 0], '-b')
-            # axes[0].plot(traj[1:, 1], '--b')
-            #
-            # axes[1].plot(x_plt[:, 2], '-k')
-            # axes[1].plot(x_plt[:, 3], '--k')
-            # axes[1].plot(traj[1:, 2], '-b')
-            # axes[1].plot(traj[1:, 3], '--b')
-            #
-            # axes[2].plot(u_plt[:, 0], '-k')
-            # axes[2].plot(u_plt[:, 1], '--k')
-            #
-            # fig, axes = plt.subplots()
-            # axes.plot(x_plt[:, 0], x_plt[:, 1], '-k', lw=2, marker='o', markersize=10, fillstyle="none")
-            # axes.plot(traj[1:, 0], traj[1:, 1], '-b', lw=2, marker='o', markersize=10, fillstyle="none")
-            #
-            # plt.show()
+            fig, axes = plt.subplots(3, 1)
+
+            axes[0].plot(x_plt[:, 0], '-k')
+            axes[0].plot(x_plt[:, 1], '--k')
+            axes[0].plot(traj[1:, 0], '-b')
+            axes[0].plot(traj[1:, 1], '--b')
+
+            axes[1].plot(x_plt[:, 2], '-k')
+            axes[1].plot(x_plt[:, 3], '--k')
+            axes[1].plot(traj[1:, 2], '-b')
+            axes[1].plot(traj[1:, 3], '--b')
+
+            axes[2].plot(u_plt[:, 0], '-k')
+            axes[2].plot(u_plt[:, 1], '--k')
+
+            fig, axes = plt.subplots()
+            axes.plot(x_plt[:, 0], x_plt[:, 1], '-k', lw=2, marker='o', markersize=10, fillstyle="none")
+            axes.plot(traj[1:, 0], traj[1:, 1], '-b', lw=2, marker='o', markersize=10, fillstyle="none")
+
+            plt.show()
 
             # update trajectory
             self.xh_block[i] = np.asarray(x_filtered)
             self.uh_block.append(np.asarray(u))
 
             print "optimized trajectory: ", i
+
+        # process the goal
+        x_goal = np.zeros((2, 2))
+        counter = np.zeros((2,))
+
+        for i, goal in enumerate(self.x_goal):
+            x_goal[i % 2] += goal
+            counter[i % 2] += 1
+
+        # take the average
+        x_goal[0] /= counter[0]
+        x_goal[1] /= counter[1]
+
+        for i in range(self.n_block):
+            self.x_goal[i] = x_goal[i % 2]
 
     def filter_robot_trajectories(self, offset):
         for i, xr in enumerate(self.xr_block):
@@ -368,11 +386,15 @@ class DataLoader(object):
         self.xr0 = np.asarray(self.xr0)
         np.savetxt(save_path + "/init.txt", np.hstack((self.xh0, self.xr0)), delimiter=',')
 
+        # save the goal
+        np.savetxt(save_path + "/goal.txt", np.asarray(self.x_goal), delimiter=',')
+
+
 if __name__ == "__main__":
     loader = DataLoader()
 
     # load and plot raw data
-    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/pilot3", "_rp", max_range=-1)
+    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/user0", "_hp", max_range=-1)
     # loader.plot_raw()
 
     # select and down sample trajectories
@@ -395,4 +417,4 @@ if __name__ == "__main__":
     loader.filter_human_trajectories(w=[1.0, 0.1, 0.1, 1.0])
 
     # save data to file
-    loader.save_trajectories("/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp")
+    loader.save_trajectories("/home/yuhang/Documents/irl_data/winter18/user0/processed/hp")
