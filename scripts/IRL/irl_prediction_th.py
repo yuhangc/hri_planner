@@ -122,9 +122,9 @@ class IRLPredictor(IRLPredictorBase):
         self.f_cumu = []
         self.f_cumu.append(features_th.velocity())
         self.f_cumu.append(features_th.acceleration())
-        self.f_cumu.append(features_th.collision_hr(0.5))
-        self.f_cumu.append(features_th.collision_hr_dynamic(0.3, 0.25, 1.0))
-        self.f_cumu.append(features_th.collision_obs(0.5, [2.055939, 3.406737]))
+        self.f_cumu.append(features_th.collision_hr(0.3))
+        self.f_cumu.append(features_th.collision_hr_dynamic(0.25, 0.3, 0.5))
+        self.f_cumu.append(features_th.collision_obs(0.3, [2.055939, 3.406737]))
 
         # define all the termination features
         self.f_term = []
@@ -133,8 +133,55 @@ class IRLPredictor(IRLPredictorBase):
         # define the weights
         self.th_cumu = utils.vector(len(self.f_cumu))
         self.th_term = utils.vector(len(self.f_term))
-        self.th_cumu.set_value(np.array([1.0, 1.0, 0.5, 0.2, 0.5]))
-        self.th_term.set_value(np.array([10.0]))
+        # self.th_cumu.set_value(np.array([1.0, 1.0, 0.5, 0.2, 0.5]))
+        # self.th_term.set_value(np.array([10.0]))
+        self.th_cumu.set_value(np.array([4.3, 10.0, 0.0, 0.0, 20.0]))
+        self.th_term.set_value(np.array([25.8]))
+
+
+class IterativePredictor(IRLPredictor):
+    def predict_full(self, uh0, x0, x_goal, xr, ur):
+        x0_curr = x0
+        t_full = len(xr)
+
+        # set initial control value
+        for uh, uh0 in zip(self.uh, uh0):
+            uh.set_value(uh0)
+
+        # run iterative plan
+        t_curr = 0
+        u_opt = []
+        while t_curr + self.T < t_full:
+            print 'optimizing for time: ', t_curr
+            # set initial condition
+            self.set_end_points(x0_curr, x_goal)
+
+            # set robot date
+            self.set_robot_data(xr[t_curr:(t_curr+self.T)], ur[t_curr:(t_curr+self.T)])
+
+            # plan
+            self.optimizer.minimize()
+
+            # record optimal control for current step
+            u_opt.append(self.uh[0].get_value())
+
+            # update initial condition
+            x0_curr = self.dyn.forward_dyn_np(x0_curr, self.uh[0].get_value(), self.dt)
+
+            # step forward time
+            t_curr += 1
+
+        for uh in self.uh[1:]:
+            u_opt.append(uh.get_value())
+
+        # recover the full trajectory
+        x_opt = []
+        x_val = x0
+        for uh in u_opt:
+            x_val = self.dyn.forward_dyn_np(x_val, uh, self.dt)
+            x_opt.append(x_val)
+
+        return np.asarray(x_opt), np.asarray(u_opt)
 
 
 def predict_single_trajectory(predictor, path, id):
@@ -154,14 +201,15 @@ def predict_single_trajectory(predictor, path, id):
     x_goal = xh[-1]
 
     # set goals and data for planner
-    predictor.set_end_points(x0, x_goal)
-    predictor.set_robot_data(xr, ur)
+    # predictor.set_end_points(x0, x_goal)
+    # predictor.set_robot_data(xr, ur)
 
     # set initial controls - randomly perturb uh
     u0 = uh + 0.1 * np.random.randn(uh.shape[0], uh.shape[1])
 
     # plan the trajectory
-    x_opt, u_opt = predictor.predict(u0)
+    # x_opt, u_opt = predictor.predict(u0)
+    x_opt, u_opt = predictor.predict_full(u0, x0, x_goal, xr, ur)
 
     # visualize
     fig, axes = plt.subplots()
@@ -185,10 +233,11 @@ def cross_validation(d_divide, th, data_path):
 
 if __name__ == "__main__":
     dyn = dynamics_th.DynamicsConstAacc()
-    predictor = IRLPredictor(dyn, [0.5, 18])
+    # predictor = IRLPredictor(dyn, [0.5, 10])
+    predictor = IterativePredictor(dyn, [0.5, 10])
 
-    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp", 0)
-    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp", 1)
-    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp", 2)
-    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp", 3)
-    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/pilot3/processed/rp", 4)
+    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/user0/processed/rp", 0)
+    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/user0/processed/rp", 1)
+    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/user0/processed/rp", 2)
+    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/user0/processed/rp", 3)
+    predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18/user0/processed/rp", 4)

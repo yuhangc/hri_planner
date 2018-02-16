@@ -65,6 +65,11 @@ class MaxEntIRLLinReward(object):
         # gradient
         grad = np.zeros_like(th)
         for k in range(self.nfeature):
+            aa = np.linalg.norm(h)
+            bb = np.linalg.norm(self.f_grad[k])
+            a = np.dot(h, self.f_grad[k])
+            b = 0.5 * np.dot(h, np.dot(self.f_hessian[k], h))
+            c = 0.5 * np.trace(np.dot(Hinv, self.f_hessian[k]))
             grad[k] = np.dot(h, self.f_grad[k]) - \
                       0.5 * np.dot(h, np.dot(self.f_hessian[k], h)) + \
                       0.5 * np.trace(np.dot(Hinv, self.f_hessian[k]))
@@ -179,7 +184,8 @@ class MaxEntIRLBase(object):
             lhist.append(log_l)
 
             # gradient ascent
-            th += lrate * grad_th / self.n_demo
+            grad_th /= self.n_demo
+            th += lrate * grad_th
 
             # print out info
             if verbose and np.mod(it, 10) == 0:
@@ -225,15 +231,15 @@ class HumanIRL(MaxEntIRLBase):
             f_list.append(f_acc)
 
             # collision avoidance with robot
-            f_collision_hr = features.CollisionHRStatic(dyn, 0.3)
-            f_list.append(f_collision_hr)
+            # f_collision_hr = features.CollisionHRStatic(dyn, 0.3)
+            # f_list.append(f_collision_hr)
 
             # dynamic collision avoidance with robot
-            f_collision_dyn = features.CollisionHRDynamic(dyn, 0.25, 0.3)
-            f_list.append(f_collision_dyn)
+            # f_collision_dyn = features.CollisionHRDynamic(dyn, 0.25, 0.3)
+            # f_list.append(f_collision_dyn)
 
             # collision avoidance with static obstacle
-            f_collision_obs = features.CollisionObs(dyn, 0.3, self.obs[d])
+            f_collision_obs = features.CollisionObs(dyn, 0.1, self.obs[d])
             f_list.append(f_collision_obs)
 
             # termination cost
@@ -255,9 +261,9 @@ def split_traj(x, T):
     t = 0
     while (t+T) < T_total:
         x_out.append(x[t:(t+T)])
-        t += T
+        t += 2
 
-    x_out.append(x[(T_total-T):T_total])
+    # x_out.append(x[(T_total-T):T_total])
 
     return x_out
 
@@ -319,7 +325,7 @@ def load_data(path, n_training, T):
 if __name__ == "__main__":
     # load data
     n_users = 1
-    n_user_demo = 5
+    n_user_demo = 20
     T = 10
     cond = "hp"
 
@@ -347,8 +353,10 @@ if __name__ == "__main__":
     irl = HumanIRL((xh, uh, xr, ur), x0, xg, obs, [0.5, T])
 
     # optimize
-    th0 = np.array([-1.0, -1.0, -2.0, -0.05, -2.0, -10.0]) * 5
-    th_opt, lhist = irl.optimize(th0, n_iter=10000, verbose=True)
+    # th0 = np.array([-1.0, -1.0, -2.0, -0.05, -2.0, -10.0])
+    # th0 = np.array([-5.28250967, -18.83626317, -14.92236032,  -10.02527297, -25.7940039])
+    th0 = np.array([-10.0, -20.0, -20., -25.0])
+    th_opt, lhist = irl.optimize(th0, n_iter=500, verbose=True)
 
     print th_opt
 

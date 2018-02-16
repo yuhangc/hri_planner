@@ -49,7 +49,7 @@ class DataLoader(object):
 
         # filter
         self.traj_filter = None
-        self.T_block = 19
+        self.T_block = 17
         self.n_block = 0
         self.t_block = []
         self.xh_block = []
@@ -195,7 +195,8 @@ class DataLoader(object):
             len_block = b - a + 1
 
             # fill up the block to length T_block
-            ext = (self.T_block - len_block) / 2
+            # ext = (self.T_block - len_block) / 2
+            ext = 4
             a -= ext
             b += self.T_block - len_block - ext
 
@@ -227,26 +228,26 @@ class DataLoader(object):
             u_plt = np.asarray(u)
 
             # plot for verification
-            fig, axes = plt.subplots(3, 1)
-
-            axes[0].plot(x_plt[:, 0], '-k')
-            axes[0].plot(x_plt[:, 1], '--k')
-            axes[0].plot(traj[1:, 0], '-b')
-            axes[0].plot(traj[1:, 1], '--b')
-
-            axes[1].plot(x_plt[:, 2], '-k')
-            axes[1].plot(x_plt[:, 3], '--k')
-            axes[1].plot(traj[1:, 2], '-b')
-            axes[1].plot(traj[1:, 3], '--b')
-
-            axes[2].plot(u_plt[:, 0], '-k')
-            axes[2].plot(u_plt[:, 1], '--k')
-
-            fig, axes = plt.subplots()
-            axes.plot(x_plt[:, 0], x_plt[:, 1], '-k', lw=2, marker='o', markersize=10, fillstyle="none")
-            axes.plot(traj[1:, 0], traj[1:, 1], '-b', lw=2, marker='o', markersize=10, fillstyle="none")
-
-            plt.show()
+            # fig, axes = plt.subplots(3, 1)
+            #
+            # axes[0].plot(x_plt[:, 0], '-k')
+            # axes[0].plot(x_plt[:, 1], '--k')
+            # axes[0].plot(traj[1:, 0], '-b')
+            # axes[0].plot(traj[1:, 1], '--b')
+            #
+            # axes[1].plot(x_plt[:, 2], '-k')
+            # axes[1].plot(x_plt[:, 3], '--k')
+            # axes[1].plot(traj[1:, 2], '-b')
+            # axes[1].plot(traj[1:, 3], '--b')
+            #
+            # axes[2].plot(u_plt[:, 0], '-k')
+            # axes[2].plot(u_plt[:, 1], '--k')
+            #
+            # fig, axes = plt.subplots()
+            # axes.plot(x_plt[:, 0], x_plt[:, 1], '-k', lw=2, marker='o', markersize=10, fillstyle="none")
+            # axes.plot(traj[1:, 0], traj[1:, 1], '-b', lw=2, marker='o', markersize=10, fillstyle="none")
+            #
+            # plt.show()
 
             # update trajectory
             self.xh_block[i] = np.asarray(x_filtered)

@@ -101,7 +101,7 @@ class GaussianReward(FeatureBase):
         # calculate Hessian
         hess = np.zeros((x.size, x.size))
 
-        for t in range(len(x)):
+        for t in range(self.T):
             tx = t * self.nX
             hess[tx:(tx+2), tx:(tx+2)] = r[t] * 4.0 / self.R2**2 * np.outer(x_diff[t], x_diff[t])
             hess[tx:(tx+2), tx:(tx+2)] += -2.0 / self.R2 * r[t] * np.eye(2)
