@@ -122,9 +122,12 @@ class IRLPredictor(IRLPredictorBase):
         self.f_cumu = []
         self.f_cumu.append(features_th.velocity())
         self.f_cumu.append(features_th.acceleration())
-        self.f_cumu.append(features_th.collision_hr(0.3))
-        self.f_cumu.append(features_th.collision_hr_dynamic(0.25, 0.3, 0.5))
-        self.f_cumu.append(features_th.collision_obs(0.3, [2.055939, 3.406737]))
+        # self.f_cumu.append(features_th.collision_hr(0.3))
+        # self.f_cumu.append(features_th.collision_hr_dynamic(0.25, 0.3, 0.5))
+        # self.f_cumu.append(features_th.collision_obs(0.3, [2.055939, 3.406737]))
+        self.f_cumu.append(features_th.collision_hr(0.05))
+        self.f_cumu.append(features_th.collision_hr_dynamic(0.25, 0.3, 0.1))
+        self.f_cumu.append(features_th.collision_obs(0.1, [2.055939, 3.406737]))
 
         # define all the termination features
         self.f_term = []
@@ -135,8 +138,8 @@ class IRLPredictor(IRLPredictorBase):
         self.th_term = utils.vector(len(self.f_term))
         # self.th_cumu.set_value(np.array([1.0, 1.0, 0.5, 0.2, 0.5]))
         # self.th_term.set_value(np.array([10.0]))
-        self.th_cumu.set_value(np.array([4.3, 10.0, 0.0, 0.0, 20.0]))
-        self.th_term.set_value(np.array([25.8]))
+        self.th_cumu.set_value(np.array([5.0, 20.0, 0.0, 0.0, 1.1]))
+        self.th_term.set_value(np.array([33.5]))
 
 
 class IterativePredictor(IRLPredictor):

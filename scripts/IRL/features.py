@@ -109,6 +109,43 @@ class GaussianReward(FeatureBase):
         return hess
 
 
+class InverseDistReward(FeatureBase):
+    def __init__(self, dyn, offset):
+        super(InverseDistReward, self).__init__(dyn)
+
+        self.offset = offset
+        self.nX = dyn.nX
+        self.T = dyn.T
+
+    def _f(self, x, x_target):
+        x_diff = x[:, 0:2] - x_target
+        return np.sum(1.0 / (np.sum(np.square(x_diff), axis=1) + self.offset))
+
+    def _grad_x(self, x, x_target):
+        x_diff = x[:, 0:2] - x_target
+        d = np.sum(np.square(x_diff), axis=1) + self.offset
+
+        # calculate gradient
+        grad = np.zeros_like(x)
+        grad[:, 0:2] = -2.0 * x_diff / (d**2).reshape(self.T, 1)
+
+        return grad.flatten()
+
+    def _hessian_x(self, x, x_target):
+        x_diff = x[:, 0:2] - x_target
+        d = np.sum(np.square(x_diff), axis=1) + self.offset
+
+        # calculate Hessian
+        hess = np.zeros((x.size, x.size))
+
+        for t in range(self.T):
+            tx = t * self.nX
+            hess[tx:(tx+2), tx:(tx+2)] = 8.0 / d[t]**3 * np.outer(x_diff[t], x_diff[t])
+            hess[tx:(tx+2), tx:(tx+2)] += -2.0 / d[t]**2 * np.eye(2)
+
+        return hess
+
+
 class GoalReward(GaussianReward):
     def __init__(self, dyn, R, x_goal):
         """
@@ -131,9 +168,138 @@ class GoalReward(GaussianReward):
                       np.dot(self._hessian_x(x, self.x_goal), self.dyn.jacobian()))
 
 
-class CollisionHRStatic(GaussianReward):
-    def __init__(self, dyn, R):
-        super(CollisionHRStatic, self).__init__(dyn, R)
+# class CollisionHRStatic(GaussianReward):
+#     def __init__(self, dyn, R):
+#         super(CollisionHRStatic, self).__init__(dyn, R)
+#
+#     def f(self, x, u, xr, ur):
+#         return self._f(x, xr[:, 0:2])
+#
+#     def grad(self, x, u, xr, ur):
+#         return np.dot(self.dyn.jacobian().transpose(), self._grad_x(x, xr[:, 0:2]))
+#
+#     def hessian(self, x, u, xr, ur):
+#         return np.dot(self.dyn.jacobian().transpose(),
+#                       np.dot(self._hessian_x(x, xr[:, 0:2]), self.dyn.jacobian()))
+#
+#
+# class CollisionHRDynamic(GaussianReward):
+#     def __init__(self, dyn, w, l):
+#         super(CollisionHRDynamic, self).__init__(dyn, 1.0)
+#
+#         self.w = w
+#         self.l = l
+#
+#         self.T = self.dyn.T
+#         self.dt = 0.5
+#
+#     def f(self, x, u, xr, ur):
+#         # transform x and x_target
+#         x_trans = np.zeros_like(x)
+#         for t in range(self.T):
+#             # compute center
+#             th = xr[t, 2]
+#             xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
+#
+#             # compute Gaussian length and width
+#             gradius = np.array([self.w, self.l + ur[t, 0] * 2.0 * self.l])
+#
+#             # transform points
+#             R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
+#             x_trans[t, 0:2] = np.dot(R, x[t, 0:2] - xc) / gradius
+#
+#         # use normalized gaussian
+#         return self._f(x_trans, np.array([0.0, 0.0]))
+#
+#     def grad(self, x, u, xr, ur):
+#         return np.dot(self.dyn.jacobian().transpose(), self.grad_x(x, u, xr, ur))
+#
+#     def hessian(self, x, u, xr, ur):
+#         return np.dot(self.dyn.jacobian().transpose(),
+#                       np.dot(self.hessian_x(x, u, xr, ur), self.dyn.jacobian()))
+#
+#     def grad_x(self, x, u, xr, ur):
+#         # transform x and x_target
+#         x_trans = np.zeros_like(x)
+#         J = []
+#         for t in range(self.T):
+#             # compute center
+#             th = xr[t, 2]
+#             xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
+#
+#             # compute Gaussian length and width
+#             gradius = np.array([self.w, self.l + ur[t, 0] * 2.0 * self.l])
+#
+#             # transform points
+#             R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
+#             x_trans[t, 0:2] = np.dot(R, x[t, 0:2] - xc) / gradius
+#
+#             # store intermediate computation
+#             R[0] /= gradius[0]
+#             R[1] /= gradius[1]
+#             J.append(R)
+#
+#         # get normalized Gaussian gradient
+#         grad = self._grad_x(x_trans, np.array([0.0, 0.0]))
+#
+#         # transform by rotation matrix
+#         for t in range(self.T):
+#             stx = t * self.nX
+#             grad[stx:(stx+2)] = np.dot(J[t].transpose(), grad[stx:(stx+2)])
+#
+#         return grad
+#
+#     def hessian_x(self, x, u, xr, ur):
+#         # transform x and x_target
+#         x_trans = np.zeros_like(x)
+#         J = []
+#         for t in range(self.T):
+#             # compute center
+#             th = xr[t, 2]
+#             xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
+#
+#             # compute Gaussian length and width
+#             gradius = np.array([self.w, self.l + ur[t, 0] * 2.0 * self.l])
+#
+#             # transform points
+#             R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
+#             x_trans[t, 0:2] = np.dot(R, x[t, 0:2] - xc) / gradius
+#
+#             # store intermediate computation
+#             R[0] /= gradius[0]
+#             R[1] /= gradius[1]
+#             J.append(R)
+#
+#         # get normalized Gaussian hessian
+#         hess = self._hessian_x(x_trans, np.array([0.0, 0.0]))
+#
+#         # transform
+#         for t in range(self.T):
+#             stx = t * self.nX
+#             hess[stx:(stx+2), stx:(stx+2)] = np.dot(J[t].transpose(), np.dot(hess[stx:(stx+2), stx:(stx+2)], J[t]))
+#
+#         return hess
+#
+#
+# class CollisionObs(GaussianReward):
+#     def __init__(self, dyn, R, x_obs):
+#         super(CollisionObs, self).__init__(dyn, R)
+#         self.x_obs = x_obs
+#
+#     def f(self, x, u, xr, ur):
+#         return self._f(x, self.x_obs)
+#
+#     def grad(self, x, u, xr, ur):
+#         return np.dot(self.dyn.jacobian().transpose(), self._grad_x(x, self.x_obs))
+#
+#     def hessian(self, x, u, xr, ur):
+#         return np.dot(self.dyn.jacobian().transpose(),
+#                       np.dot(self._hessian_x(x, self.x_obs), self.dyn.jacobian()))
+
+
+class CollisionHRStatic(InverseDistReward):
+    def __init__(self, dyn, offset=0.05):
+        super(CollisionHRStatic, self).__init__(dyn, offset)
 
     def f(self, x, u, xr, ur):
         return self._f(x, xr[:, 0:2])
@@ -146,9 +312,9 @@ class CollisionHRStatic(GaussianReward):
                       np.dot(self._hessian_x(x, xr[:, 0:2]), self.dyn.jacobian()))
 
 
-class CollisionHRDynamic(GaussianReward):
-    def __init__(self, dyn, w, l):
-        super(CollisionHRDynamic, self).__init__(dyn, 1.0)
+class CollisionHRDynamic(InverseDistReward):
+    def __init__(self, dyn, w, l, offset=0.1):
+        super(CollisionHRDynamic, self).__init__(dyn, offset)
 
         self.w = w
         self.l = l
@@ -244,9 +410,9 @@ class CollisionHRDynamic(GaussianReward):
         return hess
 
 
-class CollisionObs(GaussianReward):
-    def __init__(self, dyn, R, x_obs):
-        super(CollisionObs, self).__init__(dyn, R)
+class CollisionObs(InverseDistReward):
+    def __init__(self, dyn, x_obs, offset=0.1):
+        super(CollisionObs, self).__init__(dyn, offset)
         self.x_obs = x_obs
 
     def f(self, x, u, xr, ur):

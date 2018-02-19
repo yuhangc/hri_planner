@@ -239,7 +239,8 @@ class HumanIRL(MaxEntIRLBase):
             # f_list.append(f_collision_dyn)
 
             # collision avoidance with static obstacle
-            f_collision_obs = features.CollisionObs(dyn, 0.1, self.obs[d])
+            # f_collision_obs = features.CollisionObs(dyn, 0.3, self.obs[d])
+            f_collision_obs = features.CollisionObs(dyn, self.obs[d], offset=0.1)
             f_list.append(f_collision_obs)
 
             # termination cost
@@ -355,8 +356,8 @@ if __name__ == "__main__":
     # optimize
     # th0 = np.array([-1.0, -1.0, -2.0, -0.05, -2.0, -10.0])
     # th0 = np.array([-5.28250967, -18.83626317, -14.92236032,  -10.02527297, -25.7940039])
-    th0 = np.array([-10.0, -20.0, -20., -25.0])
-    th_opt, lhist = irl.optimize(th0, n_iter=500, verbose=True)
+    th0 = np.array([-5.6, -20.0, -0.9, -28.0])
+    th_opt, lhist = irl.optimize(th0, n_iter=1500, verbose=True)
 
     print th_opt
 
