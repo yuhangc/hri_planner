@@ -200,6 +200,9 @@ class DataLoader(object):
             a -= ext
             b += self.T_block - len_block - ext
 
+            if b >= len(self.xh):
+                break
+
             print a, b, b - a + 1
 
             # append data
@@ -395,7 +398,7 @@ if __name__ == "__main__":
     loader = DataLoader()
 
     # load and plot raw data
-    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/user0", "_hp", max_range=-1)
+    loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/user3", "_hp", max_range=-1)
     # loader.plot_raw()
 
     # select and down sample trajectories
@@ -418,4 +421,4 @@ if __name__ == "__main__":
     loader.filter_human_trajectories(w=[1.0, 0.1, 0.1, 1.0])
 
     # save data to file
-    loader.save_trajectories("/home/yuhang/Documents/irl_data/winter18/user0/processed/hp")
+    loader.save_trajectories("/home/yuhang/Documents/irl_data/winter18/user3/processed/hp")

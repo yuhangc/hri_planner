@@ -60,6 +60,9 @@ class MaxEntIRLLinReward(object):
 
         # approximation of likelihood
         Hdet = np.linalg.det(-H)
+        if Hdet < 0:
+            print "shouldn't happen"
+
         likelihood = 0.5 * (np.dot(g, h) + np.log(Hdet) - self.du * np.log(2.0 * np.pi))
 
         # gradient
@@ -232,15 +235,17 @@ class HumanIRL(MaxEntIRLBase):
 
             # collision avoidance with robot
             # f_collision_hr = features.CollisionHRStatic(dyn, 0.3)
-            # f_list.append(f_collision_hr)
+            f_collision_hr = features.CollisionHRStatic(dyn, offset=0.3)
+            f_list.append(f_collision_hr)
 
             # dynamic collision avoidance with robot
             # f_collision_dyn = features.CollisionHRDynamic(dyn, 0.25, 0.3)
-            # f_list.append(f_collision_dyn)
+            f_collision_dyn = features.CollisionHRDynamic(dyn, 0.25, 0.25, offset=0.5)
+            f_list.append(f_collision_dyn)
 
             # collision avoidance with static obstacle
             # f_collision_obs = features.CollisionObs(dyn, 0.3, self.obs[d])
-            f_collision_obs = features.CollisionObs(dyn, self.obs[d], offset=0.1)
+            f_collision_obs = features.CollisionObs(dyn, self.obs[d], offset=0.3)
             f_list.append(f_collision_obs)
 
             # termination cost
@@ -325,10 +330,10 @@ def load_data(path, n_training, T):
 
 if __name__ == "__main__":
     # load data
-    n_users = 1
-    n_user_demo = 20
+    n_users = 4
+    n_user_demo = [40, 20, 20, 30]
     T = 10
-    cond = "hp"
+    cond = "rp"
 
     xh = []
     uh = []
@@ -340,7 +345,7 @@ if __name__ == "__main__":
 
     for i in range(n_users):
         path = "/home/yuhang/Documents/irl_data/winter18/user" + str(i) + "/processed/" + cond
-        xhi, uhi, xri, uri, x0i, xgi, obsi = load_data(path, n_user_demo, T)
+        xhi, uhi, xri, uri, x0i, xgi, obsi = load_data(path, n_user_demo[i], T)
 
         xh += xhi
         uh += uhi
@@ -354,10 +359,10 @@ if __name__ == "__main__":
     irl = HumanIRL((xh, uh, xr, ur), x0, xg, obs, [0.5, T])
 
     # optimize
-    # th0 = np.array([-1.0, -1.0, -2.0, -0.05, -2.0, -10.0])
-    # th0 = np.array([-5.28250967, -18.83626317, -14.92236032,  -10.02527297, -25.7940039])
-    th0 = np.array([-5.6, -20.0, -0.9, -28.0])
-    th_opt, lhist = irl.optimize(th0, n_iter=1500, verbose=True)
+    # th0 = np.array([-7, -20.0, -0.1, -0.1, -0.1, -35.])
+    # th0 = np.array([-7, -20.0, -1.5, -1.5, -35.])
+    th0 = np.array([-8., -27.0, -3.6, -1.0, -1.5, -41.])
+    th_opt, lhist = irl.optimize(th0, n_iter=100, verbose=True)
 
     print th_opt
 
