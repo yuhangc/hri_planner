@@ -9,7 +9,7 @@
 //
 //----------------------------------------------------------------------------------
 
-#include "hri_planner_sim/social_force.h"
+#include "social_force/social_force.h"
 
 namespace SocialForce {
 

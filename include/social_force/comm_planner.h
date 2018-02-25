@@ -28,7 +28,7 @@
 #include "Eigen/Dense"
 #include "json/json.h"
 
-#include "hri_planner_sim/social_force_sim.h"
+#include "social_force_sim.h"
 
 // hri planner namespace
 namespace HRIPlanner {

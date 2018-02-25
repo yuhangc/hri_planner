@@ -109,21 +109,21 @@ include_directories(aruco_INCLUDE_DIRS)
 
 ## Declare C++ libraries
 add_library(social_force
-        include/hri_planner_sim/social_force.h
-        include/hri_planner_sim/social_force_sim.h
-        src/social_force.cpp
-        src/social_force_sim.cpp)
+        include/social_force/social_force.h
+        include/social_force/social_force_sim.h
+        src/social_force/social_force.cpp
+        src/social_force/social_force_sim.cpp)
 target_link_libraries(social_force ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 
-add_library(hri_planner
-        include/hri_planner/comm_planner.h
-        src/comm_planner.cpp)
-target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} social_force)
+#add_library(hri_planner
+#        include/social_force/comm_planner.h
+#        src/social_force/comm_planner.cpp)
+#target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} social_force)
 
 ## Declare C++ executables
 # social force simulation
 add_executable(social_force_sim
-        src/planner_nodes/social_force_sim_node.cpp)
+        src/social_force/social_force_sim_node.cpp)
 target_link_libraries(social_force_sim ${catkin_LIBRARIES} social_force)
 
 # fake tracker of human pose
@@ -132,9 +132,9 @@ add_executable(fake_tracker
 target_link_libraries(fake_tracker ${catkin_LIBRARIES})
 
 # communication planner
-add_executable(comm_planner
-        src/planner_nodes/comm_planner_node.cpp)
-target_link_libraries(comm_planner ${catkin_LIBRARIES} hri_planner)
+#add_executable(comm_planner
+#        src/planner_nodes/comm_planner_node.cpp)
+#target_link_libraries(comm_planner ${catkin_LIBRARIES} hri_planner)
 
 # video processor
 add_executable(video_processor

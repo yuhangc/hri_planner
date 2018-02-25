@@ -11,7 +11,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "hri_planner_sim/social_force_sim.h"
+#include "social_force/social_force_sim.h"
 
 namespace SocialForce {
 

@@ -9,10 +9,10 @@
 //
 //----------------------------------------------------------------------------------
 #include <fstream>
-#include <hri_planner/comm_planner.h>
-#include <hri_planner_sim/social_force_sim.h>
+#include <social_force/comm_planner.h>
+#include <social_force/social_force_sim.h>
 
-#include "hri_planner/comm_planner.h"
+#include "social_force/comm_planner.h"
 
 namespace HRIPlanner {
 
