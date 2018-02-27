@@ -119,6 +119,12 @@ target_link_libraries(social_force ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 #        include/social_force/comm_planner.h
 #        src/social_force/comm_planner.cpp)
 #target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} social_force)
+add_library(hri_planner
+        include/hri_planner/shared_config.h
+        include/hri_planner/human_belief_model.h
+        src/hri_planner/shared_config.cpp
+        src/hri_planner/human_belief_model.cpp)
+target_link_libraries(hri_planner ${catkin_LIBRARIES})
 
 ## Declare C++ executables
 # social force simulation
@@ -128,12 +134,12 @@ target_link_libraries(social_force_sim ${catkin_LIBRARIES} social_force)
 
 # fake tracker of human pose
 add_executable(fake_tracker
-        src/planner_nodes/fake_tracker.cpp)
+        src/hri_planner/fake_tracker.cpp)
 target_link_libraries(fake_tracker ${catkin_LIBRARIES})
 
 # communication planner
 #add_executable(comm_planner
-#        src/planner_nodes/comm_planner_node.cpp)
+#        src/hri_planner/comm_planner_node.cpp)
 #target_link_libraries(comm_planner ${catkin_LIBRARIES} hri_planner)
 
 # video processor
