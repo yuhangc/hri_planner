@@ -1,0 +1,8 @@
+float32[] xr
+float32[] ur
+float32[] xh0
+int32 acomm
+float32 tcomm
+int32 t_total
+---
+float32[] belief

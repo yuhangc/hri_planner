@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/25/2017
-// Last revision: 2/25/2017
+// Last revision: 2/27/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -13,6 +13,9 @@
 #define HRI_PLANNER_SHARED_CONFIG_H
 
 #include <string>
+
+#include <ros/ros.h>
+
 #include <json/json.h>
 
 namespace hri_planner {
@@ -30,6 +33,9 @@ public:
     int nUh;
     int nXr;
     int nUr;
+
+    // time step
+    float dt;
 
 private:
     // to load the configuration

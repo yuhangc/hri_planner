@@ -44,12 +44,11 @@ add_message_files(
   TrackedHumans.msg
 )
 
-## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+# Generate services in the 'srv' folder
+add_service_files(
+   FILES
+   BeliefUpdate.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -115,16 +114,12 @@ add_library(social_force
         src/social_force/social_force_sim.cpp)
 target_link_libraries(social_force ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 
-#add_library(hri_planner
-#        include/social_force/comm_planner.h
-#        src/social_force/comm_planner.cpp)
-#target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} social_force)
 add_library(hri_planner
         include/hri_planner/shared_config.h
         include/hri_planner/human_belief_model.h
         src/hri_planner/shared_config.cpp
         src/hri_planner/human_belief_model.cpp)
-target_link_libraries(hri_planner ${catkin_LIBRARIES})
+target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 
 ## Declare C++ executables
 # social force simulation
@@ -137,10 +132,10 @@ add_executable(fake_tracker
         src/hri_planner/fake_tracker.cpp)
 target_link_libraries(fake_tracker ${catkin_LIBRARIES})
 
-# communication planner
-#add_executable(comm_planner
-#        src/hri_planner/comm_planner_node.cpp)
-#target_link_libraries(comm_planner ${catkin_LIBRARIES} hri_planner)
+# test hri_planner components
+add_executable(hri_planner_tester
+        src/hri_planner/component_test.cpp)
+target_link_libraries(hri_planner_tester ${catkin_LIBRARIES} hri_planner)
 
 # video processor
 add_executable(video_processor
