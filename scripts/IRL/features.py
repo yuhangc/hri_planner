@@ -331,7 +331,7 @@ class CollisionHRDynamic(InverseDistReward):
             xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
 
             # compute Gaussian length and width
-            gradius = np.array([self.w, self.l + ur[t, 0] * 2.0 * self.l])
+            gradius = np.array([self.l + ur[t, 0] * 2.0 * self.l, self.w])
 
             # transform points
             R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
@@ -357,7 +357,7 @@ class CollisionHRDynamic(InverseDistReward):
             xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
 
             # compute Gaussian length and width
-            gradius = np.array([self.w, self.l + ur[t, 0] * 2.0 * self.l])
+            gradius = np.array([self.l + ur[t, 0] * 2.0 * self.l, self.w])
 
             # transform points
             R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
@@ -388,7 +388,7 @@ class CollisionHRDynamic(InverseDistReward):
             xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
 
             # compute Gaussian length and width
-            gradius = np.array([self.w, self.l + ur[t, 0] * 2.0 * self.l])
+            gradius = np.array([self.l + ur[t, 0] * 2.0 * self.l, self.w])
 
             # transform points
             R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])

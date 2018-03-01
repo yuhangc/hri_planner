@@ -125,7 +125,7 @@ def collision_hr_dynamic(w, l, offset, dt=0.5):
         y_hr = -tt.sin(th) * d[0] + tt.cos(th) * d[1]
 
         # compute cost
-        return 1.0 / (x_hr**2/(gw**2) + y_hr**2/(gl**2) + offset)
+        return 1.0 / (x_hr**2/(gl**2) + y_hr**2/(gw**2) + offset)
     return f
 
 

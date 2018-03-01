@@ -126,7 +126,7 @@ class IRLPredictor(IRLPredictorBase):
         # self.f_cumu.append(features_th.collision_hr_dynamic(0.25, 0.3, 0.5))
         # self.f_cumu.append(features_th.collision_obs(0.3, [2.055939, 3.406737]))
         self.f_cumu.append(features_th.collision_hr(0.05))
-        self.f_cumu.append(features_th.collision_hr_dynamic(0.25, 0.3, 0.1))
+        self.f_cumu.append(features_th.collision_hr_dynamic(1.0, 1.0, dt=1.0, offset=0.1))
         self.f_cumu.append(features_th.collision_obs(0.1, [2.055939, 3.406737]))
 
         # define all the termination features
@@ -241,6 +241,13 @@ def plot_prediction(xh, xr, x_opt, x_goal, obs_data, ax, flag_legend=True, flag_
         ax.plot(x_opt[:, 0], x_opt[:, 1], '-k', lw=1, label="predicted")
         ax.plot(xr[:, 0], xr[:, 1], '-r', lw=1, label="robot")
 
+        ax.tick_params(
+            axis='x',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom='off',      # ticks along the bottom edge are off
+            top='off',         # ticks along the top edge are off
+            labelbottom='off') # labels along the bottom edge are off
+
     ax.axis("equal")
 
     if flag_legend:
@@ -324,7 +331,7 @@ def test_param_robustness(weights, predictor, path, trial):
     for i in range(len(weights)):
         print "testing paremeter: " + feature_name[i]
         for k, wi in enumerate(np.logspace(lb[i], ub[i], n_sample)*weights[i]):
-            w_test = weights
+            w_test = weights.copy()
             w_test[i] = wi
 
             print w_test
@@ -335,14 +342,8 @@ def test_param_robustness(weights, predictor, path, trial):
 
             plot_prediction(xh, xr, x_opt, x_goal, obs_data, axes[i, k],
                             flag_legend=False, flag_marker=False)
-            axes[i, k].set_title("w_" + feature_name[i] + " = " + "{:.3f}".format(wi))
+            axes[i, k].set_title("w_" + feature_name[i] + " = " + "{:.3f}".format(wi), fontsize=8)
 
-    plt.tick_params(
-        axis='x',          # changes apply to the x-axis
-        which='both',      # both major and minor ticks are affected
-        bottom='off',      # ticks along the bottom edge are off
-        top='off',         # ticks along the top edge are off
-        labelbottom='off') # labels along the bottom edge are off
     plt.show()
 
 
@@ -367,7 +368,7 @@ if __name__ == "__main__":
     #                      "/home/yuhang/Documents/irl_data/winter18/figures",
     #                      [0, 1, 2, 3], "rp", 20)
 
+    test_param_robustness(np.array([7.0, 20.0, 1.5, 1.0, 1.2, 45.0]), predictor,
+                          "/home/yuhang/Documents/irl_data/winter18/user0/processed/rp", 10)
     test_param_robustness(np.array([7.0, 20.0, 1.5, 0.0, 1.2, 45.0]), predictor,
                           "/home/yuhang/Documents/irl_data/winter18/user0/processed/hp", 0)
-    test_param_robustness(np.array([7.0, 20.0, 1.5, 1.0, 1.2, 45.0]), predictor,
-                          "/home/yuhang/Documents/irl_data/winter18/user0/processed/rp", 0)
