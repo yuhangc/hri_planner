@@ -66,6 +66,7 @@ def plot_cost_heat_map(f, xbound, ybound, fig, ax):
 
     for i in range(x.shape[0]):
         for j in range(x.shape[1]):
+            a = f(np.array([x[i, j], y[i, j]]))
             z[i, j] = f(np.array([x[i, j], y[i, j]]))
 
     # set levels and color map
@@ -76,7 +77,7 @@ def plot_cost_heat_map(f, xbound, ybound, fig, ax):
     cf = ax.contourf(x, y, z, levels=levels, cmap=cmap)
     fig.colorbar(cf, ax=ax)
 
-    ax.axis("equal")
+    # ax.axis("equal")
 
 
 def visualize_features_basic():
@@ -115,20 +116,52 @@ def visualize_features_with_data(path, trial, th):
     # load the data
     init_data = np.loadtxt(path + "/init.txt", delimiter=",")
     goal_data = np.loadtxt(path + "/goal.txt", delimiter=",")
-    obs_data = np.loadtxt(path + "/obs.txt", delimiter=',')
+    obs_pos = np.loadtxt(path + "/obs.txt", delimiter=',')
 
     traj = np.loadtxt(path + "/block" + str(trial) + ".txt", delimiter=",")
 
-    xh = traj[:, 0:4]
-    uh = traj[:, 4:6]
-    xr = traj[:, 6:9]
-    ur = traj[:, 9:11]
+    xh = traj[1:17, 0:4]
+    uh = traj[1:17, 4:6]
+    xr = traj[1:17, 6:9]
+    ur = traj[1:17, 9:11]
 
     # extract common info
     x0 = init_data[trial, 0:4]
-    x_goal = np.zeros_like(x0)
-    x_goal[0:2] = goal_data[trial]
+    x_goal = goal_data[trial]
+
+    # bound
+    xbound = np.array([-1.0, 5.0])
+    ybound = np.array([0.0, 7.0])
+
+    # loop though the time steps
+    fig, axes = plt.subplots(2, 4)
+
+    nstep = 2
+    for t in range(0, len(xr), nstep):
+        # generate features
+        f_chr = -collision_hr(xr[t], 0.1)
+        f_chr_dyn = -collision_hr_dynamic(xr[t], ur[t], 1.0, 1.0, 0.1, dt=2.0)
+        f_obs = -collision_obs(obs_pos, 0.1)
+        f_goal = -goal_reward_term(x_goal)
+
+        f_all = th[0]*f_chr + th[1]*f_chr_dyn + th[2]*f_obs + th[3]*f_goal
+        ax = axes[(t/2) / 4, (t/2) % 4]
+        plot_cost_heat_map(f_all, xbound, ybound, fig, ax)
+
+        # overlay the partial trajectory
+        if t > 1:
+            ax.plot(xh[:t-1, 0], xh[:t-1, 1], '-', color="grey", lw=1.5, label="human")
+            ax.plot(xr[:t-1, 0], xr[:t-1, 1], '-', color="grey", lw=1.5, label="robot")
+            ax.plot(xh[t-2:t+1, 0], xh[t-2:t+1, 1], '-ok', lw=1.5, fillstyle="none", label="human")
+            ax.plot(xr[t-2:t+1, 0], xr[t-2:t+1, 1], '-or', lw=1.5, fillstyle="none", label="robot")
+        else:
+            ax.plot(xh[:t, 0], xh[:t, 1], '-k', lw=1.5, label="human")
+            ax.plot(xr[:t, 0], xr[:t, 1], '-r', lw=1.5, label="robot")
+
+    plt.show()
 
 
 if __name__ == "__main__":
-    visualize_features_basic()
+    # visualize_features_basic()
+    visualize_features_with_data("/home/yuhang/Documents/irl_data/winter18/user0/processed/rp",
+                                 0, [1.5, 1.0, 1.2, 45.0/100.0])
