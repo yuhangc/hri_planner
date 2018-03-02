@@ -125,9 +125,9 @@ class IRLPredictor(IRLPredictorBase):
         # self.f_cumu.append(features_th.collision_hr(0.3))
         # self.f_cumu.append(features_th.collision_hr_dynamic(0.25, 0.3, 0.5))
         # self.f_cumu.append(features_th.collision_obs(0.3, [2.055939, 3.406737]))
-        self.f_cumu.append(features_th.collision_hr(0.05))
-        self.f_cumu.append(features_th.collision_hr_dynamic(1.0, 1.0, dt=1.0, offset=0.1))
-        self.f_cumu.append(features_th.collision_obs(0.1, [2.055939, 3.406737]))
+        self.f_cumu.append(features_th.collision_hr(0.5))
+        self.f_cumu.append(features_th.collision_hr_dynamic(0.3, 0.5, dt=1.0))
+        self.f_cumu.append(features_th.collision_obs(0.5, [2.055939, 3.406737]))
 
         # define all the termination features
         self.f_term = []
@@ -254,7 +254,11 @@ def plot_prediction(xh, xr, x_opt, x_goal, obs_data, ax, flag_legend=True, flag_
         ax.legend()
 
 
-def predict_and_save_all(predictor, path, save_path, user_list, cond, n_trial):
+def predict_and_save_all(predictor, path, save_path, user_list, cond, n_trial, weights):
+    n_cumu = 5
+    n_term = 1
+    predictor.set_param(weights[0:n_cumu], weights[n_cumu:(n_cumu+n_term)])
+
     for usr in user_list:
         path_full = path + "/user" + str(usr) + "/processed/" + cond
 
@@ -262,7 +266,7 @@ def predict_and_save_all(predictor, path, save_path, user_list, cond, n_trial):
         goal_data = np.loadtxt(path_full + "/goal.txt", delimiter=",")
         obs_data = np.loadtxt(path_full + "/obs.txt", delimiter=',')
 
-        for id in range(n_trial):
+        for id in range(n_trial[usr]):
             x0 = init_data[id, 0:4]
             x_goal = np.zeros_like(x0)
             x_goal[0:2] = goal_data[id]
@@ -286,7 +290,11 @@ def predict_and_save_all(predictor, path, save_path, user_list, cond, n_trial):
             plot_prediction(xh, xr, x_opt, x_goal, obs_data, axes)
 
             # plt.show()
-            fig.savefig(save_path + "/" + cond + "/user" + str(usr) + "_demo" + str(id) + ".png")
+            fig.savefig(save_path + "/figure/" + cond + "/user" + str(usr) + "_demo" + str(id) + ".png")
+
+            # save the data
+            file_name = save_path + "/prediction/user" + str(usr) + "/" + cond + "/demo" + str(id) + ".txt"
+            np.savetxt(file_name, np.hstack((x_opt, u_opt)), delimiter=',')
 
 
 def test_param_robustness(weights, predictor, path, trial):
@@ -363,12 +371,14 @@ if __name__ == "__main__":
     # predictor = IRLPredictor(dyn, [0.5, 10])
     predictor = IterativePredictor(dyn, [0.5, 10])
 
-    # predict_and_save_all(predictor,
-    #                      "/home/yuhang/Documents/irl_data/winter18",
-    #                      "/home/yuhang/Documents/irl_data/winter18/figures",
-    #                      [0, 1, 2, 3], "rp", 20)
+    predict_and_save_all(predictor,
+                         "/home/yuhang/Documents/irl_data/winter18",
+                         "/home/yuhang/Documents/irl_data/winter18",
+                         [0, 1, 2, 3], "hp",
+                         [40, 24, 30, 30],
+                         [8.0, 20.0, 7.0, 2.0, 8.0, 50.0])
 
-    test_param_robustness(np.array([7.0, 20.0, 1.5, 1.0, 1.2, 45.0]), predictor,
-                          "/home/yuhang/Documents/irl_data/winter18/user0/processed/rp", 10)
-    test_param_robustness(np.array([7.0, 20.0, 1.5, 0.0, 1.2, 45.0]), predictor,
-                          "/home/yuhang/Documents/irl_data/winter18/user0/processed/hp", 0)
+    # test_param_robustness(np.array([7.0, 20.0, 10.0, 10.0, 8.0, 50.0]), predictor,
+    #                       "/home/yuhang/Documents/irl_data/winter18/user1/processed/rp", 2)
+    # test_param_robustness(np.array([9.0, 20.0, 6.0, 0.5, 5.0, 50.0]), predictor,
+    #                       "/home/yuhang/Documents/irl_data/winter18/user0/processed/hp", 0)

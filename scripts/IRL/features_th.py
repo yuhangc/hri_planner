@@ -62,51 +62,14 @@ def acceleration():
     return f
 
 
-# def collision_hr(radius):
-#     @feature
-#     def f(xh, uh, xr, ur):
-#         return tt.exp(-((xr[0] - xh[0])**2 + (xr[1] - xh[1])**2) / (radius**2))
-#     return f
-#
-#
-# def collision_hr_dynamic(w, l, dt):
-#     @feature
-#     def f(xh, uh, xr, ur):
-#         # compute center
-#         th = xr[2]
-#         xc = xr[0] + ur[0] * dt * tt.cos(th)
-#         yc = xr[1] + ur[0] * dt * tt.sin(th)
-#
-#         # compute Gaussian length and width
-#         gw = w
-#         gl = l + ur[0] * 2.0 * l
-#
-#         # convert to robot reference frame
-#         d = (xh[0] - xc, xh[1] - yc)
-#
-#         x_hr = tt.cos(th) * d[0] + tt.sin(th) * d[1]
-#         y_hr = -tt.sin(th) * d[0] + tt.cos(th) * d[1]
-#
-#         # compute cost
-#         return tt.exp(-(x_hr**2/(gw**2) + y_hr**2/(gl**2)))
-#     return f
-#
-#
-# def collision_obs(radius, pos):
-#     @feature
-#     def f(xh, uh, xr, ur):
-#         return tt.exp(-((pos[0] - xh[0])**2 + (pos[1] - xh[1])**2) / (radius**2))
-#     return f
-
-
-def collision_hr(offset):
+def collision_hr(radius):
     @feature
     def f(xh, uh, xr, ur):
-        return 1.0 / ((xh[0] - xr[0])**2 + (xh[1] - xr[1])**2 + offset)
+        return tt.exp(-((xr[0] - xh[0])**2 + (xr[1] - xh[1])**2) / (radius**2))
     return f
 
 
-def collision_hr_dynamic(w, l, offset, dt=0.5):
+def collision_hr_dynamic(w, l, dt):
     @feature
     def f(xh, uh, xr, ur):
         # compute center
@@ -125,15 +88,52 @@ def collision_hr_dynamic(w, l, offset, dt=0.5):
         y_hr = -tt.sin(th) * d[0] + tt.cos(th) * d[1]
 
         # compute cost
-        return 1.0 / (x_hr**2/(gl**2) + y_hr**2/(gw**2) + offset)
+        return tt.exp(-(x_hr**2/(gl**2) + y_hr**2/(gw**2)))
     return f
 
 
-def collision_obs(offset, pos):
+def collision_obs(radius, pos):
     @feature
     def f(xh, uh, xr, ur):
-        return 1.0 / ((pos[0] - xh[0])**2 + (pos[1] - xh[1])**2 + offset)
+        return tt.exp(-((pos[0] - xh[0])**2 + (pos[1] - xh[1])**2) / (radius**2))
     return f
+
+
+# def collision_hr(offset):
+#     @feature
+#     def f(xh, uh, xr, ur):
+#         return 1.0 / ((xh[0] - xr[0])**2 + (xh[1] - xr[1])**2 + offset)
+#     return f
+#
+#
+# def collision_hr_dynamic(w, l, offset, dt=0.5):
+#     @feature
+#     def f(xh, uh, xr, ur):
+#         # compute center
+#         th = xr[2]
+#         xc = xr[0] + ur[0] * dt * tt.cos(th)
+#         yc = xr[1] + ur[0] * dt * tt.sin(th)
+#
+#         # compute Gaussian length and width
+#         gw = w
+#         gl = l + ur[0] * 2.0 * l
+#
+#         # convert to robot reference frame
+#         d = (xh[0] - xc, xh[1] - yc)
+#
+#         x_hr = tt.cos(th) * d[0] + tt.sin(th) * d[1]
+#         y_hr = -tt.sin(th) * d[0] + tt.cos(th) * d[1]
+#
+#         # compute cost
+#         return 1.0 / (x_hr**2/(gl**2) + y_hr**2/(gw**2) + offset)
+#     return f
+#
+#
+# def collision_obs(offset, pos):
+#     @feature
+#     def f(xh, uh, xr, ur):
+#         return 1.0 / ((pos[0] - xh[0])**2 + (pos[1] - xh[1])**2 + offset)
+#     return f
 
 
 # ----------------------------- termination costs -----------------------------------
@@ -180,13 +180,10 @@ def feature_grad_validation(xhi, uhi, xri, uri, x0i, xgi, obs):
     f_th = []
     f_th.append(velocity())
     f_th.append(acceleration())
-    # f_th.append(collision_hr(0.3))
-    # f_th.append(collision_hr_dynamic(0.25, 0.3, 0.5))
-    # f_th.append(collision_obs(0.5, obs))
     # f_th.append(goal_reward_term(x_goal))
-    f_th.append(collision_hr(0.05))
-    f_th.append(collision_hr_dynamic(0.25, 0.3, 0.1))
-    f_th.append(collision_obs(0.1, obs))
+    f_th.append(collision_hr(0.5))
+    f_th.append(collision_hr_dynamic(0.5, 0.5, dt=1.0))
+    f_th.append(collision_obs(0.5, obs))
 
     # set values
     for u, uval in zip(uh, uhi):
@@ -216,18 +213,15 @@ def feature_grad_validation(xhi, uhi, xri, uri, x0i, xgi, obs):
     f_list.append(f_acc)
 
     # collision avoidance with robot
-    # f_collision_hr = features.CollisionHRStatic(dyn, 0.3)
-    f_collision_hr = features.CollisionHRStatic(dyn, offset=.05)
+    f_collision_hr = features.CollisionHRStatic(dyn, R=.5)
     f_list.append(f_collision_hr)
 
     # dynamic collision avoidance with robot
-    # f_collision_dyn = features.CollisionHRDynamic(dyn, 0.25, 0.3)
-    f_collision_dyn = features.CollisionHRDynamic(dyn, 0.25, 0.3, offset=0.1)
+    f_collision_dyn = features.CollisionHRDynamic(dyn, 0.5, 0.5)
     f_list.append(f_collision_dyn)
 
     # collision avoidance with static obstacle
-    # f_collision_obs = features.CollisionObs(dyn, 0.5, obs)
-    f_collision_obs = features.CollisionObs(dyn, obs, offset=.1)
+    f_collision_obs = features.CollisionObs(dyn, obs, R=.5)
     f_list.append(f_collision_obs)
 
     # termination cost

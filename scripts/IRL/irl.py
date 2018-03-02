@@ -234,18 +234,15 @@ class HumanIRL(MaxEntIRLBase):
             f_list.append(f_acc)
 
             # collision avoidance with robot
-            # f_collision_hr = features.CollisionHRStatic(dyn, 0.3)
-            f_collision_hr = features.CollisionHRStatic(dyn, offset=0.3)
+            f_collision_hr = features.CollisionHRStatic(dyn, R=0.5)
             f_list.append(f_collision_hr)
 
             # dynamic collision avoidance with robot
-            # f_collision_dyn = features.CollisionHRDynamic(dyn, 0.25, 0.3)
-            f_collision_dyn = features.CollisionHRDynamic(dyn, 0.25, 0.25, offset=0.5)
+            f_collision_dyn = features.CollisionHRDynamic(dyn, 0.5, 0.5)
             f_list.append(f_collision_dyn)
 
             # collision avoidance with static obstacle
-            # f_collision_obs = features.CollisionObs(dyn, 0.3, self.obs[d])
-            f_collision_obs = features.CollisionObs(dyn, self.obs[d], offset=0.3)
+            f_collision_obs = features.CollisionObs(dyn, self.obs[d], R=0.5)
             f_list.append(f_collision_obs)
 
             # termination cost
@@ -331,7 +328,7 @@ def load_data(path, n_training, T):
 if __name__ == "__main__":
     # load data
     n_users = 4
-    n_user_demo = [40, 20, 20, 30]
+    n_user_demo = [40, 20, 30, 20]
     T = 10
     cond = "rp"
 
@@ -361,7 +358,7 @@ if __name__ == "__main__":
     # optimize
     # th0 = np.array([-7, -20.0, -0.1, -0.1, -0.1, -35.])
     # th0 = np.array([-7, -20.0, -1.5, -1.5, -35.])
-    th0 = np.array([-8., -27.0, -3.6, -1.0, -1.5, -41.])
+    th0 = np.array([-8., -23.0, -3.2, -0.9, -4.0, -45.])
     th_opt, lhist = irl.optimize(th0, n_iter=100, verbose=True)
 
     print th_opt

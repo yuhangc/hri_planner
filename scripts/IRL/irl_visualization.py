@@ -9,14 +9,14 @@ import features_th as features
 
 
 # redefine the features to fit in the visualization framework
-def collision_hr(xr, offset):
+def collision_hr(xr, radius):
     @features.feature
     def f(xh):
-        return 1.0 / ((xh[0] - xr[0])**2 + (xh[1] - xr[1])**2 + offset)
+        return np.exp(-((xr[0] - xh[0])**2 + (xr[1] - xh[1])**2) / (radius**2))
     return f
 
 
-def collision_hr_dynamic(xr, ur, w, l, offset, dt=0.5):
+def collision_hr_dynamic(xr, ur, w, l, dt=0.5):
     @features.feature
     def f(xh):
         # compute center
@@ -35,14 +35,14 @@ def collision_hr_dynamic(xr, ur, w, l, offset, dt=0.5):
         y_hr = -np.sin(th) * d[0] + np.cos(th) * d[1]
 
         # compute cost
-        return 1.0 / (x_hr**2/(gl**2) + y_hr**2/(gw**2) + offset)
+        return np.exp(-(x_hr**2/(gl**2) + y_hr**2/(gw**2)))
     return f
 
 
-def collision_obs(pos, offset):
+def collision_obs(pos, radius):
     @features.feature
     def f(xh):
-        return 1.0 / ((pos[0] - xh[0])**2 + (pos[1] - xh[1])**2 + offset)
+        return np.exp(-((pos[0] - xh[0])**2 + (pos[1] - xh[1])**2) / (radius**2))
     return f
 
 
@@ -87,9 +87,9 @@ def visualize_features_basic():
     obs_pos = np.array([2.0, 3.0])
     x_goal = np.array([0.5, 6.0])
 
-    f_chr = -collision_hr(xr, 0.1)
-    f_chr_dyn = -collision_hr_dynamic(xr, ur, 1.0, 1.0, 0.1, dt=1.5)
-    f_obs = -collision_obs(obs_pos, 0.1)
+    f_chr = -collision_hr(xr, 0.5)
+    f_chr_dyn = -collision_hr_dynamic(xr, ur, 0.5, 0.5, dt=1.0)
+    f_obs = -collision_obs(obs_pos, 0.5)
     f_goal = -goal_reward_term(x_goal)
 
     # bound
@@ -139,9 +139,9 @@ def visualize_features_with_data(path, trial, th):
     nstep = 2
     for t in range(0, len(xr), nstep):
         # generate features
-        f_chr = -collision_hr(xr[t], 0.1)
-        f_chr_dyn = -collision_hr_dynamic(xr[t], ur[t], 1.0, 1.0, 0.1, dt=2.0)
-        f_obs = -collision_obs(obs_pos, 0.1)
+        f_chr = -collision_hr(xr[t], 0.3)
+        f_chr_dyn = -collision_hr_dynamic(xr[t], ur[t], 0.3, 0.5, dt=1.0)
+        f_obs = -collision_obs(obs_pos, 0.3)
         f_goal = -goal_reward_term(x_goal)
 
         f_all = th[0]*f_chr + th[1]*f_chr_dyn + th[2]*f_obs + th[3]*f_goal
@@ -164,4 +164,4 @@ def visualize_features_with_data(path, trial, th):
 if __name__ == "__main__":
     # visualize_features_basic()
     visualize_features_with_data("/home/yuhang/Documents/irl_data/winter18/user0/processed/rp",
-                                 0, [1.5, 1.0, 1.2, 45.0/100.0])
+                                 0, [7.0, 10.0, 8.0, 50.0/100.0])
