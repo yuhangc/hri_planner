@@ -139,9 +139,9 @@ def visualize_features_with_data(path, trial, th):
     nstep = 2
     for t in range(0, len(xr), nstep):
         # generate features
-        f_chr = -collision_hr(xr[t], 0.3)
+        f_chr = -collision_hr(xr[t], 0.5)
         f_chr_dyn = -collision_hr_dynamic(xr[t], ur[t], 0.3, 0.5, dt=1.0)
-        f_obs = -collision_obs(obs_pos, 0.3)
+        f_obs = -collision_obs(obs_pos, 0.5)
         f_goal = -goal_reward_term(x_goal)
 
         f_all = th[0]*f_chr + th[1]*f_chr_dyn + th[2]*f_obs + th[3]*f_goal

@@ -238,7 +238,7 @@ class HumanIRL(MaxEntIRLBase):
             f_list.append(f_collision_hr)
 
             # dynamic collision avoidance with robot
-            f_collision_dyn = features.CollisionHRDynamic(dyn, 0.5, 0.5)
+            f_collision_dyn = features.CollisionHRDynamic(dyn, 0.3, 0.5)
             f_list.append(f_collision_dyn)
 
             # collision avoidance with static obstacle
@@ -255,6 +255,61 @@ class HumanIRL(MaxEntIRLBase):
             rlist.append(rfunc)
 
         return rlist
+
+
+class IRLStatistics(HumanIRL):
+    def __init__(self, traj, x0, x_goal, obs, meta_data):
+        super(IRLStatistics, self).__init__(traj, x0, x_goal, obs, meta_data)
+        self.xh_pred = []
+        self.uh_pred = []
+
+    def load_predictions(self, path, cond, n_usr, n_demo, T):
+        for usr in range(n_usr):
+            for i in range(n_demo[usr]):
+                # load trajectory data
+                file_name = path + "/user" + str(usr) + "/" + cond + "/demo" + str(i) + ".txt"
+                traj_data = np.loadtxt(file_name, delimiter=',')
+
+                # split the data first
+                traj_split = split_traj(traj_data, T)
+
+                for traj_seg in traj_split:
+                    xh = traj_seg[:, 0:4]
+                    uh = traj_seg[:, 4:6]
+
+                    # split the trajectory and add to data point
+                    self.xh_pred.append(xh)
+                    self.uh_pred.append(uh)
+
+    def compute_reward_stats(self, th, path=""):
+        reward_dist_train = []
+        reward_dist_pred = []
+
+        # for all demos
+        for i in range(self.n_demo):
+            # the training reward
+            reward_dist_train.append(self.rewards[i].reward(th, self.xh[i], self.uh[i], self.xr[i], self.ur[i]))
+
+            # the prediction reward
+            reward_dist_pred.append(self.rewards[i].reward(th, self.xh_pred[i], self.uh_pred[i],
+                                                           self.xr[i], self.ur[i]))
+
+        # save the data somewhere
+        reward_dist_train = np.asarray(reward_dist_train)
+        reward_dist_pred = np.asarray(reward_dist_pred)
+        if path != "":
+            np.savetxt(path + "/reward_dist.txt", np.vstack((reward_dist_train, reward_dist_pred)), delimiter=',')
+
+        # generate a histogram to show the distribution
+        nbins = 30
+        fig, axes = plt.subplots(2, 1)
+        axes[0].hist(reward_dist_train, nbins)
+        axes[1].hist(reward_dist_pred, nbins)
+
+        axes[0].set_xlim(70, 250)
+        axes[1].set_xlim(70, 250)
+
+        plt.show()
 
 
 def split_traj(x, T):
@@ -330,7 +385,7 @@ if __name__ == "__main__":
     n_users = 4
     n_user_demo = [40, 20, 30, 20]
     T = 10
-    cond = "rp"
+    cond = "hp"
 
     xh = []
     uh = []
@@ -352,16 +407,26 @@ if __name__ == "__main__":
         xg += xgi
         obs += obsi
 
-    # create IRL object
-    irl = HumanIRL((xh, uh, xr, ur), x0, xg, obs, [0.5, T])
+    # # create IRL object
+    # irl = HumanIRL((xh, uh, xr, ur), x0, xg, obs, [0.5, T])
+    #
+    # # optimize
+    # # th0 = np.array([-7, -20.0, -0.1, -0.1, -0.1, -35.])
+    # # th0 = np.array([-7, -20.0, -1.5, -1.5, -35.])
+    # th0 = np.array([-8., -23.0, -3.2, -0.9, -4.0, -45.])
+    # th_opt, lhist = irl.optimize(th0, n_iter=100, verbose=True)
+    #
+    # print th_opt
+    #
+    # plt.plot(lhist, '-b')
+    # plt.show()
 
-    # optimize
-    # th0 = np.array([-7, -20.0, -0.1, -0.1, -0.1, -35.])
-    # th0 = np.array([-7, -20.0, -1.5, -1.5, -35.])
-    th0 = np.array([-8., -23.0, -3.2, -0.9, -4.0, -45.])
-    th_opt, lhist = irl.optimize(th0, n_iter=100, verbose=True)
+    # create IRL statistics object
+    irl_stat = IRLStatistics((xh, uh, xr, ur), x0, xg, obs, [0.5, T])
 
-    print th_opt
+    # load data
+    irl_stat.load_predictions("/home/yuhang/Documents/irl_data/winter18/prediction", cond, n_users, n_user_demo, T)
 
-    plt.plot(lhist, '-b')
-    plt.show()
+    # compute
+    irl_stat.compute_reward_stats([8.0, 20.0, 7.0, 2.0, 8.0, 50.0],
+                                  "/home/yuhang/Documents/irl_data/winter18/prediction")
