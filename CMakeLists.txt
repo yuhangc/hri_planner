@@ -117,8 +117,16 @@ target_link_libraries(social_force ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 add_library(hri_planner
         include/hri_planner/shared_config.h
         include/hri_planner/human_belief_model.h
+        include/hri_planner/dynamics.h
+        include/hri_planner/trajectory.h
+        include/hri_planner/cost_feature.h
+        include/hri_planner/costs.h
         src/hri_planner/shared_config.cpp
-        src/hri_planner/human_belief_model.cpp)
+        src/hri_planner/human_belief_model.cpp
+        src/hri_planner/dynamics.cpp
+        src/hri_planner/trajectory.cpp
+        src/hri_planner/cost_feature.cpp
+        src/hri_planner/costs.cpp)
 target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
 
 ## Declare C++ executables
