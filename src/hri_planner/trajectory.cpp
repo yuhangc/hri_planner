@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/7/2017
-// Last revision: 3/7/2017
+// Last revision: 3/8/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -32,10 +32,13 @@ Trajectory::Trajectory(DynamicsModel dyn_type, int T, float dt): T_(T), dt_(dt)
             break;
     }
 
+    nXt_ = T_ * nX_;
+    nUt_ = T_ * nU_;
+
     // initialize x, u, J
-    x.setZero(T_ * nX_);
-    u.setZero(T_ * nU_);
-    Ju.setZero(T_ * nX_, T_ * nU_);
+    x.setZero(nXt_);
+    u.setZero(nUt_);
+    Ju.setZero(nXt_, nUt_);
 }
 
 //----------------------------------------------------------------------------------
