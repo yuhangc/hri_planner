@@ -26,6 +26,9 @@ public:
     void update(const Eigen::VectorXf& x0, const Eigen::VectorXf& u_new);
     void compute_jacobian(const Eigen::VectorXf& x0);
 
+    // overloading the = operator
+    Trajectory& operator=(const Trajectory& traj);
+
     inline int state_size() const {
         return nX_;
     }

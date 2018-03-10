@@ -95,4 +95,34 @@ void HumanCost::hessian_uh_ur(const Trajectory &robot_traj, const Trajectory &hu
     }
 }
 
+//----------------------------------------------------------------------------------
+void SingleTrajectoryCost::set_trajectory_data(const Trajectory &traj)
+{
+    const_traj_ = traj;
+}
+
+//----------------------------------------------------------------------------------
+float SingleTrajectoryCostRobot::compute(const Trajectory &traj)
+{
+    return compute(traj, const_traj_);
+}
+
+//----------------------------------------------------------------------------------
+void SingleTrajectoryCostRobot::grad(const Trajectory &traj, VecRef grad)
+{
+    grad_ur(traj, const_traj_, grad);
+}
+
+//----------------------------------------------------------------------------------
+float SingleTrajectoryCostHuman::compute(const Trajectory &traj)
+{
+    return compute(const_traj_, traj);
+}
+
+//----------------------------------------------------------------------------------
+void SingleTrajectoryCostHuman::grad(const Trajectory &traj, VecRef grad)
+{
+    grad_uh(const_traj_, traj, grad);
+}
+
 } // namespace

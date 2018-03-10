@@ -79,4 +79,22 @@ void Trajectory::compute_jacobian(const Eigen::VectorXf& x0)
     }
 }
 
+//----------------------------------------------------------------------------------
+Trajectory& Trajectory::operator=(const Trajectory &traj)
+{
+    // assign the data
+    x = traj.x;
+    u = traj.u;
+    Ju = traj.Ju;
+
+    T_ = traj.T_;
+    nX_ = traj.nX_;
+    nU_ = traj.nU_;
+    nXt_ = traj.nXt_;
+    nUt_ = traj.nUt_;
+    dt_ = traj.dt_;
+
+    return (*this);
+}
+
 } // namespace

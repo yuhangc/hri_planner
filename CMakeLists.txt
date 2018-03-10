@@ -95,7 +95,6 @@ include_directories(${EIGEN3_INCLUDE_DIRS})
 set(OpenCV_DIR "/usr/local/share/OpenCV")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
-message("${OpenCV_INCLUDE_DIRS}")
 
 ## specify the json package and directories
 find_package(PkgConfig REQUIRED)
@@ -105,6 +104,10 @@ include_directories(${JSONCPP_INCLUDE_DIRS})
 # specify ARUCO package and directories
 find_package(aruco REQUIRED)
 include_directories(aruco_INCLUDE_DIRS)
+
+# the NLopt package
+find_package(NLopt REQUIRED)
+include_directories(NLopt_INCLUDE_DIRS)
 
 ## Declare C++ libraries
 add_library(social_force
@@ -122,14 +125,16 @@ add_library(hri_planner
         include/hri_planner/cost_feature_bases.h
         include/hri_planner/cost_features.h
         include/hri_planner/costs.h
+        include/hri_planner/optimizer.h
         src/hri_planner/shared_config.cpp
         src/hri_planner/human_belief_model.cpp
         src/hri_planner/dynamics.cpp
         src/hri_planner/trajectory.cpp
         src/hri_planner/cost_feature_bases.cpp
         src/hri_planner/cost_features.cpp
-        src/hri_planner/costs.cpp)
-target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES})
+        src/hri_planner/costs.cpp
+        src/hri_planner/optimizer.cpp)
+target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} ${NLOPT_LIBRARIES})
 
 ## Declare C++ executables
 # social force simulation

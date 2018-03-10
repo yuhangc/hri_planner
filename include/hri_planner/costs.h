@@ -38,16 +38,16 @@ public:
     // virtual destructor
     virtual ~LinearCost(){};
 
-    virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
+    float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
+    void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
 
     // incrementally add in features
     void add_feature(float weight, FeatureBase* feature);
     void add_feature(float weight, const std::shared_ptr<FeatureBase> feature);
 
 protected:
-    virtual float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
-
     int nfeatures_;
     std::vector<float> weights_;
     std::vector<std::shared_ptr<FeatureBase> > features_;
@@ -56,8 +56,48 @@ protected:
 //! human cost class - extend linear cost to calculate hessians
 class HumanCost: public LinearCost {
 public:
-    virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
-    virtual void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
+    void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
+    void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
+};
+
+//! cost defined over a single trajectory
+class SingleTrajectoryCost: public LinearCost {
+public:
+    // virtual destructor
+    virtual ~SingleTrajectoryCost(){};
+
+    // overloading the () operator and compute function
+    virtual float operator()(const Trajectory& traj) {
+        return compute(traj);
+    }
+    virtual float compute(const Trajectory& traj) = 0;
+
+    // a new method that computes gradient
+    virtual void grad(const Trajectory& traj, VecRef grad) = 0;
+
+    // set the value for the constant trajectory
+    virtual void set_trajectory_data(const Trajectory& traj);
+
+protected:
+    Trajectory const_traj_;
+};
+
+//! cost defined over the robot trajectory
+class SingleTrajectoryCostRobot: public SingleTrajectoryCost {
+public:
+    using LinearCost::compute;
+    // overloading the compute function
+    virtual float compute(const Trajectory& traj);
+    virtual void grad(const Trajectory& traj, VecRef grad);
+};
+
+//! cost defined over the human trajectory
+class SingleTrajectoryCostHuman: public SingleTrajectoryCost {
+public:
+    using LinearCost::compute;
+    // overloading the compute function
+    virtual float compute(const Trajectory& traj);
+    virtual void grad(const Trajectory& traj, VecRef grad);
 };
 
 } // namespace
