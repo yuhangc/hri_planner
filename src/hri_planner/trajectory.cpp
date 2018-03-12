@@ -14,7 +14,7 @@
 namespace hri_planner {
 
 //----------------------------------------------------------------------------------
-Trajectory::Trajectory(DynamicsModel dyn_type, int T, float dt): T_(T), dt_(dt)
+Trajectory::Trajectory(DynamicsModel dyn_type, int T, double dt): T_(T), dt_(dt), dyn_type(dyn_type)
 {
     // create dynamics object
     switch (dyn_type) {
@@ -42,13 +42,13 @@ Trajectory::Trajectory(DynamicsModel dyn_type, int T, float dt): T_(T), dt_(dt)
 }
 
 //----------------------------------------------------------------------------------
-void Trajectory::update(const Eigen::VectorXf& x0, const Eigen::VectorXf& u_new)
+void Trajectory::update(const Eigen::VectorXd& x0, const Eigen::VectorXd& u_new)
 {
     // update u
     u = u_new;
 
     // compute the new trajectory
-    Eigen::VectorXf x_last = x0;
+    Eigen::VectorXd x_last = x0;
     for (int t = 0; t < T_; ++t) {
         dyn_->forward_dyn(x_last, u.segment(t*nU_, nU_), x.segment(t*nX_, nX_));
         x_last = x.segment(t*nX_, nX_);
@@ -56,7 +56,7 @@ void Trajectory::update(const Eigen::VectorXf& x0, const Eigen::VectorXf& u_new)
 }
 
 //----------------------------------------------------------------------------------
-void Trajectory::compute_jacobian(const Eigen::VectorXf& x0)
+void Trajectory::compute_jacobian(const Eigen::VectorXd& x0)
 {
     for (int t2 = 0; t2 < T_; ++t2) {
         for (int t1 = t2; t1 < T_; ++t1) {
@@ -70,7 +70,7 @@ void Trajectory::compute_jacobian(const Eigen::VectorXf& x0)
                     dyn_->grad_u(x.segment(xs, nX_), u.segment(ys, nU_), Ju.block(xs+nX_, ys, nX_, nU_));
             }
             else {
-                Eigen::MatrixXf A(nX_, nX_);
+                Eigen::MatrixXd A(nX_, nX_);
                 dyn_->grad_x(x.segment(xs, nX_), u.segment(ys, nU_), A);
 
                 Ju.block(xs+nX_, ys, nX_, nU_) = A * Ju.block(xs, ys, nX_, nU_);

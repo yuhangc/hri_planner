@@ -35,7 +35,7 @@ public:
     int nUr;
 
     // time step
-    float dt;
+    double dt;
 
 private:
     // to load the configuration

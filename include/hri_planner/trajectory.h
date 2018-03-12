@@ -21,10 +21,10 @@ namespace hri_planner {
 
 class Trajectory {
 public:
-    Trajectory(DynamicsModel dyn_type, int T, float dt);
+    Trajectory(DynamicsModel dyn_type, int T, double dt);
 
-    void update(const Eigen::VectorXf& x0, const Eigen::VectorXf& u_new);
-    void compute_jacobian(const Eigen::VectorXf& x0);
+    void update(const Eigen::VectorXd& x0, const Eigen::VectorXd& u_new);
+    void compute_jacobian(const Eigen::VectorXd& x0);
 
     // overloading the = operator
     Trajectory& operator=(const Trajectory& traj);
@@ -41,6 +41,10 @@ public:
         return T_;
     }
 
+    inline double dt() const {
+        return dt_;
+    }
+
     inline int traj_state_size() const {
         return nXt_;
     }
@@ -49,15 +53,17 @@ public:
         return nUt_;
     }
 
-    Eigen::VectorXf x;
-    Eigen::VectorXf u;
-    Eigen::MatrixXf Ju;
+    Eigen::VectorXd x;
+    Eigen::VectorXd u;
+    Eigen::MatrixXd Ju;
+
+    DynamicsModel dyn_type;
 
 private:
     int nX_;
     int nU_;
     int T_;
-    float dt_;
+    double dt_;
 
     int nXt_;
     int nUt_;

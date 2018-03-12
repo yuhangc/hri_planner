@@ -32,7 +32,7 @@ void SharedConfig::load()
     ros::param::param<int>("~dimension_uh", nUh, 2);
     ros::param::param<int>("~dimension_xr", nXr, 3);
     ros::param::param<int>("~dimension_ur", nUr, 2);
-    ros::param::param<float>("~time_step", dt, 0.5);
+    ros::param::param<double>("~time_step", dt, 0.5);
 }
 
 //----------------------------------------------------------------------------------

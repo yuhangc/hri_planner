@@ -16,15 +16,15 @@
 namespace hri_planner {
 
 //----------------------------------------------------------------------------------
-ConstAccDynamics::ConstAccDynamics(float dt): DynamicsBase(4, 2, dt) {
+ConstAccDynamics::ConstAccDynamics(double dt): DynamicsBase(4, 2, dt) {
     // create the linear dynamics matrices A, B
     A_.setIdentity(nX_, nX_);
     A_(0, 2) = dt;
     A_(1, 3) = dt;
 
     B_.setZero(nX_, nU_);
-    B_(0, 0) = 0.5f * dt_ * dt_;
-    B_(1, 1) = 0.5f * dt_ * dt_;
+    B_(0, 0) = 0.5 * dt_ * dt_;
+    B_(1, 1) = 0.5 * dt_ * dt_;
     B_(2, 0) = dt_;
     B_(3, 1) = dt_;
 }
@@ -52,7 +52,7 @@ void DifferentialDynamics::forward_dyn(ConstVecRef x, ConstVecRef u, VecRef x_ne
 {
     x_new.setZero();
 
-    const float th = x(2);
+    const double th = x(2);
     if (u(1) < om_tol_) {
         // approximately linear motion only
         x_new(0) = x(0) + u(0) * std::cos(th) * dt_;
@@ -61,8 +61,8 @@ void DifferentialDynamics::forward_dyn(ConstVecRef x, ConstVecRef u, VecRef x_ne
     }
     else {
         // constant curvature motion
-        const float R = u(0) / u(1);
-        const float dth = u(1) * dt_;
+        const double R = u(0) / u(1);
+        const double dth = u(1) * dt_;
 
         x_new(0) = x(0) + R * (-std::sin(th) + std::sin(th + dth));
         x_new(1) = x(1) + R * (std::cos(th) + std::cos(th + dth));
@@ -75,14 +75,14 @@ void DifferentialDynamics::grad_x(ConstVecRef x, ConstVecRef u, MatRef Jx)
 {
     Jx.setIdentity();
 
-    const float th = x(2);
+    const double th = x(2);
     if (u(1) < om_tol_) {
         Jx(0, 2) = u(0) * dt_ * (-std::sin(th));
         Jx(1, 2) = u(0) * dt_ * std::cos(th);
     }
     else {
-        const float R = u(0) / u(1);
-        const float th_new = th + u(1) * dt_;
+        const double R = u(0) / u(1);
+        const double th_new = th + u(1) * dt_;
 
         Jx(0, 2) = R * (-std::cos(th) + std::cos(th_new));
         Jx(1, 2) = R * (std::sin(th) + std::sin(th_new));
@@ -94,16 +94,16 @@ void DifferentialDynamics::grad_u(ConstVecRef x, ConstVecRef u, MatRef Ju)
 {
     Ju.setZero();
 
-    const float th = x(2);
+    const double th = x(2);
     if (u(1) < om_tol_) {
         Ju(0, 0) = dt_ * std::cos(th);
         Ju(1, 0) = dt_ * std::sin(th);
         Ju(2, 1) = dt_;
     }
     else {
-        float om_inv = 1.0f / u(1);
-        float th_new = th + u(1) * dt_;
-        float R = u(0) / u(1);
+        double om_inv = 1.0 / u(1);
+        double th_new = th + u(1) * dt_;
+        double R = u(0) / u(1);
 
         Ju(0, 0) = om_inv * (-std::sin(th) + std::sin(th_new));
         Ju(1, 0) = om_inv * (std::cos(th) - std::cos(th_new));

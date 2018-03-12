@@ -29,7 +29,7 @@ public:
     }
 
     // constructor with weights and features
-    LinearCost(const std::vector<float>& weights, std::vector<std::shared_ptr<FeatureBase> >& features):
+    LinearCost(const std::vector<double>& weights, std::vector<std::shared_ptr<FeatureBase> >& features):
             weights_(weights), features_(features)
     {
         nfeatures_ = (int) weights.size();
@@ -38,18 +38,18 @@ public:
     // virtual destructor
     virtual ~LinearCost(){};
 
-    float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
 
     void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
     void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
 
     // incrementally add in features
-    void add_feature(float weight, FeatureBase* feature);
-    void add_feature(float weight, const std::shared_ptr<FeatureBase> feature);
+    void add_feature(double weight, FeatureBase* feature);
+    void add_feature(double weight, const std::shared_ptr<FeatureBase> feature);
 
 protected:
     int nfeatures_;
-    std::vector<float> weights_;
+    std::vector<double> weights_;
     std::vector<std::shared_ptr<FeatureBase> > features_;
 };
 
@@ -67,10 +67,10 @@ public:
     virtual ~SingleTrajectoryCost(){};
 
     // overloading the () operator and compute function
-    virtual float operator()(const Trajectory& traj) {
+    virtual double operator()(const Trajectory& traj) {
         return compute(traj);
     }
-    virtual float compute(const Trajectory& traj) = 0;
+    virtual double compute(const Trajectory& traj) = 0;
 
     // a new method that computes gradient
     virtual void grad(const Trajectory& traj, VecRef grad) = 0;
@@ -87,7 +87,7 @@ class SingleTrajectoryCostRobot: public SingleTrajectoryCost {
 public:
     using LinearCost::compute;
     // overloading the compute function
-    virtual float compute(const Trajectory& traj);
+    virtual double compute(const Trajectory& traj);
     virtual void grad(const Trajectory& traj, VecRef grad);
 };
 
@@ -96,7 +96,7 @@ class SingleTrajectoryCostHuman: public SingleTrajectoryCost {
 public:
     using LinearCost::compute;
     // overloading the compute function
-    virtual float compute(const Trajectory& traj);
+    virtual double compute(const Trajectory& traj);
     virtual void grad(const Trajectory& traj, VecRef grad);
 };
 

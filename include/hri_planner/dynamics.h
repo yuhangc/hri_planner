@@ -23,12 +23,12 @@ typedef enum {
 
 class DynamicsBase {
 protected:
-    typedef Eigen::Ref<Eigen::VectorXf> VecRef;
-    typedef Eigen::Ref<Eigen::MatrixXf> MatRef;
-    typedef const Eigen::Ref<const Eigen::VectorXf> ConstVecRef;
-    typedef const Eigen::Ref<const Eigen::MatrixXf> ConstMatRef;
+    typedef Eigen::Ref<Eigen::VectorXd> VecRef;
+    typedef Eigen::Ref<Eigen::MatrixXd> MatRef;
+    typedef const Eigen::Ref<const Eigen::VectorXd> ConstVecRef;
+    typedef const Eigen::Ref<const Eigen::MatrixXd> ConstMatRef;
 public:
-    DynamicsBase(int nX, int nU, float dt): nX_(nX), nU_(nU), dt_(dt) {};
+    DynamicsBase(int nX, int nU, double dt): nX_(nX), nU_(nU), dt_(dt) {};
     virtual void forward_dyn(ConstVecRef x, ConstVecRef u, VecRef x_new) = 0;
     virtual void grad_x(ConstVecRef x, ConstVecRef u, MatRef Jx) = 0;
     virtual void grad_u(ConstVecRef x, ConstVecRef u, MatRef Ju) = 0;
@@ -36,34 +36,34 @@ public:
 protected:
     int nX_;
     int nU_;
-    float dt_;
+    double dt_;
 };
 
 
 class ConstAccDynamics: public DynamicsBase {
 public:
-    ConstAccDynamics(float dt);
+    ConstAccDynamics(double dt);
 
     virtual void forward_dyn(ConstVecRef x, ConstVecRef u, VecRef x_new);
     virtual void grad_x(ConstVecRef x, ConstVecRef u, MatRef Jx);
     virtual void grad_u(ConstVecRef x, ConstVecRef u, MatRef Ju);
 
 private:
-    Eigen::MatrixXf A_;
-    Eigen::MatrixXf B_;
+    Eigen::MatrixXd A_;
+    Eigen::MatrixXd B_;
 };
 
 
 class DifferentialDynamics: public DynamicsBase {
 public:
-    DifferentialDynamics(float dt, float om_tol=1e-3): DynamicsBase(3, 2, dt), om_tol_(om_tol) {};
+    DifferentialDynamics(double dt, double om_tol=1e-3): DynamicsBase(3, 2, dt), om_tol_(om_tol) {};
 
     virtual void forward_dyn(ConstVecRef x, ConstVecRef u, VecRef x_new);
     virtual void grad_x(ConstVecRef x, ConstVecRef u, MatRef Jx);
     virtual void grad_u(ConstVecRef x, ConstVecRef u, MatRef Ju);
 
 private:
-    float om_tol_;
+    double om_tol_;
 };
 
 } // namespace

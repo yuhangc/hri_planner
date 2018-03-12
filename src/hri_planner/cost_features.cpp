@@ -14,14 +14,14 @@
 namespace hri_planner {
 
 //----------------------------------------------------------------------------------
-float HumanVelCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
+double HumanVelCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
 {
-    float cost = 0.0f;
+    double cost = 0.0;
 
     int nX = human_traj.state_size();
     for (int t = 0; t < human_traj.horizon(); ++t) {
-        float vx = human_traj.x(t*nX+2);
-        float vy = human_traj.x(t*nX+3);
+        double vx = human_traj.x(t*nX+2);
+        double vy = human_traj.x(t*nX+3);
         cost += vx * vx + vy * vy;
     }
 
@@ -32,15 +32,15 @@ float HumanVelCost::compute(const Trajectory &robot_traj, const Trajectory &huma
 void HumanVelCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
     // compute the gradient w.r.t. xh first
-    Eigen::VectorXf grad_x(human_traj.traj_state_size());
+    Eigen::VectorXd grad_x(human_traj.traj_state_size());
 
     int nX = human_traj.state_size();
     for (int t = 0; t < human_traj.horizon(); ++t) {
         int xs = t * nX;
         grad_x(xs) = 0;
         grad_x(xs+1) = 0;
-        grad_x(xs+2) = 2.0f * human_traj.x(xs+2);
-        grad_x(xs+3) = 2.0f * human_traj.x(xs+3);
+        grad_x(xs+2) = 2.0 * human_traj.x(xs+2);
+        grad_x(xs+3) = 2.0 * human_traj.x(xs+3);
     }
 
     // compute gradient w.r.t. uh
@@ -51,7 +51,7 @@ void HumanVelCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human
 void HumanVelCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
 {
     // compute the hessian w.r.t. xh first
-    Eigen::MatrixXf hess_x;
+    Eigen::MatrixXd hess_x;
     hess_x.setZero(human_traj.traj_state_size(), human_traj.traj_state_size());
 
     int nX = human_traj.state_size();
@@ -66,7 +66,7 @@ void HumanVelCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &hu
 }
 
 //----------------------------------------------------------------------------------
-float HumanAccCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
+double HumanAccCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
 {
     return human_traj.u.squaredNorm();
 }
@@ -74,35 +74,35 @@ float HumanAccCost::compute(const Trajectory &robot_traj, const Trajectory &huma
 //----------------------------------------------------------------------------------
 void HumanAccCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
-    grad = 2.0f * human_traj.u;
+    grad = 2.0 * human_traj.u;
 }
 
 //----------------------------------------------------------------------------------
 void HumanAccCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
 {
     hess.setIdentity();
-    hess *= 2.0f;
+    hess *= 2.0;
 }
 
 //----------------------------------------------------------------------------------
-float HumanGoalCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
+double HumanGoalCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
 {
     int xs = human_traj.traj_state_size() - human_traj.state_size();
-    float x_diff = x_goal_(0) - human_traj.x(xs);
-    float y_diff = x_goal_(1) - human_traj.x(xs+1);
+    double x_diff = x_goal_(0) - human_traj.x(xs);
+    double y_diff = x_goal_(1) - human_traj.x(xs+1);
 
-    float cost = std::sqrt(x_diff * x_diff + y_diff * y_diff);
+    double cost = std::sqrt(x_diff * x_diff + y_diff * y_diff);
     return cost;
 }
 
 //----------------------------------------------------------------------------------
 void HumanGoalCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
-    Eigen::Vector2f grad_x;
+    Eigen::Vector2d grad_x;
     int xs = human_traj.traj_state_size() - human_traj.state_size();
-    float x_diff = x_goal_(0) - human_traj.x(xs);
-    float y_diff = x_goal_(1) - human_traj.x(xs+1);
-    float d = std::sqrt(x_diff * x_diff + y_diff * y_diff) + reg_;
+    double x_diff = x_goal_(0) - human_traj.x(xs);
+    double y_diff = x_goal_(1) - human_traj.x(xs+1);
+    double d = std::sqrt(x_diff * x_diff + y_diff * y_diff) + reg_;
 
     grad(0) = x_diff / reg_;
     grad(1) = y_diff / reg_;
@@ -113,14 +113,14 @@ void HumanGoalCost::grad_uh(const Trajectory &robot_traj, const Trajectory &huma
 //----------------------------------------------------------------------------------
 void HumanGoalCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
 {
-    Eigen::Matrix2f hess_x;
+    Eigen::Vector2d hess_x;
     int xs = human_traj.traj_state_size() - human_traj.state_size();
-    float x_diff = x_goal_(0) - human_traj.x(xs);
-    float y_diff = x_goal_(1) - human_traj.x(xs+1);
-    float d = std::sqrt(x_diff * x_diff + y_diff * y_diff) + reg_;
-    float d3 = d * d * d;
+    double x_diff = x_goal_(0) - human_traj.x(xs);
+    double y_diff = x_goal_(1) - human_traj.x(xs+1);
+    double d = std::sqrt(x_diff * x_diff + y_diff * y_diff) + reg_;
+    double d3 = d * d * d;
 
-    hess_x(0, 0) = -x_diff * x_diff / d3 + 1.0f / d;
+    hess_x(0, 0) = -x_diff * x_diff / d3 + 1.0 / d;
     hess_x(0, 1) = -x_diff * y_diff / d3;
     hess_x(1, 0) = hess_x(0, 1);
     hess_x(1, 1) = -y_diff * y_diff / d3;
@@ -129,10 +129,10 @@ void HumanGoalCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &h
 }
 
 //----------------------------------------------------------------------------------
-float CollisionCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
+double CollisionCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
 {
     // construct the pos diff vector
-    Eigen::VectorXf x_diff(2 * robot_traj.horizon());
+    Eigen::VectorXd x_diff(2 * robot_traj.horizon());
 
     int nXr = robot_traj.state_size();
     int nXh = human_traj.state_size();

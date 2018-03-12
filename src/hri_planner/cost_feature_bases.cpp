@@ -16,13 +16,13 @@
 namespace hri_planner {
 
 //----------------------------------------------------------------------------------
-float GaussianCost::compute(const Eigen::VectorXf &x, const int nX, const int T, const float a, const float b)
+double GaussianCost::compute(const Eigen::VectorXd &x, const int nX, const int T, const double a, const double b)
 {
-    float cost = 0.0f;
+    double cost = 0.0;
 
     for (int t = 0; t < T; ++t) {
-        float xt = x(t*nX) / a;
-        float yt = x(t*nX+1) / b;
+        double xt = x(t*nX) / a;
+        double yt = x(t*nX+1) / b;
         cost += std::exp(xt * xt + yt * yt);
     }
 
@@ -30,38 +30,38 @@ float GaussianCost::compute(const Eigen::VectorXf &x, const int nX, const int T,
 }
 
 //----------------------------------------------------------------------------------
-void GaussianCost::grad(const Eigen::VectorXf &x, const int nX, const int T, const float a, const float b,
-                        Eigen::VectorXf &grad)
+void GaussianCost::grad(const Eigen::VectorXd &x, const int nX, const int T, const double a, const double b,
+                        Eigen::VectorXd &grad)
 {
     grad.setZero(T * nX);
 
     for (int t = 0; t < T; ++t) {
         int st = t * nX;
-        float xt = x(st) / a;
-        float yt = x(st+1) / b;
-        float c = std::exp(xt * xt + yt * yt);
+        double xt = x(st) / a;
+        double yt = x(st+1) / b;
+        double c = std::exp(xt * xt + yt * yt);
 
-        grad(st) = -2.0f * xt * c / a;
-        grad(st+1) = -2.0f * yt * c / b;
+        grad(st) = -2.0 * xt * c / a;
+        grad(st+1) = -2.0 * yt * c / b;
     }
 }
 
 //----------------------------------------------------------------------------------
-void GaussianCost::hessian(const Eigen::VectorXf &x, const int nX, const int T, const float a, const float b,
-                           Eigen::MatrixXf &hess)
+void GaussianCost::hessian(const Eigen::VectorXd &x, const int nX, const int T, const double a, const double b,
+                           Eigen::MatrixXd &hess)
 {
     hess.setZero(T*nX, T*nX);
 
     for (int t = 0; t < T; ++t) {
         int st = t * nX;
-        float xt = x(st) / a;
-        float yt = x(st+1) / b;
-        float c = std::exp(xt * xt + yt * yt);
+        double xt = x(st) / a;
+        double yt = x(st+1) / b;
+        double c = std::exp(xt * xt + yt * yt);
 
-        hess(st, st) = (4.0f * xt * xt - 2.0f) / (a * a);
-        hess(st, st+1) = 4.0f * xt * yt / (a * b);
+        hess(st, st) = (4.0 * xt * xt - 2.0) / (a * a);
+        hess(st, st+1) = 4.0 * xt * yt / (a * b);
         hess(st+1, st) = hess(st, st+1);
-        hess(st+1, st+1) = (4.0f * yt * yt - 2.0f) / (b * b);
+        hess(st+1, st+1) = (4.0 * yt * yt - 2.0) / (b * b);
     }
 }
 

@@ -23,8 +23,8 @@
 
 namespace hri_planner {
 
-using Eigen::VectorXf;
-using Eigen::Vector2f;
+using Eigen::VectorXd;
+using Eigen::Vector2d;
 
 class BeliefModelBase {
 public:
@@ -35,46 +35,46 @@ public:
     virtual ~BeliefModelBase() = default;
 
     // main update
-    void belief_update(const VectorXf& xr, const VectorXf& ur, const VectorXf& xh0,
-                       int acomm, float tcomm, float tcurr, Vector2f& belief);
+    void belief_update(const VectorXd& xr, const VectorXd& ur, const VectorXd& xh0,
+                       int acomm, double tcomm, double tcurr, Vector2d& belief);
 
 protected:
     // dimensions
     std::shared_ptr<SharedConfig> config_;
 
     // calculate effect of implicit communication
-    virtual float belief_implicit(const int intent, const VectorXf& xr, const VectorXf& ur,
-                                   const VectorXf& xh0) = 0;
+    virtual double belief_implicit(const int intent, const VectorXd& xr, const VectorXd& ur,
+                                   const VectorXd& xh0) = 0;
 
-    virtual float belief_explicit(const int intent, const float tcurr,
-                                   const int acomm, const float tcomm) = 0;
+    virtual double belief_explicit(const int intent, const double tcurr,
+                                   const int acomm, const double tcomm) = 0;
 
 };
 
 class BeliefModelExponential: public BeliefModelBase {
 public:
-    BeliefModelExponential(std::shared_ptr<SharedConfig> config, float ratio,
-                           float decay_rate, const std::vector<float>& fcorrection);
+    BeliefModelExponential(std::shared_ptr<SharedConfig> config, double ratio,
+                           double decay_rate, const std::vector<double>& fcorrection);
 
 protected:
-    float belief_implicit(const int intent, const VectorXf& xr,
-                           const VectorXf& ur, const VectorXf& xh0) override;
+    double belief_implicit(const int intent, const VectorXd& xr,
+                           const VectorXd& ur, const VectorXd& xh0) override;
 
-    float belief_explicit(const int intent, const float tcurr,
-                           const int acomm, const float tcomm) override;
+    double belief_explicit(const int intent, const double tcurr,
+                           const int acomm, const double tcomm) override;
 
     // implicit belief update helper functions
-    virtual float implicit_cost(const int intent, const VectorXf& xr,
-                                 const VectorXf& ur, const VectorXf& xh0);
+    virtual double implicit_cost(const int intent, const VectorXd& xr,
+                                 const VectorXd& ur, const VectorXd& xh0);
 
 private:
     // explicit belief update parameters
-    float norm_factor_;
-    float decay_rate_;
-    float ratio_;
+    double norm_factor_;
+    double decay_rate_;
+    double ratio_;
 
     // implicit belief update parameters
-    std::vector<float> fcorrection_;
+    std::vector<double> fcorrection_;
 };
 
 }

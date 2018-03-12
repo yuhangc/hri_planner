@@ -20,20 +20,20 @@ namespace hri_planner {
 
 class FeatureBase {
 protected:
-    typedef Eigen::Ref<Eigen::VectorXf> VecRef;
-    typedef Eigen::Ref<Eigen::MatrixXf> MatRef;
-    typedef const Eigen::Ref<const Eigen::VectorXf> ConstVecRef;
-    typedef const Eigen::Ref<const Eigen::MatrixXf> ConstMatRef;
+    typedef Eigen::Ref<Eigen::VectorXd> VecRef;
+    typedef Eigen::Ref<Eigen::MatrixXd> MatRef;
+    typedef const Eigen::Ref<const Eigen::VectorXd> ConstVecRef;
+    typedef const Eigen::Ref<const Eigen::MatrixXd> ConstMatRef;
 public:
     // virtual destructor
     virtual ~FeatureBase(){};
 
     // overloading the () operator
-    float operator()(const Trajectory& robot_traj, const Trajectory& human_traj) {
+    double operator()(const Trajectory& robot_traj, const Trajectory& human_traj) {
         return compute(robot_traj, human_traj);
     };
 
-    virtual float compute(const Trajectory& robot_traj, const Trajectory& human_traj) = 0;
+    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj) = 0;
     virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) = 0;
     virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) = 0;
 };
@@ -64,11 +64,11 @@ typedef FeatureBase FeatureRobotCost;
 // commonly used Gaussian feature for collision avoidance
 class GaussianCost {
 public:
-    static float compute(const Eigen::VectorXf& x, const int nX, const int T, const float a, const float b);
-    static void grad(const Eigen::VectorXf& x, const int nX, const int T,
-                     const float a, const float b, Eigen::VectorXf& grad);
-    static void hessian(const Eigen::VectorXf& x, const int nX, const int T,
-                        const float a, const float b, Eigen::MatrixXf& hess);
+    static double compute(const Eigen::VectorXd& x, const int nX, const int T, const double a, const double b);
+    static void grad(const Eigen::VectorXd& x, const int nX, const int T,
+                     const double a, const double b, Eigen::VectorXd& grad);
+    static void hessian(const Eigen::VectorXd& x, const int nX, const int T,
+                        const double a, const double b, Eigen::MatrixXd& hess);
 };
 
 }

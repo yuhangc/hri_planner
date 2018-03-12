@@ -36,7 +36,7 @@ public:
     virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
     virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
 
-    virtual float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
 };
 
 class HumanAccCost: public FeatureHumanCostNonInt {
@@ -44,49 +44,49 @@ public:
     virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
     virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
 
-    virtual float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
 };
 
 class HumanGoalCost: public FeatureHumanCostNonInt {
 public:
-    HumanGoalCost(const Eigen::VectorXf& x_goal, float reg=1e-2): x_goal_(x_goal), reg_(reg) {};
+    HumanGoalCost(const Eigen::VectorXd& x_goal, double reg=1e-2): x_goal_(x_goal), reg_(reg) {};
 
     virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
     virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
 
-    virtual float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
 
 private:
-    Eigen::VectorXf x_goal_;
-    float reg_;
+    Eigen::VectorXd x_goal_;
+    double reg_;
 };
 
 class HumanObsCost: public FeatureHumanCostNonInt {
 public:
-    HumanObsCost(const Eigen::VectorXf& x_obs): x_obs_(x_obs) {};
+    HumanObsCost(const Eigen::VectorXd& x_obs): x_obs_(x_obs) {};
     virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
     virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
 
-    virtual float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
 
 private:
-    Eigen::VectorXf x_obs_;
+    Eigen::VectorXd x_obs_;
 };
 
 //! cost for both human and/or robot
 class CollisionCost: public FeatureHumanCost {
 public:
-    CollisionCost(float R): R_(R) {};
+    CollisionCost(double R): R_(R) {};
 
     virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
     virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
     virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
     virtual void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
 
-    virtual float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
 
 private:
-    float R_;
+    double R_;
 };
 
 class DynCollisionCost: public FeatureHumanCost {
@@ -96,7 +96,7 @@ public:
     virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
     virtual void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
 
-    virtual float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
 };
 
 //! robot cost functions
@@ -105,20 +105,20 @@ public:
     virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
     virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
 
-    virtual float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
 };
 
 class RobotGoalCost: public FeatureRobotCost {
 public:
-    RobotGoalCost(const Eigen::VectorXf& x_goal): x_goal_(x_goal) {};
+    RobotGoalCost(const Eigen::VectorXd& x_goal): x_goal_(x_goal) {};
 
     virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
     virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
 
-    virtual float compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
 
 private:
-    Eigen::VectorXf x_goal_;
+    Eigen::VectorXd x_goal_;
 };
 
 

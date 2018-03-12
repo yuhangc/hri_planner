@@ -1,8 +1,8 @@
-float32[] xr
-float32[] ur
-float32[] xh0
+float64[] xr
+float64[] ur
+float64[] xh0
 int32 acomm
-float32 tcomm
+float64 tcomm
 int32 t_total
 ---
-float32[] belief
+float64[] belief
