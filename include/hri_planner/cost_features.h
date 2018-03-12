@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/8/2017
-// Last revision: 3/8/2017
+// Last revision: 3/11/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -19,13 +19,14 @@ namespace hri_planner {
 class FeatureHumanCostNonInt: public FeatureHumanCost {
 public:
     // virtual destructor
-    virtual ~FeatureHumanCostNonInt(){};
+    virtual ~FeatureHumanCostNonInt() = default;
 
-    virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) {
+    void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override {
         grad.setZero();
     };
 
-    virtual void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) {
+    void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) override
+    {
         hess.setZero();
     };
 };
@@ -33,28 +34,28 @@ public:
 //! human cost functions
 class HumanVelCost: public FeatureHumanCostNonInt {
 public:
-    virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) override;
 
-    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    double compute(const Trajectory& robot_traj, const Trajectory& human_traj) override;
 };
 
 class HumanAccCost: public FeatureHumanCostNonInt {
 public:
-    virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) override;
 
-    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    double compute(const Trajectory& robot_traj, const Trajectory& human_traj) override;
 };
 
 class HumanGoalCost: public FeatureHumanCostNonInt {
 public:
-    HumanGoalCost(const Eigen::VectorXd& x_goal, double reg=1e-2): x_goal_(x_goal), reg_(reg) {};
+    explicit HumanGoalCost(const Eigen::VectorXd& x_goal, double reg=1e-2): x_goal_(x_goal), reg_(reg) {};
 
-    virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) override;
 
-    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    double compute(const Trajectory& robot_traj, const Trajectory& human_traj) override;
 
 private:
     Eigen::VectorXd x_goal_;
@@ -63,11 +64,11 @@ private:
 
 class HumanObsCost: public FeatureHumanCostNonInt {
 public:
-    HumanObsCost(const Eigen::VectorXd& x_obs): x_obs_(x_obs) {};
-    virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
+    explicit HumanObsCost(const Eigen::VectorXd& x_obs): x_obs_(x_obs) {};
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) override;
 
-    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    double compute(const Trajectory& robot_traj, const Trajectory& human_traj) override;
 
 private:
     Eigen::VectorXd x_obs_;
@@ -76,14 +77,14 @@ private:
 //! cost for both human and/or robot
 class CollisionCost: public FeatureHumanCost {
 public:
-    CollisionCost(double R): R_(R) {};
+    explicit CollisionCost(double R): R_(R) {};
 
-    virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
-    virtual void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) override;
+    void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) override;
 
-    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    double compute(const Trajectory& robot_traj, const Trajectory& human_traj) override;
 
 private:
     double R_;
@@ -91,31 +92,37 @@ private:
 
 class DynCollisionCost: public FeatureHumanCost {
 public:
-    virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
-    virtual void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
+    DynCollisionCost(double Rx, double Ry, double dt_pred=1.0): Rx_(Rx), Ry_(Ry), dt_pred_(dt_pred) {};
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) override;
+    void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) override;
 
-    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    double compute(const Trajectory& robot_traj, const Trajectory& human_traj) override;
+
+private:
+    double Rx_;
+    double Ry_;
+    double dt_pred_;
 };
 
 //! robot cost functions
 class RobotControlCost: public FeatureRobotCost {
 public:
-    virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
 
-    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    double compute(const Trajectory& robot_traj, const Trajectory& human_traj) override;
 };
 
 class RobotGoalCost: public FeatureRobotCost {
 public:
-    RobotGoalCost(const Eigen::VectorXd& x_goal): x_goal_(x_goal) {};
+    explicit RobotGoalCost(const Eigen::VectorXd& x_goal): x_goal_(x_goal) {};
 
-    virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
 
-    virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
+    double compute(const Trajectory& robot_traj, const Trajectory& human_traj) override;
 
 private:
     Eigen::VectorXd x_goal_;

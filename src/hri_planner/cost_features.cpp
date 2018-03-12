@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/8/2017
-// Last revision: 3/8/2017
+// Last revision: 3/11/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -129,6 +129,24 @@ void HumanGoalCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &h
 }
 
 //----------------------------------------------------------------------------------
+double HumanObsCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+void HumanObsCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+void HumanObsCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
+{
+
+}
+
+//----------------------------------------------------------------------------------
 double CollisionCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
 {
     // construct the pos diff vector
@@ -165,6 +183,72 @@ void CollisionCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &h
 
 //----------------------------------------------------------------------------------
 void CollisionCost::hessian_uh_ur(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+double DynCollisionCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+void DynCollisionCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+void DynCollisionCost::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+void DynCollisionCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+void DynCollisionCost::hessian_uh_ur(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+double RobotControlCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+void RobotControlCost::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+void RobotControlCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+double RobotGoalCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+void RobotGoalCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+void RobotGoalCost::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
 
 }

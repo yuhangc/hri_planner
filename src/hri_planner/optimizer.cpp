@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/9/2017
+// Last revision: 3/11/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -65,11 +65,32 @@ bool TrajectoryOptimizer::optimize(const Eigen::VectorXd& x0, const Trajectory &
     std::vector<double> lb;
     std::vector<double> ub;
 
-    EigenToVector(lb_, lb);
-    EigenToVector(ub_, ub);
+    for (int t = 0; t < traj_init.horizon(); ++t) {
+        for (int i = 0; i < traj_init.control_size(); ++i) {
+            lb.push_back(lb_(i));
+            ub.push_back(ub_(i));
+        }
+    }
 
     optimizer_.set_lower_bounds(lb);
     optimizer_.set_upper_bounds(ub);
+
+    // set cost function
+    optimizer_.set_min_objective(cost_wrapper, this);
+
+    // set tolerance
+    optimizer_.set_xtol_abs(1e-2);
+
+    // initial condition
+    std::vector<double> u_opt;
+    EigenToVector(traj_init.u, u_opt);
+
+    // optimizer!
+    double min_cost;
+    optimizer_.optimize(u_opt, min_cost);
+
+    // send result back
+    VectorToEigen(u_opt, traj_opt.u);
 
     return true;
 }
