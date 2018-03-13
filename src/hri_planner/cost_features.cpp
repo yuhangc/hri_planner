@@ -3,12 +3,13 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/8/2017
-// Last revision: 3/11/2017
+// Last revision: 3/12/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
 //----------------------------------------------------------------------------------
 
+#include <iostream>
 #include "hri_planner/cost_features.h"
 
 namespace hri_planner {
@@ -100,12 +101,12 @@ void HumanGoalCost::grad_uh(const Trajectory &robot_traj, const Trajectory &huma
 {
     Eigen::Vector2d grad_x;
     int xs = human_traj.traj_state_size() - human_traj.state_size();
-    double x_diff = x_goal_(0) - human_traj.x(xs);
-    double y_diff = x_goal_(1) - human_traj.x(xs+1);
+    double x_diff = human_traj.x(xs) - x_goal_(0);
+    double y_diff = human_traj.x(xs+1) - x_goal_(1);
     double d = std::sqrt(x_diff * x_diff + y_diff * y_diff) + reg_;
 
-    grad(0) = x_diff / reg_;
-    grad(1) = y_diff / reg_;
+    grad_x(0) = x_diff / d;
+    grad_x(1) = y_diff / d;
 
     grad = human_traj.Ju.middleRows(xs, 2).transpose() * grad_x;
 }
@@ -113,10 +114,10 @@ void HumanGoalCost::grad_uh(const Trajectory &robot_traj, const Trajectory &huma
 //----------------------------------------------------------------------------------
 void HumanGoalCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
 {
-    Eigen::Vector2d hess_x;
+    Eigen::Matrix2d hess_x;
     int xs = human_traj.traj_state_size() - human_traj.state_size();
-    double x_diff = x_goal_(0) - human_traj.x(xs);
-    double y_diff = x_goal_(1) - human_traj.x(xs+1);
+    double x_diff = human_traj.x(xs) - x_goal_(0);
+    double y_diff = human_traj.x(xs+1) - x_goal_(1);
     double d = std::sqrt(x_diff * x_diff + y_diff * y_diff) + reg_;
     double d3 = d * d * d;
 
@@ -131,7 +132,7 @@ void HumanGoalCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &h
 //----------------------------------------------------------------------------------
 double HumanObsCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
 {
-
+    return 0;
 }
 
 //----------------------------------------------------------------------------------
@@ -166,91 +167,370 @@ double CollisionCost::compute(const Trajectory &robot_traj, const Trajectory &hu
 //----------------------------------------------------------------------------------
 void CollisionCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
+    // construct the pos diff vector
+    Eigen::VectorXd x_diff(2 * robot_traj.horizon());
 
+    int nXr = robot_traj.state_size();
+    int nXh = human_traj.state_size();
+
+    for (int t = 0; t < robot_traj.horizon(); ++t) {
+        x_diff(t*2) = human_traj.x(t*nXr) - robot_traj.x(t*nXh);
+        x_diff(t*2+1) = human_traj.x(t*nXr+1) - robot_traj.x(t*nXh+1);
+    }
+
+    // compute gradient
+    Eigen::VectorXd grad_x;
+    GaussianCost::grad(x_diff, human_traj.state_size(), human_traj.horizon(), R_, R_, grad_x);
+
+    grad = human_traj.Ju.transpose() * grad_x;
 }
 
 //----------------------------------------------------------------------------------
 void CollisionCost::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
+    // construct the pos diff vector
+    Eigen::VectorXd x_diff(2 * robot_traj.horizon());
 
+    int nXr = robot_traj.state_size();
+    int nXh = human_traj.state_size();
+
+    for (int t = 0; t < robot_traj.horizon(); ++t) {
+        x_diff(t*2) = robot_traj.x(t*nXr) - human_traj.x(t*nXh);
+        x_diff(t*2+1) = robot_traj.x(t*nXr+1) - human_traj.x(t*nXh+1);
+    }
+
+    // compute gradient
+    Eigen::VectorXd grad_x;
+    GaussianCost::grad(x_diff, robot_traj.state_size(), robot_traj.horizon(), R_, R_, grad_x);
+
+    grad = robot_traj.Ju.transpose() * grad_x;
 }
 
 //----------------------------------------------------------------------------------
 void CollisionCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
 {
+    // construct the pos diff vector
+    Eigen::VectorXd x_diff(2 * robot_traj.horizon());
 
+    int nXr = robot_traj.state_size();
+    int nXh = human_traj.state_size();
+
+    for (int t = 0; t < robot_traj.horizon(); ++t) {
+        x_diff(t*2) = human_traj.x(t*nXr) - robot_traj.x(t*nXh);
+        x_diff(t*2+1) = human_traj.x(t*nXr+1) - robot_traj.x(t*nXh+1);
+    }
+
+    // compute gradient
+    Eigen::MatrixXd hess_x;
+    GaussianCost::hessian(x_diff, human_traj.state_size(), human_traj.state_size(),
+                          human_traj.horizon(), R_, R_, hess_x);
+
+    hess = robot_traj.Ju.transpose() * hess_x * robot_traj.Ju;
 }
 
 //----------------------------------------------------------------------------------
 void CollisionCost::hessian_uh_ur(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
 {
+    // construct the pos diff vector
+    Eigen::VectorXd x_diff(2 * robot_traj.horizon());
 
+    int nXr = robot_traj.state_size();
+    int nXh = human_traj.state_size();
+
+    for (int t = 0; t < robot_traj.horizon(); ++t) {
+        x_diff(t*2) = human_traj.x(t*nXr) - robot_traj.x(t*nXh);
+        x_diff(t*2+1) = human_traj.x(t*nXr+1) - robot_traj.x(t*nXh+1);
+    }
+
+    // compute gradient
+    Eigen::MatrixXd hess_x;
+    GaussianCost::hessian(x_diff, human_traj.state_size(), robot_traj.state_size(),
+                          robot_traj.horizon(), R_, R_, hess_x);
+
+    hess = human_traj.Ju.transpose() * (-hess_x) * robot_traj.Ju;
 }
 
 //----------------------------------------------------------------------------------
 double DynCollisionCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
 {
+    // compute the transformed coordinates
+    int T = robot_traj.horizon();
+    Eigen::VectorXd x_trans(2 * T);
 
+    for (int t = 0; t < T; ++t) {
+        int str = t * robot_traj.state_size();
+        int sth = t * human_traj.state_size();
+        double th = robot_traj.x(str + 2);
+
+        // compute the center of gaussian cost
+        Eigen::Vector2d xc;
+        xc << robot_traj.x(str) + d_ * std::cos(th),
+                robot_traj.x(str+1) + d_ * std::sin(th);
+
+        // compute the transformed coordinate
+        Eigen::Matrix2d rot;
+        rot << std::cos(th), std::sin(th),
+                -std::sin(th), std::cos(th);
+        x_trans.segment(t*2, 2) = rot * (human_traj.x.segment(sth, 2) - xc);
+    }
+
+    return GaussianCost::compute(x_trans, 2, T, Rx_, Ry_);
 }
 
 //----------------------------------------------------------------------------------
 void DynCollisionCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
+    // compute the transformed coordinates
+    int T = robot_traj.horizon();
+    Eigen::VectorXd x_trans(2 * T);
 
+    // to cache the computation
+    std::vector<Eigen::Matrix2d> rot;
+
+    for (int t = 0; t < T; ++t) {
+        int str = t * robot_traj.state_size();
+        int sth = t * human_traj.state_size();
+        double th = robot_traj.x(str + 2);
+
+        // compute the center of gaussian cost
+        Eigen::Vector2d xc;
+        xc << robot_traj.x(str) + d_ * std::cos(th),
+                robot_traj.x(str+1) + d_ * std::sin(th);
+
+        // compute the transformed coordinate
+        Eigen::Matrix2d rot_t;
+        rot_t << std::cos(th), std::sin(th),
+                -std::sin(th), std::cos(th);
+        x_trans.segment(t*2, 2) = rot_t * (human_traj.x.segment(sth, 2) - xc);
+
+        rot.push_back(rot_t);
+    }
+
+    // get gradient w.r.t. the transformed coordinate
+    Eigen::VectorXd grad_x;
+    GaussianCost::grad(x_trans, human_traj.state_size(), T, Rx_, Ry_, grad_x);
+
+    // get gradient w.r.t. the original pose
+    for (int t = 0; t < T; ++t) {
+        int sth = t * human_traj.state_size();
+        grad_x.segment(sth, 2) = rot[t].transpose() * grad_x.segment(sth, 2);
+    }
+
+    // compute gradient w.r.t. the control
+    grad = human_traj.Ju.transpose() * grad_x;
 }
 
 //----------------------------------------------------------------------------------
 void DynCollisionCost::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
+    // compute the transformed coordinates
+    int T = robot_traj.horizon();
+    int nXr = robot_traj.state_size();
+    int nXh = human_traj.state_size();
+    Eigen::VectorXd x_trans(2 * T);
 
+    // to cache the computation
+    std::vector<Eigen::MatrixXd> Jxr;
+
+    for (int t = 0; t < T; ++t) {
+        int str = t * nXr;
+        int sth = t * nXh;
+        double th = robot_traj.x(str + 2);
+
+        // compute the center of gaussian cost
+        Eigen::Vector2d xc;
+        xc << robot_traj.x(str) + d_ * std::cos(th),
+                robot_traj.x(str+1) + d_ * std::sin(th);
+
+        // compute the transformed coordinate
+        Eigen::Matrix2d rot_t;
+        rot_t << std::cos(th), std::sin(th),
+                -std::sin(th), std::cos(th);
+        x_trans.segment(t*2, 2) = rot_t * (human_traj.x.segment(sth, 2) - xc);
+
+        // compute the jacobian w.r.t. xr
+        Eigen::MatrixXd J(2, nXr);
+        J(0, 2) = x_trans(t*2+1);
+        J(1, 2) = -x_trans(t*2);
+
+        Eigen::MatrixXd Jp(2, nXr);
+        Jp << 1.0, 0.0, -d_ * std::sin(th),
+                0.0, 1.0, -d_ * std::cos(th);
+
+        J -= rot_t.transpose() * Jp;
+        Jxr.push_back(J);
+    }
+
+    // get gradient w.r.t. the transformed coordinate
+    Eigen::VectorXd grad_x;
+    GaussianCost::grad(x_trans, robot_traj.state_size(), T, Rx_, Ry_, grad_x);
+
+    // get gradient w.r.t. the original pose
+    for (int t = 0; t < T; ++t) {
+        int str = t * nXr;
+        grad_x.segment(str, nXr) = Jxr[t].transpose() * grad_x.segment(str, 2);
+    }
+
+    // compute gradient w.r.t. the control
+    grad = robot_traj.Ju.transpose() * grad_x;
 }
 
 //----------------------------------------------------------------------------------
 void DynCollisionCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
 {
+    // compute the transformed coordinates
+    int T = robot_traj.horizon();
+    int nXr = robot_traj.state_size();
+    int nXh = human_traj.state_size();
+    Eigen::VectorXd x_trans(2 * T);
 
+    // to cache the computation
+    std::vector<Eigen::Matrix2d> rot;
+
+    for (int t = 0; t < T; ++t) {
+        int str = t * nXr;
+        int sth = t * nXh;
+        double th = robot_traj.x(str + 2);
+
+        // compute the center of gaussian cost
+        Eigen::Vector2d xc;
+        xc << robot_traj.x(str) + d_ * std::cos(th),
+                robot_traj.x(str+1) + d_ * std::sin(th);
+
+        // compute the transformed coordinate
+        Eigen::Matrix2d rot_t;
+        rot_t << std::cos(th), std::sin(th),
+                -std::sin(th), std::cos(th);
+        x_trans.segment(t*2, 2) = rot_t * (human_traj.x.segment(sth, 2) - xc);
+
+        rot.push_back(rot_t);
+    }
+
+    // get hessian w.r.t. x_trans
+    Eigen::MatrixXd hess_x;
+    GaussianCost::hessian(x_trans, nXh, nXh, T, Rx_, Ry_, hess_x);
+
+    // get gradient w.r.t. the original pose
+    for (int t = 0; t < T; ++t) {
+        int sth = t * nXh;
+        hess_x.block(sth, sth, 2, 2) = rot[t].transpose() * hess_x.block(sth, sth, 2, 2) * rot[t];
+    }
+
+    // compute gradient w.r.t. the control
+    hess = human_traj.Ju.transpose() * hess_x * human_traj.Ju;
 }
 
 //----------------------------------------------------------------------------------
 void DynCollisionCost::hessian_uh_ur(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
 {
+    // compute the transformed coordinates
+    int T = robot_traj.horizon();
+    int nXr = robot_traj.state_size();
+    int nXh = human_traj.state_size();
+    Eigen::VectorXd x_trans(2 * T);
 
+    // to cache the computation
+    std::vector<Eigen::MatrixXd> Jxr;
+    std::vector<Eigen::Matrix2d> Jxh;
+
+    for (int t = 0; t < T; ++t) {
+        int str = t * nXr;
+        int sth = t * nXh;
+        double th = robot_traj.x(str + 2);
+
+        // compute the center of gaussian cost
+        Eigen::Vector2d xc;
+        xc << robot_traj.x(str) + d_ * std::cos(th),
+                robot_traj.x(str+1) + d_ * std::sin(th);
+
+        // compute the transformed coordinate
+        Eigen::Matrix2d rot_t;
+        rot_t << std::cos(th), std::sin(th),
+                -std::sin(th), std::cos(th);
+        x_trans.segment(t*2, 2) = rot_t * (human_traj.x.segment(sth, 2) - xc);
+
+        Jxh.push_back(rot_t);
+
+        // compute the jacobian w.r.t. xr
+        Eigen::MatrixXd J(2, nXr);
+        J(0, 2) = x_trans(t*2+1);
+        J(1, 2) = -x_trans(t*2);
+
+        Eigen::MatrixXd Jp(2, nXr);
+        Jp << 1.0, 0.0, -d_ * std::sin(th),
+                0.0, 1.0, -d_ * std::cos(th);
+
+        J -= rot_t.transpose() * Jp;
+        Jxr.push_back(J);
+    }
+
+    // get gradient w.r.t. the transformed coordinate
+    Eigen::VectorXd grad_x;
+    Eigen::MatrixXd hess_x;
+    GaussianCost::grad(x_trans, nXh, T, Rx_, Ry_, grad_x);
+    GaussianCost::hessian(x_trans, nXh, nXr, T, Rx_, Ry_, hess_x);
+
+    // get gradient w.r.t. the original pose
+    for (int t = 0; t < T; ++t) {
+        int str = t * nXr;
+        int sth = t * nXh;
+        grad_x.segment(sth, 2) = Jxh[t].transpose() * grad_x.segment(sth, 2);
+        hess_x.block(sth, str, 2, nXr) = Jxh[t].transpose() * hess_x.block(sth, str, 2, nXr) * Jxr[t];
+        hess_x(sth, str+2) += grad_x(sth+1);
+        hess_x(sth+1, str+2) -= grad_x(sth);
+    }
+
+    // compute gradient w.r.t. the control
+    hess = human_traj.Ju.transpose() * hess_x * robot_traj.Ju;
 }
 
 //----------------------------------------------------------------------------------
 double RobotControlCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
 {
-
+    return robot_traj.u.squaredNorm();
 }
 
 //----------------------------------------------------------------------------------
 void RobotControlCost::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
-
+    grad = 2.0 * robot_traj.u;
 }
 
 //----------------------------------------------------------------------------------
 void RobotControlCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
-
+    grad.setZero();
 }
 
 //----------------------------------------------------------------------------------
 double RobotGoalCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
 {
+    int xs = robot_traj.traj_state_size() - robot_traj.state_size();
+    double x_diff = robot_traj.x(xs) - x_goal_(0);
+    double y_diff = robot_traj.x(xs+1) - x_goal_(1);
 
+    return std::sqrt(x_diff * x_diff + y_diff * y_diff);
 }
 
 //----------------------------------------------------------------------------------
 void RobotGoalCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
-
+    grad.setZero();
 }
 
 //----------------------------------------------------------------------------------
 void RobotGoalCost::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
+    Eigen::Vector2d grad_x;
+    int xs = robot_traj.traj_state_size() - robot_traj.state_size();
+    double x_diff = robot_traj.x(xs) - x_goal_(0);
+    double y_diff = robot_traj.x(xs+1) - x_goal_(1);
+    double d = std::sqrt(x_diff * x_diff + y_diff * y_diff) + reg_;
 
+    grad_x(0) = x_diff / d;
+    grad_x(1) = y_diff / d;
+
+    grad = robot_traj.Ju.middleRows(xs, 2).transpose() * grad_x;
 }
 
 }

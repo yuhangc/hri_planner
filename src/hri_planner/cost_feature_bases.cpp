@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/7/2017
-// Last revision: 3/8/2017
+// Last revision: 3/12/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -21,8 +21,8 @@ double GaussianCost::compute(const Eigen::VectorXd &x, const int nX, const int T
     double cost = 0.0;
 
     for (int t = 0; t < T; ++t) {
-        double xt = x(t*nX) / a;
-        double yt = x(t*nX+1) / b;
+        double xt = x(t*2) / a;
+        double yt = x(t*2+1) / b;
         cost += std::exp(xt * xt + yt * yt);
     }
 
@@ -37,8 +37,8 @@ void GaussianCost::grad(const Eigen::VectorXd &x, const int nX, const int T, con
 
     for (int t = 0; t < T; ++t) {
         int st = t * nX;
-        double xt = x(st) / a;
-        double yt = x(st+1) / b;
+        double xt = x(t*2) / a;
+        double yt = x(t*2+1) / b;
         double c = std::exp(xt * xt + yt * yt);
 
         grad(st) = -2.0 * xt * c / a;
@@ -47,21 +47,22 @@ void GaussianCost::grad(const Eigen::VectorXd &x, const int nX, const int T, con
 }
 
 //----------------------------------------------------------------------------------
-void GaussianCost::hessian(const Eigen::VectorXd &x, const int nX, const int T, const double a, const double b,
-                           Eigen::MatrixXd &hess)
+void GaussianCost::hessian(const Eigen::VectorXd &x, const int nX1, const int nX2, const int T,
+                           const double a, const double b, Eigen::MatrixXd &hess)
 {
-    hess.setZero(T*nX, T*nX);
+    hess.setZero(T*nX1, T*nX2);
 
     for (int t = 0; t < T; ++t) {
-        int st = t * nX;
-        double xt = x(st) / a;
-        double yt = x(st+1) / b;
+        int st1 = t * nX1;
+        int st2 = t * nX2;
+        double xt = x(t*2) / a;
+        double yt = x(t*2+1) / b;
         double c = std::exp(xt * xt + yt * yt);
 
-        hess(st, st) = (4.0 * xt * xt - 2.0) / (a * a);
-        hess(st, st+1) = 4.0 * xt * yt / (a * b);
-        hess(st+1, st) = hess(st, st+1);
-        hess(st+1, st+1) = (4.0 * yt * yt - 2.0) / (b * b);
+        hess(st1, st2) = (4.0 * xt * xt - 2.0) * c / (a * a);
+        hess(st1, st2+1) = 4.0 * xt * yt * c / (a * b);
+        hess(st1+1, st2) = hess(st1, st2+1);
+        hess(st1+1, st2+1) = (4.0 * yt * yt - 2.0) * c / (b * b);
     }
 }
 

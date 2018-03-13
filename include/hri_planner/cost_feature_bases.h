@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/7/2017
-// Last revision: 3/8/2017
+// Last revision: 3/12/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -67,7 +67,7 @@ public:
     static double compute(const Eigen::VectorXd& x, const int nX, const int T, const double a, const double b);
     static void grad(const Eigen::VectorXd& x, const int nX, const int T,
                      const double a, const double b, Eigen::VectorXd& grad);
-    static void hessian(const Eigen::VectorXd& x, const int nX, const int T,
+    static void hessian(const Eigen::VectorXd& x, const int nX1, const int nX2, const int T,
                         const double a, const double b, Eigen::MatrixXd& hess);
 };
 

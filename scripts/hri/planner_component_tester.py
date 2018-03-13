@@ -19,6 +19,17 @@ def belief_update_client(xr, ur, xh0, acomm, tcomm, t_total):
         print "Service call failed: %s"%e
 
 
+def cost_feature_test_client(xh, uh, xr, ur, xh0, xr0, weights, log_path):
+    rospy.wait_for_service("test_cost_features")
+    try:
+        test_features = rospy.ServiceProxy("test_cost_features", TestComponent)
+        succeeded = test_features(xh, uh, xr, ur, xh0, xr0, weights, log_path)
+
+        return succeeded
+    except rospy.ServiceException, e:
+        print "Service call failed: %s"%e
+
+
 def test_belief_update(user_id, cond, trial, acomm, tcomm):
     # load data
     path = rospy.get_param("~data_path", "/home/yuhang/Documents/irl_data/winter18")
@@ -62,15 +73,52 @@ def test_belief_update(user_id, cond, trial, acomm, tcomm):
     plt.suptitle(title, fontsize=16)
     plt.show()
 
-if __name__ == "__main__":
-    # no communication
-    test_belief_update(0, "hp", 0, 0, -100)
-    # communication matches action
-    test_belief_update(0, "hp", 0, 0, 0)
-    # communication doesn't match action
-    test_belief_update(0, "hp", 0, 1, 0)
 
-    # robot priority scenarios
-    test_belief_update(0, "rp", 0, 0, -100)
-    test_belief_update(0, "rp", 0, 0, 0)
-    test_belief_update(0, "rp", 0, 1, 0)
+def test_cost_features(user_id, cond, trial):
+    # load data
+    path = rospy.get_param("~data_path", "/home/yuhang/Documents/irl_data/winter18")
+    path += "/user" + str(user_id) + "/processed/" + cond
+
+    traj_data = np.loadtxt(path + "/block" + str(trial) + ".txt", delimiter=',')
+    init_data = np.loadtxt(path + "/init.txt", delimiter=",")
+
+    T = 10
+    xh = traj_data[:T, 0:4]
+    uh = traj_data[:T, 4:6]
+    xr = traj_data[:T, 6:9]
+    ur = traj_data[:T, 9:11]
+    xh0 = init_data[trial, 0:4]
+    xr0 = init_data[trial, 4:7]
+
+    # calculate belief
+    log_path = "/home/yuhang/Documents/hri_log"
+    succeeded = cost_feature_test_client(xh.flatten(), uh.flatten(), xr.flatten(),
+                                         ur.flatten(), xh0.flatten(), xr0.flatten(),
+                                         None, log_path)
+
+    # TODO: some visualization?
+    traj_data = np.loadtxt(log_path + "/log_traj.txt")
+    xr_pred = traj_data[:T*3].reshape(T, 3)
+
+    fig, axes = plt.subplots()
+    axes.plot(xr_pred[:, 0], xr_pred[:, 1], '-or')
+    axes.plot(xr[:, 0], xr[:, 1], '-bo')
+    axes.axis("equal")
+    plt.show()
+
+
+if __name__ == "__main__":
+    # # no communication
+    # test_belief_update(0, "hp", 0, 0, -100)
+    # # communication matches action
+    # test_belief_update(0, "hp", 0, 0, 0)
+    # # communication doesn't match action
+    # test_belief_update(0, "hp", 0, 1, 0)
+    #
+    # # robot priority scenarios
+    # test_belief_update(0, "rp", 0, 0, -100)
+    # test_belief_update(0, "rp", 0, 0, 0)
+    # test_belief_update(0, "rp", 0, 1, 0)
+
+    # test the cost features
+    test_cost_features(0, "hp", 0)

@@ -56,7 +56,7 @@ private:
 
 class DifferentialDynamics: public DynamicsBase {
 public:
-    DifferentialDynamics(double dt, double om_tol=1e-3): DynamicsBase(3, 2, dt), om_tol_(om_tol) {};
+    DifferentialDynamics(double dt, double om_tol=1e-2): DynamicsBase(3, 2, dt), om_tol_(om_tol) {};
 
     virtual void forward_dyn(ConstVecRef x, ConstVecRef u, VecRef x_new);
     virtual void grad_x(ConstVecRef x, ConstVecRef u, MatRef Jx);

@@ -1,0 +1,13 @@
+float64[] xh
+float64[] uh
+float64[] xr
+float64[] ur
+float64[] xh0
+float64[] xr0
+
+float64[] weights
+
+string log_path
+
+---
+bool succeeded

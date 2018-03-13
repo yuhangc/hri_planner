@@ -48,6 +48,7 @@ add_message_files(
 add_service_files(
    FILES
    BeliefUpdate.srv
+   TestComponent.srv
 )
 
 ## Generate actions in the 'action' folder

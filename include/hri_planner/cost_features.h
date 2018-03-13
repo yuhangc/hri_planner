@@ -92,7 +92,7 @@ private:
 
 class DynCollisionCost: public FeatureHumanCost {
 public:
-    DynCollisionCost(double Rx, double Ry, double dt_pred=1.0): Rx_(Rx), Ry_(Ry), dt_pred_(dt_pred) {};
+    DynCollisionCost(double Rx, double Ry, double d): Rx_(Rx), Ry_(Ry), d_(d) {};
     void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
     void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
     void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) override;
@@ -103,7 +103,7 @@ public:
 private:
     double Rx_;
     double Ry_;
-    double dt_pred_;
+    double d_;
 };
 
 //! robot cost functions
@@ -117,7 +117,7 @@ public:
 
 class RobotGoalCost: public FeatureRobotCost {
 public:
-    explicit RobotGoalCost(const Eigen::VectorXd& x_goal): x_goal_(x_goal) {};
+    explicit RobotGoalCost(const Eigen::VectorXd& x_goal, double reg=1e-2): x_goal_(x_goal), reg_(reg) {};
 
     void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
     void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
@@ -126,6 +126,7 @@ public:
 
 private:
     Eigen::VectorXd x_goal_;
+    double reg_;
 };
 
 
