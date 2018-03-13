@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/27/2017
-// Last revision: 3/12/2017
+// Last revision: 3/13/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -81,7 +81,7 @@ bool test_cost_features(hri_planner::TestComponent::Request& req,
     HumanAccCost human_acc_cost;
 
     Eigen::VectorXd x_goal(2);
-    x_goal << 2.4, 3.2;
+    x_goal << 0.73216, 6.00955;
     HumanGoalCost human_goal_cost(x_goal);
 
     CollisionCost collision_cost(0.5);
@@ -116,6 +116,9 @@ bool test_cost_features(hri_planner::TestComponent::Request& req,
 
     traj_logger << robot_traj.x << std::endl;
     traj_logger << human_traj.x << std::endl;
+
+    // set robot trajectory back to the recorded value
+    robot_traj.x = xr;
 
     // log trajectory Jacobians
     logger << std::endl;
@@ -184,6 +187,26 @@ bool test_cost_features(hri_planner::TestComponent::Request& req,
     logger << hess_uh << std::endl;
 
     collision_cost.hessian_uh_ur(robot_traj, human_traj, hess_uh_ur);
+    logger << "hessian w.r.t. uh ur:" << std::endl;
+    logger << hess_uh_ur << std::endl;
+
+    // dynamic collision feature
+    logger << "Dynamic collision feature:" << std::endl;
+    logger << "value: " << dyn_collision_cost(robot_traj, human_traj) << std::endl;
+
+    dyn_collision_cost.grad_uh(robot_traj, human_traj, grad_uh);
+    logger << "gradient w.r.t. uh:" << std::endl;
+    logger << grad_uh.transpose() << std::endl;
+
+    dyn_collision_cost.grad_ur(robot_traj, human_traj, grad_ur);
+    logger << "gradient w.r.t. ur:" << std::endl;
+    logger << grad_ur.transpose() << std::endl;
+
+    dyn_collision_cost.hessian_uh(robot_traj, human_traj, hess_uh);
+    logger << "hessian w.r.t. uh:" << std::endl;
+    logger << hess_uh << std::endl;
+
+    dyn_collision_cost.hessian_uh_ur(robot_traj, human_traj, hess_uh_ur);
     logger << "hessian w.r.t. uh ur:" << std::endl;
     logger << hess_uh_ur << std::endl;
 

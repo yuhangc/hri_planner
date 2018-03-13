@@ -329,8 +329,58 @@ class TerminationReward(FeatureBase):
         return np.dot(Jt.transpose(), np.dot(hess_x, Jt))
 
 
-# test the features
-if __name__ == "__main__":
+def print_feature_vals(xh, uh, xr, ur, xh0, x_goal, x_obs):
+    # human dynamics
+    dyn = ConstAccDynamics(0.5)
+    dyn.compute(xh0, uh)
+
+    # check if dynamic computation is correct
+    x_pred = dyn.traj()
+    err = np.sum((x_pred - xh)**2)
+    assert err < 1e-3, "Dynamic computation does not match!"
+
+    np.set_printoptions(precision=3)
+    np.set_printoptions(linewidth=np.nan)
+
+    # create the features
+    # velocity feature
+    f_vel = Velocity(dyn)
+    print "velocity feature: ", f_vel(xh, uh, xr, ur)
+    print "velocity feature gradient: \n", f_vel.grad(xh, uh, xr, ur)
+    print "velocity feature Hessian: \n", f_vel.hessian(xh, uh, xr, ur)
+
+    # acceleration feature
+    f_acc = Acceleration(dyn)
+    print "acceleration feature: ", f_acc(xh, uh, xr, ur)
+    print "acceleration feature gradient: \n", f_acc.grad(xh, uh, xr, ur)
+    print "acceleration feature Hessian: \n", f_acc.hessian(xh, uh, xr, ur)
+
+    # goal reward
+    f_goal = TerminationReward(dyn, x_goal)
+    print "goal reward feature: ", f_goal(xh, uh, xr, ur), " goal is: ", x_goal
+    print "goal reward feature gradient: \n", f_goal.grad(xh, uh, xr, ur)
+    print "goal reward feature Hessian: \n", f_goal.hessian(xh, uh, xr, ur)
+
+    # collision avoidance with robot
+    f_collision = CollisionHRStatic(dyn, R=0.5)
+    print "collision feature: ", f_collision(xh, uh, xr, ur)
+    print "collision feature gradient: \n", f_collision.grad(xh, uh, xr, ur)
+    print "collision feature Hessian: \n", f_collision.hessian(xh, uh, xr, ur)
+
+    # dynamic collision avoidance with robot
+    f_collision_dyn = CollisionHRDynamic(dyn, 0.5, 0.5)
+    print "dyn collision feature: ", f_collision_dyn(xh, uh, xr, ur)
+    print "dyn collision feature gradient: \n", f_collision_dyn.grad(xh, uh, xr, ur)
+    print "dyn collision feature Hessian: \n", f_collision_dyn.hessian(xh, uh, xr, ur)
+
+    # collision avoidance with obstacle
+    f_obs = CollisionObs(dyn, x_obs, 0.5)
+    print "obstacle feature: ", f_obs(xh, uh, xr, ur)
+    print "obstacle feature gradient: \n", f_obs.grad(xh, uh, xr, ur)
+    print "obstacle feature Hessian: \n", f_obs.hessian(xh, uh, xr, ur)
+
+
+def gen_traj():
     # generate a set of motions
     x0_human = np.array([0.0, 0.0, 0.0, 0.0])
     x_goal_human = np.array([0.0, 7.5, 0.0, 0.0])
@@ -366,56 +416,12 @@ if __name__ == "__main__":
     vel_robot = np.linalg.norm(x_goal_robot - x0_robot) / T
     u_r = vel_robot * np.hstack((np.ones((T, 1)), np.zeros((T, 1))))
 
-    # human dynamics
-    dyn = ConstAccDynamics(dt)
-    dyn.compute(x0_human, acc)
 
-    # check if dynamic computation is correct
-    xh = dyn.traj()
-    err = np.sum((x_human - xh)**2)
-    assert err < 1e-3, "Dynamic computation does not match!"
+# test the features
+if __name__ == "__main__":
+    from irl import load_data
 
-    np.set_printoptions(precision=3)
-    np.set_printoptions(linewidth=np.nan)
+    path = "/home/yuhang/Documents/irl_data/winter18/user0/processed/hp"
+    xhi, uhi, xri, uri, x0i, xgi, obsi = load_data(path, 1, 10)
 
-    # create the features
-    # velocity feature
-    f_vel = Velocity(dyn)
-    print "velocity feature: ", f_vel(xh, acc, x_robot, u_r)
-    print "velocity feature gradient: \n", f_vel.grad(xh, acc, x_robot, u_r)
-    print "velocity feature Hessian: \n", f_vel.hessian(xh, acc, x_robot, u_r)
-
-    # acceleration feature
-    f_acc = Acceleration(dyn)
-    print "acceleration feature: ", f_acc(xh, acc, x_robot, u_r)
-    print "acceleration feature gradient: \n", f_acc.grad(xh, acc, x_robot, u_r)
-    print "acceleration feature Hessian: \n", f_acc.hessian(xh, acc, x_robot, u_r)
-
-    # goal reward
-    f_goal = TerminationReward(dyn, x_goal_human[0:2])
-    print "goal reward feature: ", f_goal(xh, acc, x_robot, u_r)
-    print "goal reward feature gradient: \n", f_goal.grad(xh, acc, x_robot, u_r)
-    print "goal reward feature Hessian: \n", f_goal.hessian(xh, acc, x_robot, u_r)
-
-    f_goal_cumu = GoalReward(dyn, 0.3, x_goal_human[0:2])
-    print "goal reward cumu feature: ", f_goal_cumu(xh, acc, x_robot, u_r)
-    print "goal reward cumu feature gradient: \n", f_goal_cumu.grad(xh, acc, x_robot, u_r)
-    print "goal reward cumu feature Hessian: \n", f_goal_cumu.hessian(xh, acc, x_robot, u_r)
-
-    # collision avoidance with robot
-    f_collision = CollisionHRStatic(dyn, 0.3)
-    print "collision feature: ", f_collision(xh, acc, x_robot, u_r)
-    print "collision feature gradient: \n", f_collision.grad(xh, acc, x_robot, u_r)
-    print "collision feature Hessian: \n", f_collision.hessian(xh, acc, x_robot, u_r)
-
-    # dynamic collision avoidance with robot
-    f_collision_dyn = CollisionHRDynamic(dyn, 0.25, 0.25)
-    print "dyn collision feature: ", f_collision_dyn(xh, acc, x_robot, u_r)
-    print "dyn collision feature gradient: \n", f_collision_dyn.grad(xh, acc, x_robot, u_r)
-    print "dyn collision feature Hessian: \n", f_collision_dyn.hessian(xh, acc, x_robot, u_r)
-
-    # collision avoidance with obstacle
-    f_obs = CollisionObs(dyn, 0.3, np.array([1.0, 3.5]))
-    print "obstacle feature: ", f_obs(xh, acc, x_robot, u_r)
-    print "obstacle feature gradient: \n", f_obs.grad(xh, acc, x_robot, u_r)
-    print "obstacle feature Hessian: \n", f_obs.hessian(xh, acc, x_robot, u_r)
+    print_feature_vals(xhi[0], uhi[0], xri[0], uri[0], x0i[0], xgi[0], obsi[0])

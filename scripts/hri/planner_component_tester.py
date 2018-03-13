@@ -97,14 +97,14 @@ def test_cost_features(user_id, cond, trial):
                                          None, log_path)
 
     # TODO: some visualization?
-    traj_data = np.loadtxt(log_path + "/log_traj.txt")
-    xr_pred = traj_data[:T*3].reshape(T, 3)
-
-    fig, axes = plt.subplots()
-    axes.plot(xr_pred[:, 0], xr_pred[:, 1], '-or')
-    axes.plot(xr[:, 0], xr[:, 1], '-bo')
-    axes.axis("equal")
-    plt.show()
+    # traj_data = np.loadtxt(log_path + "/log_traj.txt")
+    # xr_pred = traj_data[:T*3].reshape(T, 3)
+    #
+    # fig, axes = plt.subplots()
+    # axes.plot(xr_pred[:, 0], xr_pred[:, 1], '-or')
+    # axes.plot(xr[:, 0], xr[:, 1], '-bo')
+    # axes.axis("equal")
+    # plt.show()
 
 
 if __name__ == "__main__":

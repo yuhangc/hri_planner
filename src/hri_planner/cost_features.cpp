@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/8/2017
-// Last revision: 3/12/2017
+// Last revision: 3/13/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -124,7 +124,7 @@ void HumanGoalCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &h
     hess_x(0, 0) = -x_diff * x_diff / d3 + 1.0 / d;
     hess_x(0, 1) = -x_diff * y_diff / d3;
     hess_x(1, 0) = hess_x(0, 1);
-    hess_x(1, 1) = -y_diff * y_diff / d3;
+    hess_x(1, 1) = -y_diff * y_diff / d3 + 1.0 / d;
 
     hess = human_traj.Ju.middleRows(xs, 2).transpose() * hess_x * human_traj.Ju.middleRows(xs, 2);
 }
@@ -168,14 +168,14 @@ double CollisionCost::compute(const Trajectory &robot_traj, const Trajectory &hu
 void CollisionCost::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, VecRef grad)
 {
     // construct the pos diff vector
-    Eigen::VectorXd x_diff(2 * robot_traj.horizon());
+    Eigen::VectorXd x_diff(2 * human_traj.horizon());
 
     int nXr = robot_traj.state_size();
     int nXh = human_traj.state_size();
 
     for (int t = 0; t < robot_traj.horizon(); ++t) {
-        x_diff(t*2) = human_traj.x(t*nXr) - robot_traj.x(t*nXh);
-        x_diff(t*2+1) = human_traj.x(t*nXr+1) - robot_traj.x(t*nXh+1);
+        x_diff(t*2) = human_traj.x(t*nXh) - robot_traj.x(t*nXr);
+        x_diff(t*2+1) = human_traj.x(t*nXh+1) - robot_traj.x(t*nXr+1);
     }
 
     // compute gradient
@@ -216,8 +216,8 @@ void CollisionCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &h
     int nXh = human_traj.state_size();
 
     for (int t = 0; t < robot_traj.horizon(); ++t) {
-        x_diff(t*2) = human_traj.x(t*nXr) - robot_traj.x(t*nXh);
-        x_diff(t*2+1) = human_traj.x(t*nXr+1) - robot_traj.x(t*nXh+1);
+        x_diff(t*2) = human_traj.x(t*nXh) - robot_traj.x(t*nXr);
+        x_diff(t*2+1) = human_traj.x(t*nXh+1) - robot_traj.x(t*nXr+1);
     }
 
     // compute gradient
@@ -225,7 +225,7 @@ void CollisionCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &h
     GaussianCost::hessian(x_diff, human_traj.state_size(), human_traj.state_size(),
                           human_traj.horizon(), R_, R_, hess_x);
 
-    hess = robot_traj.Ju.transpose() * hess_x * robot_traj.Ju;
+    hess = human_traj.Ju.transpose() * hess_x * human_traj.Ju;
 }
 
 //----------------------------------------------------------------------------------
@@ -238,8 +238,8 @@ void CollisionCost::hessian_uh_ur(const Trajectory &robot_traj, const Trajectory
     int nXh = human_traj.state_size();
 
     for (int t = 0; t < robot_traj.horizon(); ++t) {
-        x_diff(t*2) = human_traj.x(t*nXr) - robot_traj.x(t*nXh);
-        x_diff(t*2+1) = human_traj.x(t*nXr+1) - robot_traj.x(t*nXh+1);
+        x_diff(t*2) = human_traj.x(t*nXh) - robot_traj.x(t*nXr);
+        x_diff(t*2+1) = human_traj.x(t*nXh+1) - robot_traj.x(t*nXr+1);
     }
 
     // compute gradient
@@ -460,7 +460,7 @@ void DynCollisionCost::hessian_uh_ur(const Trajectory &robot_traj, const Traject
         Jp << 1.0, 0.0, -d_ * std::sin(th),
                 0.0, 1.0, -d_ * std::cos(th);
 
-        J -= rot_t.transpose() * Jp;
+        J -= rot_t * Jp;
         Jxr.push_back(J);
     }
 
@@ -475,7 +475,7 @@ void DynCollisionCost::hessian_uh_ur(const Trajectory &robot_traj, const Traject
         int str = t * nXr;
         int sth = t * nXh;
         grad_x.segment(sth, 2) = Jxh[t].transpose() * grad_x.segment(sth, 2);
-        hess_x.block(sth, str, 2, nXr) = Jxh[t].transpose() * hess_x.block(sth, str, 2, nXr) * Jxr[t];
+        hess_x.block(sth, str, 2, nXr) = Jxh[t].transpose() * hess_x.block(sth, str, 2, 2) * Jxr[t];
         hess_x(sth, str+2) += grad_x(sth+1);
         hess_x(sth+1, str+2) -= grad_x(sth);
     }
