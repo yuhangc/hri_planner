@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/7/2017
-// Last revision: 3/8/2017
+// Last revision: 3/13/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -21,10 +21,14 @@ namespace hri_planner {
 
 class Trajectory {
 public:
+    // constructors
+    Trajectory() = default;
     Trajectory(DynamicsModel dyn_type, int T, double dt);
 
-    void update(const Eigen::VectorXd& x0, const Eigen::VectorXd& u_new);
-    void compute_jacobian(const Eigen::VectorXd& x0);
+    void update(const Eigen::VectorXd& x0_new, const Eigen::VectorXd& u_new);
+    void update(const Eigen::VectorXd& u_new);
+    void compute();
+    void compute_jacobian();
 
     // overloading the = operator
     Trajectory& operator=(const Trajectory& traj);
@@ -53,6 +57,7 @@ public:
         return nUt_;
     }
 
+    Eigen::VectorXd x0;
     Eigen::VectorXd x;
     Eigen::VectorXd u;
     Eigen::MatrixXd Ju;

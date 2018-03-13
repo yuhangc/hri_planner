@@ -21,6 +21,7 @@
 #include "hri_planner/human_belief_model.h"
 #include "hri_planner/cost_feature_bases.h"
 #include "hri_planner/cost_features.h"
+#include "hri_planner/optimizer.h"
 
 #include "hri_planner/BeliefUpdate.h"
 #include "hri_planner/TestComponent.h"
@@ -93,7 +94,7 @@ bool test_cost_features(hri_planner::TestComponent::Request& req,
     RobotGoalCost robot_goal_cost(x_goal);
 
     // create a log file to store the result
-    std::ofstream logger(log_path + "/log_test.txt");
+    std::ofstream logger(log_path + "/log_feature_costs.txt");
     std::ofstream traj_logger(log_path + "/log_traj.txt");
 
     // create the trajectories
@@ -104,8 +105,8 @@ bool test_cost_features(hri_planner::TestComponent::Request& req,
 
     human_traj.update(xh0, uh);
     robot_traj.update(xr0, ur);
-    human_traj.compute_jacobian(xh0);
-    robot_traj.compute_jacobian(xr0);
+    human_traj.compute_jacobian();
+    robot_traj.compute_jacobian();
 
     // compare the trajectories and log
     Eigen::VectorXd x_diff = human_traj.x - xh;
@@ -234,6 +235,101 @@ bool test_cost_features(hri_planner::TestComponent::Request& req,
     return true;
 }
 
+bool test_simple_optimizer(hri_planner::TestComponent::Request& req,
+                           hri_planner::TestComponent::Response& res) {
+    // extract the messages
+    Eigen::Map<Eigen::VectorXd> xr(req.xr.data(), req.xr.size());
+    Eigen::Map<Eigen::VectorXd> ur(req.ur.data(), req.ur.size());
+    Eigen::Map<Eigen::VectorXd> xh(req.xh.data(), req.xh.size());
+    Eigen::Map<Eigen::VectorXd> uh(req.uh.data(), req.uh.size());
+    Eigen::Map<Eigen::VectorXd> xr0(req.xr0.data(), req.xr0.size());
+    Eigen::Map<Eigen::VectorXd> xh0(req.xh0.data(), req.xh0.size());
+
+    std::string log_path = req.log_path;
+
+    // create a log file to store the result
+    std::ofstream logger(log_path + "/log_optimizer_test.txt");
+    logger << "start logging..." << std::endl;
+
+    // create all the cost functions
+    using namespace hri_planner;
+    std::vector<std::shared_ptr<FeatureBase> > features;
+
+    // problem dimensions
+    int T = 10;
+    int nXh = 4;
+    int nUh = 2;
+    int nXr = 3;
+    int nUr = 2;
+    double dt = 0.5;
+
+    // velocity and acceleration feature
+    features.push_back(std::make_shared<HumanVelCost>());
+    features.push_back(std::make_shared<HumanAccCost>());
+
+    // goal feature
+    Eigen::VectorXd x_goal(2);
+    x_goal << 0.73216, 6.00955;
+    features.push_back(std::make_shared<HumanGoalCost>(x_goal));
+
+    // avoiding robot
+    features.push_back(std::make_shared<CollisionCost>(0.5));
+    features.push_back(std::make_shared<DynCollisionCost>(0.5, 0.5, 0.5));
+
+    logger << "cost features created!" << std::endl;
+
+    // create cost function to optimize
+    auto cost_human = std::make_shared<SingleTrajectoryCostHuman>(req.weights, features);
+
+    // set const data for the cost function
+    Trajectory robot_traj(DIFFERENTIAL_MODEL, T, dt);
+    robot_traj.update(xr0, ur);
+
+    cost_human->set_trajectory_data(robot_traj);
+
+    // create the optimizer
+    unsigned int dim = 10 * 2;
+    TrajectoryOptimizer optimizer(dim, nlopt::LD_LBFGS);
+    optimizer.set_cost_function(cost_human);
+
+    logger << "optimizer created!" << std::endl;
+
+    // set bounds for the optimizer
+    Eigen::VectorXd lb(dim);
+    Eigen::VectorXd ub(dim);
+
+    lb.setOnes();
+    lb *= -10.0;
+    ub.setOnes();
+    ub *= 10.0;
+
+    optimizer.set_bounds(lb, ub);
+
+    // set initial condition
+    Trajectory traj_init(CONST_ACC_MODEL, T, dt);
+    traj_init.update(xh0, uh);
+
+    // optimize!
+    ros::Time t_start = ros::Time::now();
+    Trajectory traj_opt(CONST_ACC_MODEL, T, dt);
+    optimizer.optimize(traj_init, traj_opt);
+
+    ros::Duration t_elapse = ros::Time::now() - t_start;
+    logger << "optimization finished successfully, took " << t_elapse.toSec() << " seconds." << std::endl;
+
+    std::ofstream traj_logger(log_path + "/log_traj.txt");
+
+    traj_logger << traj_opt.x << std::endl;
+    traj_logger << traj_opt.u << std::endl;
+
+    logger.close();
+    traj_logger.close();
+
+    res.succeeded = true;
+
+    return true;
+}
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "component_test_service");
@@ -241,6 +337,7 @@ int main(int argc, char **argv)
 
     ros::ServiceServer belief_service = n.advertiseService("update_belief", test_belief_update);
     ros::ServiceServer feature_service = n.advertiseService("test_cost_features", test_cost_features);
+    ros::ServiceServer simple_optimizer_service = n.advertiseService("test_simple_optimizer", test_simple_optimizer);
 
     ROS_INFO("Services are ready!");
     ros::spin();

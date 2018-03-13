@@ -42,11 +42,27 @@ Trajectory::Trajectory(DynamicsModel dyn_type, int T, double dt): T_(T), dt_(dt)
 }
 
 //----------------------------------------------------------------------------------
-void Trajectory::update(const Eigen::VectorXd& x0, const Eigen::VectorXd& u_new)
+void Trajectory::update(const Eigen::VectorXd& x0_new, const Eigen::VectorXd& u_new)
+{
+    // update x0 and u
+    x0 = x0_new;
+    u = u_new;
+
+    compute();
+}
+
+//----------------------------------------------------------------------------------
+void Trajectory::update(const Eigen::VectorXd &u_new)
 {
     // update u
     u = u_new;
 
+    compute();
+}
+
+//----------------------------------------------------------------------------------
+void Trajectory::compute()
+{
     // compute the new trajectory
     Eigen::VectorXd x_last = x0;
     for (int t = 0; t < T_; ++t) {
@@ -56,7 +72,7 @@ void Trajectory::update(const Eigen::VectorXd& x0, const Eigen::VectorXd& u_new)
 }
 
 //----------------------------------------------------------------------------------
-void Trajectory::compute_jacobian(const Eigen::VectorXd& x0)
+void Trajectory::compute_jacobian()
 {
     for (int t2 = 0; t2 < T_; ++t2) {
         for (int t1 = t2; t1 < T_; ++t1) {
@@ -83,6 +99,7 @@ void Trajectory::compute_jacobian(const Eigen::VectorXd& x0)
 Trajectory& Trajectory::operator=(const Trajectory &traj)
 {
     // assign the data
+    x0 = traj.x0;
     x = traj.x;
     u = traj.u;
     Ju = traj.Ju;
@@ -93,6 +110,9 @@ Trajectory& Trajectory::operator=(const Trajectory &traj)
     nXt_ = traj.nXt_;
     nUt_ = traj.nUt_;
     dt_ = traj.dt_;
+
+    dyn_ = traj.dyn_;
+    dyn_type = traj.dyn_type;
 
     return (*this);
 }

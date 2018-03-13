@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/11/2017
+// Last revision: 3/13/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -39,7 +39,7 @@ public:
     void set_bounds(const Eigen::VectorXd& lb, const Eigen::VectorXd& ub);
 
     // optimize!
-    bool optimize(const Eigen::VectorXd& x0, const Trajectory& traj_init, Trajectory& traj_opt);
+    bool optimize(const Trajectory& traj_init, Trajectory& traj_opt);
 
 private:
     // non-linear optimizer
@@ -50,9 +50,6 @@ private:
 
     // an trajectory object to facilitate cost computation
     std::unique_ptr<Trajectory> traj_;
-
-    // initial state
-    Eigen::VectorXd x0_;
 
     // lower and upper bounds
     Eigen::VectorXd lb_;

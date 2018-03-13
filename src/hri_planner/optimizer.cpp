@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/11/2017
+// Last revision: 3/13/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -53,13 +53,11 @@ void TrajectoryOptimizer::set_bounds(const Eigen::VectorXd &lb, const Eigen::Vec
 }
 
 //----------------------------------------------------------------------------------
-bool TrajectoryOptimizer::optimize(const Eigen::VectorXd& x0, const Trajectory &traj_init, Trajectory &traj_opt)
+bool TrajectoryOptimizer::optimize(const Trajectory &traj_init, Trajectory &traj_opt)
 {
-    // update initial state
-    x0_ = x0;
-
     // recreate the trajectory object with trajectory data
     traj_.reset(new Trajectory(traj_init.dyn_type, traj_init.horizon(), traj_init.dt()));
+    traj_->x0 = traj_init.x0;
 
     // set lower and upper bounds
     std::vector<double> lb;
@@ -90,7 +88,9 @@ bool TrajectoryOptimizer::optimize(const Eigen::VectorXd& x0, const Trajectory &
     optimizer_.optimize(u_opt, min_cost);
 
     // send result back
+    traj_opt.x0 = traj_init.x0;
     VectorToEigen(u_opt, traj_opt.u);
+    traj_opt.compute();
 
     return true;
 }
@@ -101,8 +101,8 @@ double TrajectoryOptimizer::cost_func(const std::vector<double> &u, std::vector<
     // re-compute the trjectory
     Eigen::Map<const Eigen::VectorXd> u_new(u.data(), u.size());
 
-    traj_->update(x0_, u_new);
-    traj_->compute_jacobian(x0_);
+    traj_->update(u_new);
+    traj_->compute_jacobian();
 
     // compute the cost and gradient
     Eigen::VectorXd grad_vec(u_new.size());

@@ -56,6 +56,11 @@ protected:
 //! human cost class - extend linear cost to calculate hessians
 class HumanCost: public LinearCost {
 public:
+    // constructors
+    HumanCost(): LinearCost() {};
+    HumanCost(const std::vector<double>& weights, std::vector<std::shared_ptr<FeatureBase> >& features):
+            LinearCost(weights, features) {};
+
     void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
     void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
 };
@@ -63,6 +68,12 @@ public:
 //! cost defined over a single trajectory
 class SingleTrajectoryCost: public LinearCost {
 public:
+    // constructors
+    SingleTrajectoryCost(): LinearCost() {};
+    SingleTrajectoryCost(const std::vector<double>& weights,
+                         std::vector<std::shared_ptr<FeatureBase> >& features):
+            LinearCost(weights, features) {};
+
     // virtual destructor
     virtual ~SingleTrajectoryCost(){};
 
@@ -85,6 +96,12 @@ protected:
 //! cost defined over the robot trajectory
 class SingleTrajectoryCostRobot: public SingleTrajectoryCost {
 public:
+    // constructors
+    SingleTrajectoryCostRobot(): SingleTrajectoryCost() {};
+    SingleTrajectoryCostRobot(const std::vector<double>& weights,
+                              std::vector<std::shared_ptr<FeatureBase> >& features):
+            SingleTrajectoryCost(weights, features) {};
+
     using LinearCost::compute;
     // overloading the compute function
     virtual double compute(const Trajectory& traj);
@@ -94,6 +111,12 @@ public:
 //! cost defined over the human trajectory
 class SingleTrajectoryCostHuman: public SingleTrajectoryCost {
 public:
+    // constructors
+    SingleTrajectoryCostHuman(): SingleTrajectoryCost() {};
+    SingleTrajectoryCostHuman(const std::vector<double>& weights,
+                              std::vector<std::shared_ptr<FeatureBase> >& features):
+            SingleTrajectoryCost(weights, features) {};
+
     using LinearCost::compute;
     // overloading the compute function
     virtual double compute(const Trajectory& traj);

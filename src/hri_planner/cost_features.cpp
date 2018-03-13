@@ -14,6 +14,8 @@
 
 namespace hri_planner {
 
+// TODO: some of the second derivatives are not exact, maybe fix them later?
+
 //----------------------------------------------------------------------------------
 double HumanVelCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)
 {

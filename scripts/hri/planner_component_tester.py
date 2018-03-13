@@ -30,6 +30,17 @@ def cost_feature_test_client(xh, uh, xr, ur, xh0, xr0, weights, log_path):
         print "Service call failed: %s"%e
 
 
+def simple_optimizer_client(xh, uh, xr, ur, xh0, xr0, weights, log_path):
+    rospy.wait_for_service("test_simple_optimizer")
+    try:
+        test_optimizer = rospy.ServiceProxy("test_simple_optimizer", TestComponent)
+        succeeded = test_optimizer(xh, uh, xr, ur, xh0, xr0, weights, log_path)
+
+        return succeeded
+    except rospy.ServiceException, e:
+        print "Service call failed: %s"%e
+
+
 def test_belief_update(user_id, cond, trial, acomm, tcomm):
     # load data
     path = rospy.get_param("~data_path", "/home/yuhang/Documents/irl_data/winter18")
@@ -107,6 +118,39 @@ def test_cost_features(user_id, cond, trial):
     # plt.show()
 
 
+def test_simple_optimizer(user_id, cond, trial):
+    # load data
+    path = rospy.get_param("~data_path", "/home/yuhang/Documents/irl_data/winter18")
+    path += "/user" + str(user_id) + "/processed/" + cond
+
+    traj_data = np.loadtxt(path + "/block" + str(trial) + ".txt", delimiter=',')
+    init_data = np.loadtxt(path + "/init.txt", delimiter=",")
+
+    T = 10
+    xh = traj_data[:T, 0:4]
+    uh = traj_data[:T, 4:6]
+    xr = traj_data[:T, 6:9]
+    ur = traj_data[:T, 9:11]
+    xh0 = init_data[trial, 0:4]
+    xr0 = init_data[trial, 4:7]
+
+    # calculate belief
+    log_path = "/home/yuhang/Documents/hri_log"
+    succeeded = simple_optimizer_client(xh.flatten(), uh.flatten(), xr.flatten(),
+                                        ur.flatten(), xh0.flatten(), xr0.flatten(),
+                                        np.array([8.0, 20.0, 50.0, 7.0, 2.0]), log_path)
+
+    # TODO: some visualization?
+    traj_data = np.loadtxt(log_path + "/log_traj.txt")
+    xh_pred = traj_data[:T*4].reshape(T, 4)
+
+    fig, axes = plt.subplots()
+    axes.plot(xh_pred[:, 0], xh_pred[:, 1], '-ok')
+    axes.plot(xh[:, 0], xh[:, 1], '-bo')
+    axes.axis("equal")
+    plt.show()
+
+
 if __name__ == "__main__":
     # # no communication
     # test_belief_update(0, "hp", 0, 0, -100)
@@ -120,5 +164,8 @@ if __name__ == "__main__":
     # test_belief_update(0, "rp", 0, 0, 0)
     # test_belief_update(0, "rp", 0, 1, 0)
 
-    # test the cost features
-    test_cost_features(0, "hp", 0)
+    # # test the cost features
+    # test_cost_features(0, "hp", 0)
+
+    # test the simple optimizer
+    test_simple_optimizer(0, "hp", 0)
