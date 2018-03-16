@@ -69,16 +69,16 @@ public:
     void set_robot_cost(LinearCost* cost);
     void set_robot_cost(std::shared_ptr<LinearCost> cost);
 
-    void set_human_cost(HumanCost* cost);
-    void set_human_cost(std::shared_ptr<HumanCost> cost);
+    void set_human_cost(HumanCost* cost_hp, HumanCost* cost_rp);
+    void set_human_cost(std::shared_ptr<HumanCost> cost_hp, std::shared_ptr<HumanCost> cost_rp);
 
     void set_bounds(const Eigen::VectorXd& lb_ur, const Eigen::VectorXd& ub_ur,
                     const Eigen::VectorXd& lb_uh, const Eigen::VectorXd& ub_uh);
 
     // optimize!
     bool optimize(const Eigen::VectorXd& xr0, const Eigen::VectorXd& xh0,
-                  const Trajectory& robot_traj_init, const Trajectory& human_traj_init,
-                  Trajectory& robot_traj_opt, Trajectory& human_traj_opt);
+                  const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
+                  const Trajectory& human_traj_rp_init, Trajectory& robot_traj_opt);
 
 private:
     // non-linear optimizer
@@ -86,15 +86,13 @@ private:
 
     // pointer to cost function
     std::shared_ptr<LinearCost> robot_cost_;
-    std::shared_ptr<HumanCost> human_cost_;
+    std::shared_ptr<HumanCost> human_cost_hp_;
+    std::shared_ptr<HumanCost> human_cost_rp_;
 
-    // an trajectory object to facilitate cost computation
+    // trajectory objects to facilitate cost computation
     std::unique_ptr<Trajectory> robot_traj_;
-    std::unique_ptr<Trajectory> human_traj_;
-
-    // initial state
-    Eigen::VectorXd xr0_;
-    Eigen::VectorXd xh0_;
+    std::unique_ptr<Trajectory> human_traj_hp_;
+    std::unique_ptr<Trajectory> human_traj_rp_;
 
     // lower and upper bounds
     Eigen::VectorXd lb_ur_;

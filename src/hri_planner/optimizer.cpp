@@ -124,37 +124,50 @@ double TrajectoryOptimizer::cost_wrapper(const std::vector<double> &u, std::vect
 //----------------------------------------------------------------------------------
 NestedTrajectoryOptimizer::NestedTrajectoryOptimizer(unsigned int dim, const nlopt::algorithm &alg)
 {
-
+    optimizer_ = nlopt::opt(alg, dim);
 }
 
 //----------------------------------------------------------------------------------
-void NestedTrajectoryOptimizer::set_human_cost(HumanCost *cost)
+void NestedTrajectoryOptimizer::set_human_cost(HumanCost* cost_hp, HumanCost* cost_rp)
 {
-
+    human_cost_hp_ = std::shared_ptr<HumanCost>(cost_hp);
+    human_cost_rp_ = std::shared_ptr<HumanCost>(cost_rp);
 }
 
 //----------------------------------------------------------------------------------
-void NestedTrajectoryOptimizer::set_human_cost(std::shared_ptr<HumanCost> cost)
+void NestedTrajectoryOptimizer::set_human_cost(std::shared_ptr<HumanCost> cost_hp,
+                                               std::shared_ptr<HumanCost> cost_rp)
 {
-
+    human_cost_hp_ = cost_hp;
+    human_cost_rp_ = cost_rp;
 }
 
 //----------------------------------------------------------------------------------
 void NestedTrajectoryOptimizer::set_robot_cost(LinearCost *cost)
 {
-
+    robot_cost_ = std::shared_ptr<LinearCost>(cost);
 }
 
 //----------------------------------------------------------------------------------
 void NestedTrajectoryOptimizer::set_robot_cost(std::shared_ptr<LinearCost> cost)
 {
+    robot_cost_ = cost;
+}
 
+//----------------------------------------------------------------------------------
+void NestedTrajectoryOptimizer::set_bounds(const Eigen::VectorXd &lb_ur, const Eigen::VectorXd &ub_ur,
+                                           const Eigen::VectorXd &lb_uh, const Eigen::VectorXd &ub_uh)
+{
+    lb_ur_ = lb_ur;
+    ub_ur_ = ub_ur;
+    lb_uh_ = lb_uh;
+    ub_uh_ = ub_uh;
 }
 
 //----------------------------------------------------------------------------------
 bool NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen::VectorXd &xh0,
                                          const Trajectory &robot_traj_init, const Trajectory &human_traj_init,
-                                         Trajectory &robot_traj_opt, Trajectory &human_traj_opt)
+                                         const Trajectory& human_traj_rp_init, Trajectory& robot_traj_opt)
 {
 
 }
