@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/25/2017
-// Last revision: 2/27/2017
+// Last revision: 3/17/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -16,25 +16,45 @@
 namespace hri_planner {
 
 //----------------------------------------------------------------------------------
-void BeliefModelBase::belief_update(const VectorXd &xr, const VectorXd &ur, const VectorXd &xh0,
-                                    const int acomm, const double tcomm, const double tcurr, Vector2d& belief)
+double BeliefModelBase::update_belief(const Eigen::VectorXd &xr, const Eigen::VectorXd &ur, const Eigen::VectorXd &xh,
+                                      int acomm, double tcomm, double t0)
 {
-    // simple Bayes update
-    belief(HumanPriority) = belief_implicit(HumanPriority, xr, ur, xh0) *
-            belief_explicit(HumanPriority, tcurr, acomm, tcomm);
-    belief(RobotPriority) = belief_implicit(RobotPriority, xr, ur, xh0) *
-                            belief_explicit(RobotPriority, tcurr, acomm, tcomm);
+    // add in new costs
+    cost_hist_hp_.push_back(implicit_cost_simple(HumanPriority, xr, ur, xh));
+    cost_hist_rp_.push_back(implicit_cost_simple(RobotPriority, xr, ur, xh));
 
-//    std::cout << belief.transpose() << std::endl;
+    // pop out old ones
+    if (cost_hist_hp_.size() > T_hist_)
+        cost_hist_hp_.pop_front();
+    if (cost_hist_rp_.size() > T_hist_)
+        cost_hist_rp_.pop_front();
 
-    // normalize belief
-    belief /= (belief(HumanPriority) + belief(RobotPriority));
+    // compute cost sum
+    double cost_hp = std::accumulate(cost_hist_hp_.begin(), cost_hist_hp_.end(), 0.0);
+    double cost_rp = std::accumulate(cost_hist_rp_.begin(), cost_hist_rp_.end(), 0.0);
+
+    // update belief
+    double normalizer = 1.0;
+
+    double p_hp = std::exp(-cost_hp * fcorrection_[HumanPriority]) *
+            belief_explicit(HumanPriority, t0, acomm, tcomm);
+    double p_rp = std::exp(-cost_rp * fcorrection_[RobotPriority]) *
+            belief_explicit(RobotPriority, t0, acomm, tcomm);
+
+    return p_hp / (p_hp + p_rp);
 }
 
 //----------------------------------------------------------------------------------
-BeliefModelExponential::BeliefModelExponential(std::shared_ptr<SharedConfig> config, double ratio,
-                                               double decay_rate, const std::vector<double>& fcorrection):
-        BeliefModelBase(std::move(config)), ratio_(ratio), decay_rate_(decay_rate), fcorrection_(fcorrection)
+void BeliefModelBase::update_belief(const Trajectory &robot_traj, const Trajectory &human_traj, int acomm,
+                                    double tcomm, double t0, Eigen::VectorXd &belief, Eigen::MatrixXd &jacobian)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+BeliefModelExponential::BeliefModelExponential(int T_hist, const std::vector<double>& fcorrection,
+                                               double ratio, double decay_rate):
+        BeliefModelBase(T_hist, fcorrection), ratio_(ratio), decay_rate_(decay_rate)
 {
     // TODO: pre-compute the normalization factors?
 }
@@ -50,53 +70,47 @@ double BeliefModelExponential::belief_explicit(const int intent, const double tc
 }
 
 //----------------------------------------------------------------------------------
-double BeliefModelExponential::belief_implicit(const int intent, const VectorXd &xr,
-                                               const VectorXd &ur, const VectorXd &xh0)
+double BeliefModelExponential::implicit_cost_simple(const int intent, const Eigen::VectorXd &xr,
+                                                  const Eigen::VectorXd &ur, const Eigen::VectorXd &xh)
 {
-    // TODO: calculate normalization factor
-    // TODO: this may depend on the hessian
-    double normalizer = 1.0;
+    double cost = 0.0;
 
-    return std::exp(-implicit_cost(intent, xr, ur, xh0) * fcorrection_[intent]) * normalizer;
+    Eigen::Vector2d x_rel(xh(0) - xr(0), xh(1) - xr(1));
+    Eigen::Vector2d u_rel(ur(0) * std::cos(xr(2)), ur(0) * std::sin(xr(2)));
+
+    double prod = u_rel.dot(x_rel);
+
+    if (prod <= 0)
+        return cost;
+
+    if (intent == HumanPriority) {
+        cost += prod / std::max(1.0, x_rel.squaredNorm());
+    }
+    else {
+        if (ur_last_.size() > 0) {
+            double v_inc = ur(0) - ur_last_(0);
+            cost += v_inc * v_inc;
+        }
+
+        ur_last_ = ur;
+    }
+
+    return cost;
 }
 
 //----------------------------------------------------------------------------------
-double BeliefModelExponential::implicit_cost(const int intent, const VectorXd &xr,
-                                             const VectorXd &ur, const VectorXd &xh0)
+void BeliefModelExponential::implicit_cost_hp(const Trajectory &robot_traj, const Trajectory &human_traj,
+                                              Eigen::VectorXd &costs, Eigen::MatrixXd &im_jacobian)
 {
-    double cost = 0;
+    costs.setZero(robot_traj.traj_control_size());
+    im_jacobian.setZero(robot_traj.horizon(), robot_traj.traj_control_size());
+}
 
-    if (intent == HumanPriority) {
-        // human priority - penalize large velocity towards human
-        for (int i = 0; i < config_->T; ++i) {
-            double vr = ur(i * config_->nUr);
-            double th = xr(i * config_->nXr + 2);
-            Vector2d ui(vr * std::cos(th), vr * std::sin(th));
-            Vector2d xrel = const_cast<VectorXd&>(xh0).head(2) -
-                    const_cast<VectorXd&>(xr).segment(i * config_->nXr, 2);
+//----------------------------------------------------------------------------------
+void BeliefModelExponential::implicit_cost_rp(const Trajectory &robot_traj, const Trajectory &human_traj,
+                                              Eigen::VectorXd &costs, Eigen::MatrixXd &im_jacobian)
+{
 
-//            std::cout << "robot linear v: " << vr << ",  robot orientation: " << th << std::endl;
-//            std::cout << "robot vel: " << ui.transpose() << std::endl;
-//            std::cout << "relative position: " << xrel.transpose() << std::endl;
-
-            double prod = ui.dot(xrel);
-            if (prod > 0)
-                cost += prod / std::max(1.0, xrel.squaredNorm());
-        }
-    }
-    else {
-        // robot priority - penalize velocity changes
-//        VectorXd udiff = const_cast<VectorXd&>(ur).head(ur.size() - config_->nUr) -
-//                const_cast<VectorXd&>(ur).tail(ur.size() - config_->nUr);
-//        cost = udiff.dot(udiff);
-        for (int i = 1; i < config_->T; ++i) {
-            double v_inc = ur(i * config_->nUr) - ur((i-1) * config_->nUr);
-            cost += v_inc * v_inc;
-        }
-    }
-
-    std::cout << "intent: " << intent << ",  cost: " << cost << std::endl;
-    return cost;
 }
 
 }
