@@ -57,10 +57,9 @@ protected:
     // calculate effect of implicit communication
     virtual double implicit_cost_simple(const int intent, const Eigen::VectorXd& xr,
                                         const Eigen::VectorXd& ur, const Eigen::VectorXd& xh) = 0;
-    virtual void implicit_cost_hp(const Trajectory& robot_traj, const Trajectory& human_traj,
-                                  Eigen::VectorXd& costs, Eigen::MatrixXd& im_jacobian) = 0;
-    virtual void implicit_cost_rp(const Trajectory& robot_traj, const Trajectory& human_traj,
-                                  Eigen::VectorXd& costs, Eigen::MatrixXd& im_jacobian) = 0;
+    virtual void implicit_cost(const Trajectory& robot_traj, const Trajectory& human_traj,
+                               Eigen::VectorXd& costs_hp, Eigen::MatrixXd& jacobian_hp,
+                               Eigen::VectorXd& cost_rp, Eigen::MatrixXd& jacobian_rp) = 0;
 
     virtual double belief_explicit(const int intent, const double tcurr,
                                    const int acomm, const double tcomm) = 0;
@@ -74,10 +73,9 @@ public:
 protected:
     double implicit_cost_simple(const int intent, const Eigen::VectorXd& xr,
                                 const Eigen::VectorXd& ur, const Eigen::VectorXd& xh) override;
-    void implicit_cost_hp(const Trajectory& robot_traj, const Trajectory& human_traj,
-                          Eigen::VectorXd& costs, Eigen::MatrixXd& im_jacobian) override;
-    void implicit_cost_rp(const Trajectory& robot_traj, const Trajectory& human_traj,
-                          Eigen::VectorXd& costs, Eigen::MatrixXd& im_jacobian) override;
+    void implicit_cost(const Trajectory& robot_traj, const Trajectory& human_traj,
+                       Eigen::VectorXd& costs_hp, Eigen::MatrixXd& jacobian_hp,
+                       Eigen::VectorXd& costs_rp, Eigen::MatrixXd& jacobian_rp) override;
 
     double belief_explicit(const int intent, const double tcurr,
                            const int acomm, const double tcomm) override;

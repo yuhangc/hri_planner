@@ -34,6 +34,7 @@ bool test_belief_update(hri_planner::BeliefUpdate::Request& req,
     Eigen::Map<Eigen::VectorXd> ur(req.ur.data(), req.ur.size());
     Eigen::Map<Eigen::VectorXd> xh0(req.xh0.data(), req.xh0.size());
 
+    /*
     // construct the shared configuration
     auto config = std::make_shared<hri_planner::SharedConfig>();
 
@@ -59,7 +60,7 @@ bool test_belief_update(hri_planner::BeliefUpdate::Request& req,
                                    xh0.segment(t*config->nXh, config->nXh),
                                    req.acomm, req.tcomm, (t+config->T) * config->dt, belief);
         res.belief.push_back(belief(hri_planner::HumanPriority));
-    }
+    }*/
 
     return true;
 }
