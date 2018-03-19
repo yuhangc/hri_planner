@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/18/2017
+// Last revision: 3/19/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -53,7 +53,7 @@ class ProbabilisticCost: public ProbabilisticCostBase {
 public:
     double compute(const Trajectory& robot_traj, const Trajectory& human_traj_hp,
                    const Trajectory& human_traj_rp, int acomm, double tcomm,
-                   Eigen::VectorXd& grad_ur, Eigen::VectorXd& grad, Eigen::VectorXd& grad_rp) override;
+                   Eigen::VectorXd& grad_ur, Eigen::VectorXd& grad_hp, Eigen::VectorXd& grad_rp) override;
 };
 
 }

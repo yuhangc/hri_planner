@@ -40,8 +40,8 @@ public:
 
     double compute(const Trajectory& robot_traj, const Trajectory& human_traj);
 
-    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
-    void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad);
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
+    void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) override;
 
     // incrementally add in features
     void add_feature(double weight, FeatureBase* feature);

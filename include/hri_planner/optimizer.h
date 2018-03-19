@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/13/2017
+// Last revision: 3/19/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -20,11 +20,14 @@
 
 #include "hri_planner/trajectory.h"
 #include "hri_planner/costs.h"
+#include "hri_planner/cost_probabilistic.h"
 
 namespace hri_planner {
 
 // helper functions
 void EigenToVector(const Eigen::VectorXd& eigen_vec, std::vector<double>& std_vec);
+void EigenToVector3(const Eigen::VectorXd& vec1, const Eigen::VectorXd& vec2,
+                    const Eigen::VectorXd& vec3, std::vector<double>& std_vec);
 void VectorToEigen(const std::vector<double>& std_vec, Eigen::VectorXd& eigen_vec);
 
 class TrajectoryOptimizer {
@@ -66,8 +69,8 @@ public:
     NestedTrajectoryOptimizer(unsigned int dim, const nlopt::algorithm& alg=nlopt::LD_MMA);
 
     // set cost functions
-    void set_robot_cost(LinearCost* cost);
-    void set_robot_cost(std::shared_ptr<LinearCost> cost);
+    void set_robot_cost(ProbabilisticCostBase* cost);
+    void set_robot_cost(std::shared_ptr<ProbabilisticCostBase> cost);
 
     void set_human_cost(HumanCost* cost_hp, HumanCost* cost_rp);
     void set_human_cost(std::shared_ptr<HumanCost> cost_hp, std::shared_ptr<HumanCost> cost_rp);
@@ -78,14 +81,15 @@ public:
     // optimize!
     bool optimize(const Eigen::VectorXd& xr0, const Eigen::VectorXd& xh0,
                   const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
-                  const Trajectory& human_traj_rp_init, Trajectory& robot_traj_opt);
+                  const Trajectory& human_traj_rp_init, int acomm, double tcomm,
+                  Trajectory& robot_traj_opt);
 
 private:
     // non-linear optimizer
     nlopt::opt optimizer_;
 
     // pointer to cost function
-    std::shared_ptr<LinearCost> robot_cost_;
+    std::shared_ptr<ProbabilisticCostBase> robot_cost_;
     std::shared_ptr<HumanCost> human_cost_hp_;
     std::shared_ptr<HumanCost> human_cost_rp_;
 
@@ -100,13 +104,17 @@ private:
     Eigen::VectorXd lb_uh_;
     Eigen::VectorXd ub_uh_;
 
+    // explicit communication action and time
+    int acomm_;
+    double tcomm_;
+
     // wrapper cost function
     double cost_func(const std::vector<double>& u, std::vector<double>& grad);
-    double cost_wrapper(const std::vector<double>& u, std::vector<double>& grad, void *cost_func_data);
+    static double cost_wrapper(const std::vector<double>& u, std::vector<double>& grad, void *cost_func_data);
 
     // wrapper constraint function
     double constraint(const std::vector<double>& u, std::vector<double>& grad);
-    double constraint_wrapper(const std::vector<double>& u, std::vector<double>& grad, void *constraint_data);
+    static double constraint_wrapper(const std::vector<double>& u, std::vector<double>& grad, void *constraint_data);
 };
 
 } // namespace
