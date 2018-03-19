@@ -52,6 +52,18 @@ void BeliefModelBase::update_belief(const Trajectory &robot_traj, const Trajecto
 }
 
 //----------------------------------------------------------------------------------
+void BeliefModelBase::update_cost_hist(double ct, std::deque<double> &ct_hist, double &cost)
+{
+    cost += ct;
+
+    ct_hist.push_back(ct);
+    if (ct_hist.size() > T_hist_) {
+        cost -= ct_hist.front();
+        ct_hist.pop_front();
+    }
+}
+
+//----------------------------------------------------------------------------------
 BeliefModelExponential::BeliefModelExponential(int T_hist, const std::vector<double>& fcorrection,
                                                double ratio, double decay_rate):
         BeliefModelBase(T_hist, fcorrection), ratio_(ratio), decay_rate_(decay_rate)
@@ -114,8 +126,12 @@ void BeliefModelExponential::implicit_cost(const Trajectory& robot_traj, const T
 
     Eigen::VectorXd grad_u_rp(robot_traj.traj_control_size());
 
-    std::deque<double> cost_hist(cost_hist_hp_.begin(), cost_hist_hp_.end());
-    double cost_hp = std::accumulate(cost_hist.begin(), cost_hist.end(), 0.0);
+    Eigen::VectorXd u_last = ur_last_;
+
+    std::deque<double> cost_hist_hp(cost_hist_hp_.begin(), cost_hist_hp_.end());
+    std::deque<double> cost_hist_rp(cost_hist_rp_.begin(), cost_hist_rp_.end());
+    double cost_hp = std::accumulate(cost_hist_hp.begin(), cost_hist_hp.end(), 0.0);
+    double cost_rp = std::accumulate(cost_hist_rp.begin(), cost_hist_rp.end(), 0.0);
 
     int nXr = robot_traj.state_size();
     int nXh = human_traj.state_size();
@@ -125,65 +141,87 @@ void BeliefModelExponential::implicit_cost(const Trajectory& robot_traj, const T
         int str = t * nXr;
         int sth = t * nXh;
         int stu = t * nUr;
+        double vr = robot_traj.u(stu);
 
         Eigen::Vector2d x_rel(human_traj.x(sth) - robot_traj.x(str),
                               human_traj.x(sth+1) - robot_traj.x(str+1));
 
         double th = robot_traj.x(str+2);
-        Eigen::Vector2d u_rel(robot_traj.u(stu) * std::cos(th), robot_traj.u(stu) * std::sin(th));
+        Eigen::Vector2d u_rel(vr * std::cos(th), vr * std::sin(th));
 
         double prod = u_rel.dot(x_rel);
 
+        double ct_hp, ct_rp;
+        Eigen::Vector2d gradu_hp;
+        Eigen::VectorXd gradu_rp(robot_traj.traj_control_size());
+        Eigen::Vector2d gradx_hp;
+
         // only non-zero when prod is greater than 0
         if (prod > 0) {
+            //! compute cost for robot priority
+            double v_inc = 0.0;
+            v_inc = vr - u_last(0);
+
+            ct_rp = v_inc * v_inc;
+
+            if (t > 0) {
+                gradu_rp(stu-2) = -2.0 * v_inc;
+            }
+            gradu_hp(stu) = 2.0 * v_inc;
+
+            u_last(0) = robot_traj.u(stu);
+
+            //! compute cost for human priority
             double d = x_rel.squaredNorm();
 
             if (d > 1.0) {
                 // compute the cost value
-                double cost = prod / d;
-                cost_hp += cost;
+                ct_hp = prod / d;
 
-                cost_hist.push_back(cost);
-                if (cost_hist.size() > T_hist_) {
-                    cost_hp -= cost_hist.front();
-                    cost_hist.pop_front();
-                }
+                // gradient w.r.t. u
+                gradu_hp << ct_hp / vr, 0.0;
 
-                costs(t) = cost_hp;
+                // gradient w.r.t. x
+                double dd = (x_rel(0) * x_rel(0) - x_rel(1) * x_rel(1)) / (d * d);
+                gradx_hp << dd * u_rel(0), -dd * u_rel(1);
+            } else {
+                ct_hp = prod;
 
-                // compute gradient
-                grad_u(stu) = cost / robot_traj.u(stu);
+                // gradient w.r.t. u
+                gradu_hp << ct_hp / vr, 0.0;
 
-                double dd = (x_rel(0) * x_rel(0) - x_rel(1) * x_rel(1)) / (d*d);
-                grad_x(str) = dd * u_rel(0);
-                grad_x(str+1) = -dd * u_rel(1);
-
-                im_jacobian.block(t, 0, 1, stu+nUr) = grad_u.segment(0, stu+nUr).transpose() +
-                        grad_x.segment(0, str+nXr) * robot_traj.Ju.topLeftCorner(str+nXr, stu+nUr);
-            }
-            else {
-                // compute the cost value
-                double cost = prod / 1.0;
-                cost_hp += cost;
-
-                cost_hist.push_back(cost);
-                if (cost_hist.size() > T_hist_) {
-                    cost_hp -= cost_hist.front();
-                    cost_hist.pop_front();
-                }
-
-                costs(t) = cost_hp;
-
-                // compute gradient
-                grad_u(stu) = cost / robot_traj.u(stu);
-
-                grad_x(str) = -u_rel(0);
-                grad_x(str+1) = -u_rel(1);
-
-                im_jacobian.block(t, 0, 1, stu+nUr) = grad_u.segment(0, stu+nUr).transpose() +
-                        grad_x.segment(0, str+nXr) * robot_traj.Ju.topLeftCorner(str+nXr, stu+nUr);
+                // gradient w.r.t. x
+                gradx_hp << -u_rel(0), -u_rel(1);
             }
         }
+        else {
+            ct_hp = 0.0;
+            ct_rp = 0.0;
+            gradu_hp.setZero();
+            gradu_rp.setZero();
+            gradx_hp.setZero();
+        }
+
+        // update total cost and cost history
+        update_cost_hist(ct_hp, cost_hist_hp, cost_hp);
+        update_cost_hist(ct_rp, cost_hist_rp, cost_rp);
+
+        // assign to output cost
+        costs_hp(t) = cost_hp;
+        costs_rp(t) = cost_rp;
+
+        // update gradients
+        if (t > 0) {
+            jacobian_hp.row(t) = jacobian_hp.row(t-1);
+            jacobian_rp.row(t) = jacobian_rp.row(t-1);
+        }
+
+        // human priority
+        jacobian_hp.block(t, stu, 1, 2) = gradu_hp;
+        jacobian_hp.row(t) = jacobian_hp.row(t) + gradx_hp.transpose() * robot_traj.Ju.block(str, 0, 2, robot_traj.Ju.cols());
+
+        // robot priority
+        jacobian_rp.row(t) = jacobian_rp.row(t) + gradu_rp.transpose();
     }
 }
 

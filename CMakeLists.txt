@@ -125,7 +125,9 @@ add_library(hri_planner
         include/hri_planner/trajectory.h
         include/hri_planner/cost_feature_bases.h
         include/hri_planner/cost_features.h
+        include/hri_planner/cost_features_vectorized.h
         include/hri_planner/costs.h
+        include/hri_planner/cost_probabilistic.h
         include/hri_planner/optimizer.h
         src/hri_planner/shared_config.cpp
         src/hri_planner/human_belief_model.cpp
@@ -133,7 +135,9 @@ add_library(hri_planner
         src/hri_planner/trajectory.cpp
         src/hri_planner/cost_feature_bases.cpp
         src/hri_planner/cost_features.cpp
+        src/hri_planner/cost_features_vectorized.cpp
         src/hri_planner/costs.cpp
+        src/hri_planner/cost_probabilistic.cpp
         src/hri_planner/optimizer.cpp)
 target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} ${NLOPT_LIBRARIES})
 

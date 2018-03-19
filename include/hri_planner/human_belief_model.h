@@ -64,6 +64,9 @@ protected:
     virtual double belief_explicit(const int intent, const double tcurr,
                                    const int acomm, const double tcomm) = 0;
 
+    // helper functions
+    void update_cost_hist(double ct, std::deque<double>& ct_hist, double& cost);
+
 };
 
 class BeliefModelExponential: public BeliefModelBase {
