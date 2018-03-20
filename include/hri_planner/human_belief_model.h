@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/25/2017
-// Last revision: 3/17/2017
+// Last revision: 3/19/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -30,7 +30,7 @@ class BeliefModelBase {
 public:
     // requires the history length
     explicit BeliefModelBase(int T_hist, const std::vector<double>& fcorrection):
-            T_hist_(T_hist), fcorrection_(fcorrection) {ur_last_.setZero(0);};
+            T_hist_(T_hist), fcorrection_(fcorrection) {};
 
     // virtual destructor
     virtual ~BeliefModelBase() = default;
@@ -40,6 +40,9 @@ public:
                          int acomm, double tcomm, double t0);
     void update_belief(const Trajectory& robot_traj, const Trajectory& human_traj,
                        int acomm, double tcomm, double t0, Eigen::VectorXd& belief, Eigen::MatrixXd& jacobian);
+
+    // reset
+    void reset(const Eigen::VectorXd& ur0);
 
 protected:
     // dimensions
@@ -59,7 +62,7 @@ protected:
                                         const Eigen::VectorXd& ur, const Eigen::VectorXd& xh) = 0;
     virtual void implicit_cost(const Trajectory& robot_traj, const Trajectory& human_traj,
                                Eigen::VectorXd& costs_hp, Eigen::MatrixXd& jacobian_hp,
-                               Eigen::VectorXd& cost_rp, Eigen::MatrixXd& jacobian_rp) = 0;
+                               Eigen::VectorXd& costs_rp, Eigen::MatrixXd& jacobian_rp) = 0;
 
     virtual double belief_explicit(const int intent, const double tcurr,
                                    const int acomm, const double tcomm) = 0;

@@ -7,6 +7,9 @@ float64[] xr0
 
 float64[] weights
 
+int32 acomm
+float64 tcomm
+
 string log_path
 
 ---

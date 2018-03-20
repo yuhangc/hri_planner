@@ -3,12 +3,13 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/25/2017
-// Last revision: 3/17/2017
+// Last revision: 3/19/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
 //----------------------------------------------------------------------------------
 
+#include <iostream>
 #include <cmath>
 
 #include "hri_planner/human_belief_model.h"
@@ -34,8 +35,6 @@ double BeliefModelBase::update_belief(const Eigen::VectorXd &xr, const Eigen::Ve
     double cost_rp = std::accumulate(cost_hist_rp_.begin(), cost_hist_rp_.end(), 0.0);
 
     // update belief
-    double normalizer = 1.0;
-
     double p_hp = std::exp(-cost_hp * fcorrection_[HumanPriority]) *
             belief_explicit(HumanPriority, t0, acomm, tcomm);
     double p_rp = std::exp(-cost_rp * fcorrection_[RobotPriority]) *
@@ -48,7 +47,44 @@ double BeliefModelBase::update_belief(const Eigen::VectorXd &xr, const Eigen::Ve
 void BeliefModelBase::update_belief(const Trajectory &robot_traj, const Trajectory &human_traj, int acomm,
                                     double tcomm, double t0, Eigen::VectorXd &belief, Eigen::MatrixXd &jacobian)
 {
+    // compute the implicit costs
+    Eigen::VectorXd costs_hp;
+    Eigen::VectorXd costs_rp;
+    Eigen::MatrixXd jacobian_hp;
+    Eigen::MatrixXd jacobian_rp;
 
+    implicit_cost(robot_traj, human_traj, costs_hp, jacobian_hp, costs_rp, jacobian_rp);
+
+    // compute the probabilities and jacobians
+    double dt = robot_traj.dt();
+    double tcurr = t0;
+    for (int t = 0; t < robot_traj.horizon(); ++t) {
+        // explicit part
+        tcurr += dt;
+        double p_ex_hp = belief_explicit(HumanPriority, tcurr, acomm, tcomm);
+        double p_ex_rp = belief_explicit(RobotPriority, tcurr, acomm, tcomm);
+
+        // implicit part
+        double p_im_hp = std::exp(-fcorrection_[HumanPriority] * costs_hp(t));
+        double p_im_rp = std::exp(-fcorrection_[RobotPriority] * costs_rp(t));
+
+        // probability
+        double den_inv = 1.0 / (p_ex_hp * p_im_hp + p_ex_rp * p_im_rp);
+        belief(t) = p_ex_hp * p_im_hp * den_inv;
+
+        // gradient/jacobian
+        jacobian.row(t) = den_inv * den_inv * p_ex_hp * p_im_hp * p_ex_rp * p_im_rp *
+                (fcorrection_[RobotPriority] * jacobian_rp.row(t) - fcorrection_[HumanPriority] * jacobian_hp.row(t));
+    }
+}
+
+//----------------------------------------------------------------------------------
+void BeliefModelBase::reset(const Eigen::VectorXd &ur0)
+{
+    ur_last_ = ur0;
+
+    cost_hist_hp_.clear();
+    cost_hist_rp_.clear();
 }
 
 //----------------------------------------------------------------------------------
@@ -99,10 +135,8 @@ double BeliefModelExponential::implicit_cost_simple(const int intent, const Eige
         cost += prod / std::max(1.0, x_rel.squaredNorm());
     }
     else {
-        if (ur_last_.size() > 0) {
-            double v_inc = ur(0) - ur_last_(0);
-            cost += v_inc * v_inc;
-        }
+        double v_inc = ur(0) - ur_last_(0);
+        cost += v_inc * v_inc;
 
         ur_last_ = ur;
     }
@@ -167,7 +201,7 @@ void BeliefModelExponential::implicit_cost(const Trajectory& robot_traj, const T
             if (t > 0) {
                 gradu_rp(stu-2) = -2.0 * v_inc;
             }
-            gradu_hp(stu) = 2.0 * v_inc;
+            gradu_rp(stu) = 2.0 * v_inc;
 
             u_last(0) = robot_traj.u(stu);
 
@@ -217,7 +251,7 @@ void BeliefModelExponential::implicit_cost(const Trajectory& robot_traj, const T
         }
 
         // human priority
-        jacobian_hp.block(t, stu, 1, 2) = gradu_hp;
+        jacobian_hp.block(t, stu, 1, 2) = gradu_hp.transpose();
         jacobian_hp.row(t) = jacobian_hp.row(t) + gradx_hp.transpose() * robot_traj.Ju.block(str, 0, 2, robot_traj.Ju.cols());
 
         // robot priority

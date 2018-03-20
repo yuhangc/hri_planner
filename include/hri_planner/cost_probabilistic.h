@@ -29,7 +29,7 @@ public:
     // 3-in-1 computes everything
     virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj_hp,
                            const Trajectory& human_traj_rp, int acomm, double tcomm,
-                           Eigen::VectorXd& grad_ur, Eigen::VectorXd& grad, Eigen::VectorXd& grad_rp) = 0;
+                           Eigen::VectorXd& grad_ur, Eigen::VectorXd& grad_hp, Eigen::VectorXd& grad_rp) = 0;
 
     void set_features_non_int(const std::vector<double>& w, const std::vector<std::shared_ptr<FeatureBase> >& f);
     void set_features_int(const std::vector<double>& w, const std::vector<std::shared_ptr<FeatureVectorizedBase> >& f);

@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/18/2017
+// Last revision: 3/19/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -52,7 +52,7 @@ private:
 };
 
 //! human effort feature
-class HumanAccVec: public FeatureVectorizedBase {
+class HumanAccCostVec: public FeatureVectorizedBase {
     void compute(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::VectorXd& costs) override;
     void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Juh) override;
     void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Jur) override;

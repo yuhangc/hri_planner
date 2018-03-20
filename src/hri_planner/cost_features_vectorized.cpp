@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/18/2017
+// Last revision: 3/19/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -117,7 +117,7 @@ void CollisionCostVec::grad_ur(const Trajectory &robot_traj, const Trajectory &h
 }
 
 //----------------------------------------------------------------------------------
-void HumanAccVec::compute(const Trajectory &robot_traj, const Trajectory &human_traj, Eigen::VectorXd &costs)
+void HumanAccCostVec::compute(const Trajectory &robot_traj, const Trajectory &human_traj, Eigen::VectorXd &costs)
 {
     costs.setZero(human_traj.horizon());
 
@@ -128,7 +128,7 @@ void HumanAccVec::compute(const Trajectory &robot_traj, const Trajectory &human_
 }
 
 //----------------------------------------------------------------------------------
-void HumanAccVec::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, Eigen::MatrixXd &Juh)
+void HumanAccCostVec::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, Eigen::MatrixXd &Juh)
 {
     // simply "diagonal"
     Juh.setZero(human_traj.horizon(), human_traj.traj_control_size());
@@ -142,7 +142,7 @@ void HumanAccVec::grad_uh(const Trajectory &robot_traj, const Trajectory &human_
 }
 
 //----------------------------------------------------------------------------------
-void HumanAccVec::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, Eigen::MatrixXd &Jur)
+void HumanAccCostVec::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, Eigen::MatrixXd &Jur)
 {
     // doesn't depend on ur
     Jur.setZero(robot_traj.horizon(), robot_traj.traj_control_size());
