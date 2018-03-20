@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/19/2017
+// Last revision: 3/20/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -24,6 +24,10 @@ namespace hri_planner {
 
 class ProbabilisticCostBase {
 public:
+    // requires a belief model to construct
+    explicit ProbabilisticCostBase(const std::shared_ptr<BeliefModelBase> belief_model):
+            belief_model_(belief_model) {};
+
     virtual ~ProbabilisticCostBase() = default;
 
     // 3-in-1 computes everything
@@ -33,6 +37,10 @@ public:
 
     void set_features_non_int(const std::vector<double>& w, const std::vector<std::shared_ptr<FeatureBase> >& f);
     void set_features_int(const std::vector<double>& w, const std::vector<std::shared_ptr<FeatureVectorizedBase> >& f);
+
+    void update_human_pred(const Trajectory& new_traj) {
+        human_traj_pred_ = new_traj;
+    }
 
 protected:
     // a belief model
@@ -45,12 +53,18 @@ protected:
     // weights for interactive features
     std::vector<double> w_int_;
     std::vector<std::shared_ptr<FeatureVectorizedBase> > f_int_;
+
+    Trajectory human_traj_pred_;
 };
 
 
 //! naive implementation
 class ProbabilisticCost: public ProbabilisticCostBase {
 public:
+    // constructor
+    explicit ProbabilisticCost(const std::shared_ptr<BeliefModelBase>& belief_model):
+            ProbabilisticCostBase(belief_model) {};
+
     double compute(const Trajectory& robot_traj, const Trajectory& human_traj_hp,
                    const Trajectory& human_traj_rp, int acomm, double tcomm,
                    Eigen::VectorXd& grad_ur, Eigen::VectorXd& grad_hp, Eigen::VectorXd& grad_rp) override;

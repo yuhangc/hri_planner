@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/27/2017
-// Last revision: 3/19/2017
+// Last revision: 3/20/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -424,8 +424,26 @@ bool test_probabilistic_cost(hri_planner::TestComponent::Request& req,
 
     logger << "cost features created..." << std::endl;
 
+    // create a belief model
+    int T_hist;
+    double ratio;
+    double decay_rate;
+    std::vector<double> fcorrection(2, 0);
+
+    ros::param::param<int>("~explicit_comm/history_length", T_hist, 10);
+    ros::param::param<double>("~explicit_comm/ratio", ratio, 100.0);
+    ros::param::param<double>("~explicit_comm/decay_rate", decay_rate, 2.5);
+    ros::param::param<double>("~explicit_comm/fcorrection_hp", fcorrection[hri_planner::HumanPriority], 3.0);
+    ros::param::param<double>("~explicit_comm/fcorrection_rp", fcorrection[hri_planner::RobotPriority], 30.0);
+
+    std::shared_ptr<BeliefModelBase> belief_model;
+    belief_model = std::make_shared<BeliefModelExponential>(T_hist, fcorrection, ratio, decay_rate);
+    belief_model->reset(Eigen::Vector2d::Zero());
+
+    logger << "belief model created..." << std::endl;
+
     // create the probabilistic cost component
-    ProbabilisticCost cost;
+    ProbabilisticCost cost(belief_model);
 
     int n_f_non_int = 2;
     int n_f_int = 2;
@@ -448,11 +466,15 @@ bool test_probabilistic_cost(hri_planner::TestComponent::Request& req,
     Trajectory human_traj_rp(CONST_ACC_MODEL, T, dt);
     human_traj_rp.update(xh0, uh);
 
+    Trajectory human_traj_pred(CONST_ACC_MODEL, T, dt);
+    human_traj_pred.update(xh0, Eigen::VectorXd::Zero(ur.size()));
+
     // compute
     Eigen::VectorXd grad_ur;
     Eigen::VectorXd grad_uh_hp;
     Eigen::VectorXd grad_uh_rp;
-    
+
+    cost.update_human_pred(human_traj_pred);
     double val = cost.compute(robot_traj, human_traj_hp, human_traj_rp,
                               req.acomm, req.tcomm, grad_ur, grad_uh_hp, grad_uh_rp);
 

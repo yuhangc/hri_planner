@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/19/2017
+// Last revision: 3/20/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -42,10 +42,8 @@ double ProbabilisticCost::compute(const Trajectory& robot_traj, const Trajectory
         cost += w_non_int_[i] * f_non_int_[i]->compute(robot_traj, human_traj_hp);
 
     //! compute the interactive costs weighted by beliefs
-    Eigen::VectorXd prob_hp;
     Eigen::VectorXd costs_hp;
     Eigen::VectorXd costs_rp;
-    Eigen::MatrixXd Jur;
 
     // compute the vectorized costs first
     int T = robot_traj.horizon();
@@ -62,10 +60,12 @@ double ProbabilisticCost::compute(const Trajectory& robot_traj, const Trajectory
     }
 
     // create a human trajectory with const vel prediction
-    Trajectory human_traj_const(CONST_ACC_MODEL, human_traj_hp.horizon(), human_traj_hp.dt());
+    // Trajectory human_traj_const(CONST_ACC_MODEL, human_traj_hp.horizon(), human_traj_hp.dt());
 
     // FIXME: assuming that "current time" is always 0, and tcomm is adjusted already
-    belief_model_->update_belief(robot_traj, human_traj_const, acomm, tcomm, 0.0, prob_hp, Jur);
+    Eigen::VectorXd prob_hp(T);
+    Eigen::MatrixXd Jur(T, robot_traj.traj_control_size());
+    belief_model_->update_belief(robot_traj, human_traj_pred_, acomm, tcomm, 0.0, prob_hp, Jur);
 
     Eigen::VectorXd prob_rp;
     prob_rp.setOnes(T);

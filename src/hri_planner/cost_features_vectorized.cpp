@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/19/2017
+// Last revision: 3/20/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -74,8 +74,8 @@ void CollisionCostVec::grad_uh(const Trajectory &robot_traj, const Trajectory &h
     for (int t = 0; t < human_traj.horizon(); ++t) {
         int str = t * nXr;
         int sth = t * nXh;
-        x_diff(t*2) = human_traj.x(str) - robot_traj.x(sth);
-        x_diff(t*2+1) = human_traj.x(str+1) - robot_traj.x(sth+1);
+        x_diff(t*2) = human_traj.x(sth) - robot_traj.x(str);
+        x_diff(t*2+1) = human_traj.x(sth+1) - robot_traj.x(str+1);
     }
 
     // compute gradient
