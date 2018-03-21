@@ -27,6 +27,64 @@
 #include "hri_planner/BeliefUpdate.h"
 #include "hri_planner/TestComponent.h"
 
+
+//! helper functions to reuse code
+void create_belief_model(std::shared_ptr<hri_planner::BeliefModelBase>& belief_model)
+{
+    int T_hist;
+    double ratio;
+    double decay_rate;
+    std::vector<double> fcorrection(2, 0);
+
+    ros::param::param<int>("~explicit_comm/history_length", T_hist, 10);
+    ros::param::param<double>("~explicit_comm/ratio", ratio, 100.0);
+    ros::param::param<double>("~explicit_comm/decay_rate", decay_rate, 2.5);
+    ros::param::param<double>("~explicit_comm/fcorrection_hp", fcorrection[hri_planner::HumanPriority], 3.0);
+    ros::param::param<double>("~explicit_comm/fcorrection_rp", fcorrection[hri_planner::RobotPriority], 30.0);
+
+    belief_model = std::make_shared<hri_planner::BeliefModelExponential>(T_hist, fcorrection, ratio, decay_rate);
+    belief_model->reset(Eigen::Vector2d::Zero());
+}
+
+void create_human_costs(std::vector<std::shared_ptr<hri_planner::FeatureBase> >& features,
+                        const Eigen::VectorXd& x_goal)
+{
+    // velocity and acceleration feature
+    features.push_back(std::make_shared<hri_planner::HumanVelCost>());
+    features.push_back(std::make_shared<hri_planner::HumanAccCost>());
+
+    // goal feature
+    features.push_back(std::make_shared<hri_planner::HumanGoalCost>(x_goal));
+
+    // avoiding robot
+    features.push_back(std::make_shared<hri_planner::CollisionCost>(0.5));
+    features.push_back(std::make_shared<hri_planner::DynCollisionCost>(0.5, 0.5, 0.5));
+}
+
+void create_robot_costs(std::vector<std::shared_ptr<hri_planner::FeatureBase> >& f_non_int,
+                        std::vector<std::shared_ptr<hri_planner::FeatureVectorizedBase> >& f_int,
+                        const Eigen::VectorXd& x_goal)
+{
+    // create non-interactive features
+    // control
+    f_non_int.push_back(std::make_shared<hri_planner::RobotControlCost>());
+
+    // goal feature
+    f_non_int.push_back(std::make_shared<hri_planner::RobotGoalCost>(x_goal));
+
+    // create interactive costs
+    // human effort
+    f_int.push_back(std::make_shared<hri_planner::HumanAccCostVec>());
+
+    // collision
+    f_int.push_back(std::make_shared<hri_planner::CollisionCostVec>(0.5));
+}
+
+void create_probabilistic_cost(std::shared_ptr<hri_planner::NestedTrajectoryOptimizer> optimizer)
+{
+
+}
+
 // function for testing the belief update
 bool test_belief_update(hri_planner::TestComponent::Request& req,
                         hri_planner::TestComponent::Response& res) {
@@ -45,19 +103,8 @@ bool test_belief_update(hri_planner::TestComponent::Request& req,
     std::ofstream belief_logger(log_path + "/log_belief.txt");
 
     // construct the belief update object
-    int T_hist;
-    double ratio;
-    double decay_rate;
-    std::vector<double> fcorrection(2, 0);
-
-    ros::param::param<int>("~explicit_comm/history_length", T_hist, 10);
-    ros::param::param<double>("~explicit_comm/ratio", ratio, 100.0);
-    ros::param::param<double>("~explicit_comm/decay_rate", decay_rate, 2.5);
-    ros::param::param<double>("~explicit_comm/fcorrection_hp", fcorrection[hri_planner::HumanPriority], 3.0);
-    ros::param::param<double>("~explicit_comm/fcorrection_rp", fcorrection[hri_planner::RobotPriority], 30.0);
-
-    hri_planner::BeliefModelExponential belief_model(T_hist, fcorrection, ratio, decay_rate);
-    belief_model.reset(Eigen::Vector2d::Zero());
+    std::shared_ptr<hri_planner::BeliefModelBase> belief_model;
+    create_belief_model(belief_model);
 
     logger << "Belief model initialized..." << std::endl;
 
@@ -80,7 +127,7 @@ bool test_belief_update(hri_planner::TestComponent::Request& req,
         Eigen::VectorXd ur_t = ur.segment(t * nUr, nUr);
         Eigen::VectorXd xh_t = xh.segment(t * nXh, nXh);
 
-        prob_hp(t) = belief_model.update_belief(xr_t, ur_t, xh_t, acomm, tcomm, (t+1) * dt);
+        prob_hp(t) = belief_model->update_belief(xr_t, ur_t, xh_t, acomm, tcomm, (t+1) * dt);
     }
     belief_logger << prob_hp.transpose() << std::endl;
 
@@ -98,8 +145,8 @@ bool test_belief_update(hri_planner::TestComponent::Request& req,
 
     logger << "Now performing full belief update..." << std::endl;
 
-    belief_model.reset(Eigen::Vector2d::Zero());
-    belief_model.update_belief(robot_traj, human_traj, acomm, tcomm, 0.0, prob_hp, Jur);
+    belief_model->reset(Eigen::Vector2d::Zero());
+    belief_model->update_belief(robot_traj, human_traj, acomm, tcomm, 0.0, prob_hp, Jur);
 
     // log belief and jacobian
     belief_logger << prob_hp.transpose() << std::endl;
@@ -309,19 +356,10 @@ bool test_simple_optimizer(hri_planner::TestComponent::Request& req,
     int nUr = 2;
     double dt = 0.5;
 
-    // velocity and acceleration feature
-    features.push_back(std::make_shared<HumanVelCost>());
-    features.push_back(std::make_shared<HumanAccCost>());
-
-    // goal feature
     Eigen::VectorXd x_goal(2);
     x_goal << 0.73216, 6.00955;
-    features.push_back(std::make_shared<HumanGoalCost>(x_goal));
 
-    // avoiding robot
-    features.push_back(std::make_shared<CollisionCost>(0.5));
-    features.push_back(std::make_shared<DynCollisionCost>(0.5, 0.5, 0.5));
-
+    create_human_costs(features, x_goal);
     logger << "cost features created!" << std::endl;
 
     // create cost function to optimize
@@ -334,8 +372,8 @@ bool test_simple_optimizer(hri_planner::TestComponent::Request& req,
     cost_human->set_trajectory_data(robot_traj);
 
     // create the optimizer
-    unsigned int dim = 10 * 2;
-    TrajectoryOptimizer optimizer(dim, nlopt::LD_LBFGS);
+    int dim = T * nUr;
+    TrajectoryOptimizer optimizer(static_cast<unsigned int>(dim), nlopt::LD_LBFGS);
     optimizer.set_cost_function(cost_human);
 
     logger << "optimizer created!" << std::endl;
@@ -406,39 +444,17 @@ bool test_probabilistic_cost(hri_planner::TestComponent::Request& req,
     int nUr = 2;
     double dt = 0.5;
 
-    // create non-interactive features
-    // control
-    f_non_int.push_back(std::make_shared<RobotControlCost>());
-
-    // goal feature
+    // create cost features
     Eigen::VectorXd x_goal(2);
     x_goal << 4., 4.;
-    f_non_int.push_back(std::make_shared<RobotGoalCost>(x_goal));
 
-    // create interactive costs
-    // human effort
-    f_int.push_back(std::make_shared<HumanAccCostVec>());
-
-    // collision
-    f_int.push_back(std::make_shared<CollisionCostVec>(0.5));
+    create_robot_costs(f_non_int, f_int, x_goal);
 
     logger << "cost features created..." << std::endl;
 
     // create a belief model
-    int T_hist;
-    double ratio;
-    double decay_rate;
-    std::vector<double> fcorrection(2, 0);
-
-    ros::param::param<int>("~explicit_comm/history_length", T_hist, 10);
-    ros::param::param<double>("~explicit_comm/ratio", ratio, 100.0);
-    ros::param::param<double>("~explicit_comm/decay_rate", decay_rate, 2.5);
-    ros::param::param<double>("~explicit_comm/fcorrection_hp", fcorrection[hri_planner::HumanPriority], 3.0);
-    ros::param::param<double>("~explicit_comm/fcorrection_rp", fcorrection[hri_planner::RobotPriority], 30.0);
-
     std::shared_ptr<BeliefModelBase> belief_model;
-    belief_model = std::make_shared<BeliefModelExponential>(T_hist, fcorrection, ratio, decay_rate);
-    belief_model->reset(Eigen::Vector2d::Zero());
+    create_belief_model(belief_model);
 
     logger << "belief model created..." << std::endl;
 
@@ -486,6 +502,171 @@ bool test_probabilistic_cost(hri_planner::TestComponent::Request& req,
     logger << grad_uh_hp.transpose() << std::endl;
     logger << "gradient w.r.t. uh_rp is: " << std::endl;
     logger << grad_uh_rp.transpose() << std::endl;
+
+    res.succeeded = true;
+
+    return true;
+}
+
+bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
+                           hri_planner::TestComponent::Response& res)
+{
+    // extract the messages
+    Eigen::Map<Eigen::VectorXd> xr(req.xr.data(), req.xr.size());
+    Eigen::Map<Eigen::VectorXd> ur(req.ur.data(), req.ur.size());
+    Eigen::Map<Eigen::VectorXd> xh(req.xh.data(), req.xh.size());
+    Eigen::Map<Eigen::VectorXd> uh(req.uh.data(), req.uh.size());
+    Eigen::Map<Eigen::VectorXd> xr0(req.xr0.data(), req.xr0.size());
+    Eigen::Map<Eigen::VectorXd> xh0(req.xh0.data(), req.xh0.size());
+
+    std::string log_path = req.log_path;
+
+    // create a log file to store the result
+    std::ofstream logger(log_path + "/log_cost_prob.txt");
+    std::ofstream traj_logger(log_path + "/log_traj.txt");
+    logger << "start logging..." << std::endl;
+
+    using namespace hri_planner;
+
+    // create human cost features for human priority
+    std::vector<std::shared_ptr<FeatureBase> > features_hp;
+    std::vector<std::shared_ptr<FeatureBase> > features_rp;
+
+    Eigen::VectorXd x_goal(2);
+    x_goal << 0.73216, 6.00955;
+
+    create_human_costs(features_hp, x_goal);
+    create_human_costs(features_rp, x_goal);
+
+    logger << "human cost features created..." << std::endl;
+
+    // create human cost functions
+    int nf_human = 5;
+    std::vector<double> w_hp(req.weights.begin(), req.weights.begin()+nf_human);
+    std::vector<double> w_rp(req.weights.begin()+nf_human, req.weights.begin()+nf_human*2);
+
+    auto cost_human_hp = std::make_shared<HumanCost>(w_hp, features_hp);
+    auto cost_human_rp = std::make_shared<HumanCost>(w_rp, features_rp);
+
+    logger << "human cost functions created..." << std::endl;
+
+    // create robot cost features
+    std::vector<std::shared_ptr<FeatureBase> > f_non_int;
+    std::vector<std::shared_ptr<FeatureVectorizedBase> > f_int;
+
+    x_goal << 4., 4.;
+    create_robot_costs(f_non_int, f_int, x_goal);
+
+    logger << "robot cost features created..." << std::endl;
+
+    // create a belief model
+    std::shared_ptr<BeliefModelBase> belief_model;
+    create_belief_model(belief_model);
+
+    logger << "belief model created..." << std::endl;
+
+    // create the probabilistic cost component
+    std::shared_ptr<ProbabilisticCostBase> robot_cost;
+    robot_cost = std::make_shared<ProbabilisticCost>(belief_model);
+
+    int n_f_non_int = 2;
+    int n_f_int = 2;
+
+    std::vector<double> w_robot(req.weights.begin()+nf_human*2, req.weights.end());
+    std::vector<double> w_non_int(w_robot.begin(), w_robot.begin() + n_f_non_int);
+    std::vector<double> w_int(w_robot.begin()+n_f_non_int, w_robot.end());
+
+    robot_cost->set_features_non_int(w_non_int, f_non_int);
+    robot_cost->set_features_int(w_int, f_int);
+
+    logger << "probabilistic cost function created..." << std::endl;
+
+    // create the nested optimizer
+    // problem dimensions
+    int T = 10;
+    int nXh = 4;
+    int nUh = 2;
+    int nXr = 3;
+    int nUr = 2;
+    double dt = 0.5;
+
+    int dim = T * (nUr + 2 * nUh);
+
+    NestedTrajectoryOptimizer optimizer(static_cast<unsigned int>(dim), nlopt::LD_SLSQP);
+
+    // set costs
+    optimizer.set_robot_cost(robot_cost);
+    optimizer.set_human_cost(cost_human_hp, cost_human_rp);
+
+    // set bounds
+    Eigen::VectorXd lb_ur(T * nUr);
+    Eigen::VectorXd ub_ur(T * nUr);
+    Eigen::VectorXd lb_uh(T * nUh);
+    Eigen::VectorXd ub_uh(T * nUh);
+
+    for (int t = 0; t < T; ++t) {
+        int stu = t * nUr;
+        lb_ur(stu) = -0.5;
+        ub_ur(stu) = 0.5;
+        lb_ur(stu+1) = -2.0;
+        ub_ur(stu+1) = 2.0;
+    }
+
+    lb_uh.setOnes(); lb_uh *= -10.0;
+    ub_uh.setOnes(); ub_uh *= 10.0;
+
+    optimizer.set_bounds(lb_ur, ub_ur, lb_uh, ub_uh);
+    logger << "nested optimizer created..." << std::endl;
+
+    // set start trajectories
+    Trajectory robot_traj(DIFFERENTIAL_MODEL, T, dt);
+    robot_traj.update(xr0, ur);
+
+    Trajectory human_traj_hp(CONST_ACC_MODEL, T, dt);
+    human_traj_hp.update(xh0, uh);
+
+    Trajectory human_traj_rp(CONST_ACC_MODEL, T, dt);
+    human_traj_rp.update(xh0, uh);
+
+    // first generate an initial guess of the robot trajectory
+    // here just use the recorded trajectory
+    // use this to generate feasible starting points
+    // create a simple optimizer
+    // first need to create single trajectory costs
+    auto single_cost_hp = std::make_shared<SingleTrajectoryCostHuman>(w_hp, features_hp);
+    auto single_cost_rp = std::make_shared<SingleTrajectoryCostHuman>(w_rp, features_rp);
+
+    single_cost_hp->set_trajectory_data(robot_traj);
+    single_cost_rp->set_trajectory_data(robot_traj);
+
+    dim = T * nUh;
+    TrajectoryOptimizer human_optimizer_hp(static_cast<unsigned int>(dim), nlopt::LD_LBFGS);
+    TrajectoryOptimizer human_optimizer_rp(static_cast<unsigned int>(dim), nlopt::LD_LBFGS);
+
+    human_optimizer_hp.set_cost_function(single_cost_hp);
+    human_optimizer_rp.set_cost_function(single_cost_rp);
+
+    human_optimizer_hp.set_bounds(lb_uh, ub_uh);
+    human_optimizer_rp.set_bounds(lb_uh, ub_uh);
+
+    logger << "created optimizers for initializing human trajectories..." << std::endl;
+
+    // optimize to get initial human trajectories
+    Trajectory human_traj_hp_opt;
+    Trajectory human_traj_rp_opt;
+
+    human_optimizer_hp.optimize(human_traj_hp, human_traj_hp_opt);
+    human_optimizer_rp.optimize(human_traj_rp, human_traj_rp_opt);
+
+    logger << "initialized human trajectories!" << std::endl;
+
+    // perform the full optimization!
+    Trajectory robot_traj_opt;
+    optimizer.optimize(xr0, xh0, robot_traj, human_traj_hp_opt, human_traj_rp_opt,
+                       req.acomm, req.tcomm, robot_traj_opt);
+
+    // log the data
+    logger << "optimization finished! time taken: " << std::endl;
 
     res.succeeded = true;
 
