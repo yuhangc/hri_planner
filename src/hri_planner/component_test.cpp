@@ -522,8 +522,9 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
     std::string log_path = req.log_path;
 
     // create a log file to store the result
-    std::ofstream logger(log_path + "/log_cost_prob.txt");
-    std::ofstream traj_logger(log_path + "/log_traj.txt");
+    std::ofstream logger(log_path + "/log_nested_optimizer.txt");
+    std::ofstream human_traj_logger(log_path + "/log_human_traj.txt");
+    std::ofstream robot_traj_logger(log_path + "/log_robot_traj.txt");
     logger << "start logging..." << std::endl;
 
     using namespace hri_planner;
@@ -606,8 +607,8 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
 
     for (int t = 0; t < T; ++t) {
         int stu = t * nUr;
-        lb_ur(stu) = -0.5;
-        ub_ur(stu) = 0.5;
+        lb_ur(stu) = -0.6;
+        ub_ur(stu) = 0.6;
         lb_ur(stu+1) = -2.0;
         ub_ur(stu+1) = 2.0;
     }
@@ -652,21 +653,38 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
     logger << "created optimizers for initializing human trajectories..." << std::endl;
 
     // optimize to get initial human trajectories
-    Trajectory human_traj_hp_opt;
-    Trajectory human_traj_rp_opt;
+    Trajectory human_traj_hp_opt(CONST_ACC_MODEL, T, dt);
+    Trajectory human_traj_rp_opt(CONST_ACC_MODEL, T, dt);
 
     human_optimizer_hp.optimize(human_traj_hp, human_traj_hp_opt);
+    human_traj_logger << human_traj_hp_opt.x.transpose() << std::endl;
+
     human_optimizer_rp.optimize(human_traj_rp, human_traj_rp_opt);
+    human_traj_logger << human_traj_rp_opt.x.transpose() << std::endl;
 
     logger << "initialized human trajectories!" << std::endl;
 
+    logger << "initial robot pose is: " << xr0.transpose() << std::endl;
+    logger << "initial human pose is: " << xh0.transpose() << std::endl;
+
     // perform the full optimization!
-    Trajectory robot_traj_opt;
+    ros::Time t_start = ros::Time::now();
+    Trajectory robot_traj_opt(DIFFERENTIAL_MODEL, T ,dt);
     optimizer.optimize(xr0, xh0, robot_traj, human_traj_hp_opt, human_traj_rp_opt,
                        req.acomm, req.tcomm, robot_traj_opt);
 
     // log the data
-    logger << "optimization finished! time taken: " << std::endl;
+    ros::Duration t_elapse = ros::Time::now() - t_start;
+    logger << "optimization finished! time taken: " << t_elapse.toSec() << std::endl;
+    logger << "optimized robot trajectory is:" << std::endl;
+    logger << robot_traj_opt.x.transpose() << std::endl;
+
+    robot_traj_logger << robot_traj_opt.x.transpose() << std::endl;
+
+    // close all loggers
+    logger.close();
+    human_traj_logger.close();
+    robot_traj_logger.close();
 
     res.succeeded = true;
 
@@ -682,6 +700,7 @@ int main(int argc, char **argv)
     ros::ServiceServer feature_service = n.advertiseService("test_cost_features", test_cost_features);
     ros::ServiceServer simple_optimizer_service = n.advertiseService("test_simple_optimizer", test_simple_optimizer);
     ros::ServiceServer prob_cost_service = n.advertiseService("test_prob_cost", test_probabilistic_cost);
+    ros::ServiceServer nested_optimizer_service = n.advertiseService("test_nested_optimizer", test_nested_optimizer);
 
     ROS_INFO("Services are ready!");
     ros::spin();

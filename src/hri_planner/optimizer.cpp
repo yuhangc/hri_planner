@@ -195,6 +195,12 @@ bool NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen
     human_traj_rp_.reset(new Trajectory(CONST_ACC_MODEL, T, dt));
     human_traj_rp_->x0 = human_traj_rp_init.x0;
 
+    // a constant speed prediction of human motion
+    Trajectory human_traj_pred(CONST_ACC_MODEL, T, dt);
+    human_traj_pred.update(human_traj_hp_init.x0, Eigen::VectorXd::Zero(human_traj_hp_init.traj_control_size()));
+
+    robot_cost_->update_human_pred(human_traj_pred);
+
     // set lower and upper bounds
     std::vector<double> lb;
     std::vector<double> ub;
@@ -209,7 +215,7 @@ bool NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen
     optimizer_.set_min_objective(cost_wrapper, this);
 
     // set constraint
-    optimizer_.add_equality_constraint(constraint_wrapper, this, 1e-2);
+    optimizer_.add_equality_constraint(constraint_wrapper, this, 1e-3);
 
     // set tolerance
     optimizer_.set_xtol_abs(1e-2);
