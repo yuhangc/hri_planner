@@ -105,7 +105,13 @@ class IRLPredictorBase(object):
 
         return np.asarray(xout), np.asarray(uout)
 
-    def predict(self, uh0):
+    def predict(self, uh0, x0, x_goal, xr, ur):
+        # set initial condition
+        self.set_end_points(x0, x_goal)
+
+        # set robot data
+        self.set_robot_data(xr[:self.T], ur[:self.T])
+
         # set initial value
         for uh, uh0 in zip(self.uh, uh0):
             uh.set_value(uh0)
@@ -136,8 +142,6 @@ class IRLPredictor(IRLPredictorBase):
         # define the weights
         self.th_cumu = utils.vector(len(self.f_cumu))
         self.th_term = utils.vector(len(self.f_term))
-        # self.th_cumu.set_value(np.array([1.0, 1.0, 0.5, 0.2, 0.5]))
-        # self.th_term.set_value(np.array([10.0]))
         self.th_cumu.set_value(np.array([7.0, 20.0, 1.5, 1.0, 1.2]))
         self.th_term.set_value(np.array([45.0]))
 
@@ -187,13 +191,15 @@ class IterativePredictor(IRLPredictor):
         return np.asarray(x_opt), np.asarray(u_opt)
 
 
-def predict_single_trajectory(predictor, path, id):
+def predict_single_trajectory(predictor, path, user_id, cond, trial, weights):
     # load data
-    file_name = path + "/init.txt"
-    init_data = np.loadtxt(file_name, delimiter=",")
-    x0 = init_data[id, 0:4]
+    path_full = path + "/user" + str(user_id) + "/processed/" + cond
 
-    file_name = path + "/block" + str(id) + ".txt"
+    init_data = np.loadtxt(path_full + "/init.txt", delimiter=",")
+    goal_data = np.loadtxt(path_full + "/goal.txt", delimiter=",")
+    obs_data = np.loadtxt(path_full + "/obs.txt", delimiter=',')
+
+    file_name = path_full + "/block" + str(trial) + ".txt"
     traj = np.loadtxt(file_name, delimiter=",")
 
     xh = traj[:, 0:4]
@@ -201,25 +207,26 @@ def predict_single_trajectory(predictor, path, id):
     xr = traj[:, 6:9]
     ur = traj[:, 9:11]
 
-    x_goal = xh[-1]
+    x0 = init_data[trial, 0:4]
 
-    # set goals and data for planner
-    # predictor.set_end_points(x0, x_goal)
-    # predictor.set_robot_data(xr, ur)
+    x_goal = np.zeros_like(x0)
+    x_goal[0:2] = goal_data[trial]
+
+    # set predictor parameters
+    n_cumu = 5
+    n_term = 1
+    predictor.set_param(weights[0:n_cumu], weights[n_cumu:(n_cumu+n_term)])
 
     # set initial controls - randomly perturb uh
     u0 = uh + 0.1 * np.random.randn(uh.shape[0], uh.shape[1])
 
     # plan the trajectory
-    # x_opt, u_opt = predictor.predict(u0)
-    x_opt, u_opt = predictor.predict_full(u0, x0, x_goal, xr, ur)
+    x_opt, u_opt = predictor.predict(u0, x0, x_goal, xr, ur)
 
     # visualize
+    # plot and save the trajectory
     fig, axes = plt.subplots()
-    axes.plot(xh[:, 0], xh[:, 1], '--ok', lw=1, fillstyle="none")
-    axes.plot(x_opt[:, 0], x_opt[:, 1], '-ok', lw=2, fillstyle="none")
-    axes.plot(xr[:, 0], xr[:, 1], '-or', lw=1, fillstyle="none")
-    axes.axis("equal")
+    plot_prediction(xh[:10], xr[:10], x_opt, x_goal, obs_data, axes)
     plt.show()
 
 
@@ -289,7 +296,7 @@ def predict_and_save_all(predictor, path, save_path, user_list, cond, n_trial, w
             fig, axes = plt.subplots()
             plot_prediction(xh, xr, x_opt, x_goal, obs_data, axes)
 
-            # plt.show()
+            plt.show()
             fig.savefig(save_path + "/figure/" + cond + "/user" + str(usr) + "_demo" + str(id) + ".png")
 
             # save the data
@@ -371,12 +378,17 @@ if __name__ == "__main__":
     # predictor = IRLPredictor(dyn, [0.5, 10])
     predictor = IterativePredictor(dyn, [0.5, 10])
 
+    # single prediction
+    # predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18",
+    #                           0, "hp", 0, [8.0, 20.0, 7.0, 0.0, 8.0, 40.0])
+
+    # predict and save all
     predict_and_save_all(predictor,
                          "/home/yuhang/Documents/irl_data/winter18",
                          "/home/yuhang/Documents/irl_data/winter18",
                          [0, 1, 2, 3], "hp",
                          [40, 24, 30, 30],
-                         [8.0, 20.0, 7.0, 2.0, 8.0, 50.0])
+                         [8.0, 20.0, 7.0, 0.0, 8.0, 40.0])
 
     # test_param_robustness(np.array([7.0, 20.0, 10.0, 10.0, 8.0, 50.0]), predictor,
     #                       "/home/yuhang/Documents/irl_data/winter18/user1/processed/rp", 2)

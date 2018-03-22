@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/27/2017
-// Last revision: 3/20/2017
+// Last revision: 3/21/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -607,8 +607,8 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
 
     for (int t = 0; t < T; ++t) {
         int stu = t * nUr;
-        lb_ur(stu) = -0.6;
-        ub_ur(stu) = 0.6;
+        lb_ur(stu) = -0.55;
+        ub_ur(stu) = 0.55;
         lb_ur(stu+1) = -2.0;
         ub_ur(stu+1) = 2.0;
     }
@@ -620,6 +620,10 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
     logger << "nested optimizer created..." << std::endl;
 
     // set start trajectories
+    //add in some offset for the robot inintial condition
+    Eigen::VectorXd xr0_offset(nXr);
+    xr0_offset << 0.3, 0.3, 0.0;
+    xr0 += xr0_offset;
     Trajectory robot_traj(DIFFERENTIAL_MODEL, T, dt);
     robot_traj.update(xr0, ur);
 
@@ -641,8 +645,8 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
     single_cost_rp->set_trajectory_data(robot_traj);
 
     dim = T * nUh;
-    TrajectoryOptimizer human_optimizer_hp(static_cast<unsigned int>(dim), nlopt::LD_LBFGS);
-    TrajectoryOptimizer human_optimizer_rp(static_cast<unsigned int>(dim), nlopt::LD_LBFGS);
+    TrajectoryOptimizer human_optimizer_hp(static_cast<unsigned int>(dim), nlopt::LD_MMA);
+    TrajectoryOptimizer human_optimizer_rp(static_cast<unsigned int>(dim), nlopt::LD_MMA);
 
     human_optimizer_hp.set_cost_function(single_cost_hp);
     human_optimizer_rp.set_cost_function(single_cost_rp);
@@ -667,11 +671,17 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
     logger << "initial robot pose is: " << xr0.transpose() << std::endl;
     logger << "initial human pose is: " << xh0.transpose() << std::endl;
 
+    // check if the initial trajectories are feasible
+    double err = optimizer.check_constraint(robot_traj, human_traj_hp_opt, human_traj_rp_opt);
+    logger << "constraint error: " << err << std::endl;
+
     // perform the full optimization!
     ros::Time t_start = ros::Time::now();
     Trajectory robot_traj_opt(DIFFERENTIAL_MODEL, T ,dt);
+    Trajectory human_traj_hp_new(CONST_ACC_MODEL, T, dt);
+    Trajectory human_traj_rp_new(CONST_ACC_MODEL, T, dt);
     optimizer.optimize(xr0, xh0, robot_traj, human_traj_hp_opt, human_traj_rp_opt,
-                       req.acomm, req.tcomm, robot_traj_opt);
+                       req.acomm, req.tcomm, robot_traj_opt, &human_traj_hp_new, &human_traj_rp_new);
 
     // log the data
     ros::Duration t_elapse = ros::Time::now() - t_start;
@@ -680,6 +690,8 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
     logger << robot_traj_opt.x.transpose() << std::endl;
 
     robot_traj_logger << robot_traj_opt.x.transpose() << std::endl;
+    human_traj_logger << human_traj_hp_new.x.transpose() << std::endl;
+    human_traj_logger << human_traj_rp_new.x.transpose() << std::endl;
 
     // close all loggers
     logger.close();

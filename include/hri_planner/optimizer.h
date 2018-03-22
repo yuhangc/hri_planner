@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/19/2017
+// Last revision: 3/21/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -82,7 +82,12 @@ public:
     bool optimize(const Eigen::VectorXd& xr0, const Eigen::VectorXd& xh0,
                   const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
                   const Trajectory& human_traj_rp_init, int acomm, double tcomm,
-                  Trajectory& robot_traj_opt);
+                  Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt=nullptr,
+                  Trajectory* human_traj_rp_opt=nullptr);
+
+    // check constraint
+    double check_constraint(const Trajectory& robot_traj, const Trajectory& human_traj_hp,
+                            const Trajectory& human_traj_rp);
 
 private:
     // non-linear optimizer

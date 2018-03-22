@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/19/2017
+// Last revision: 3/21/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -86,7 +86,7 @@ bool TrajectoryOptimizer::optimize(const Trajectory &traj_init, Trajectory &traj
     optimizer_.set_min_objective(cost_wrapper, this);
 
     // set tolerance
-    optimizer_.set_xtol_abs(1e-2);
+    optimizer_.set_xtol_abs(1e-5);
 
     // initial condition
     std::vector<double> u_opt;
@@ -177,7 +177,8 @@ void NestedTrajectoryOptimizer::set_bounds(const Eigen::VectorXd &lb_ur, const E
 bool NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen::VectorXd &xh0,
                                          const Trajectory &robot_traj_init, const Trajectory &human_traj_hp_init,
                                          const Trajectory& human_traj_rp_init, int acomm, double tcomm,
-                                         Trajectory& robot_traj_opt)
+                                         Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt,
+                                         Trajectory* human_traj_rp_opt)
 {
     // set communication action
     acomm_ = acomm;
@@ -215,10 +216,10 @@ bool NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen
     optimizer_.set_min_objective(cost_wrapper, this);
 
     // set constraint
-    optimizer_.add_equality_constraint(constraint_wrapper, this, 1e-3);
+//    optimizer_.add_equality_constraint(constraint_wrapper, this, 1e-3);
 
     // set tolerance
-    optimizer_.set_xtol_abs(1e-2);
+    optimizer_.set_xtol_abs(1e-3);
 
     // initial condition
     std::vector<double> u_opt;
@@ -226,15 +227,57 @@ bool NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen
 
     // optimizer!
     double min_cost;
-    optimizer_.optimize(u_opt, min_cost);
+    nlopt::result result = optimizer_.optimize(u_opt, min_cost);
+    std::cout << "result is: " << result << std::endl;
+
+    // print cost and constraint error
+    std::cout << "min cost is: " << min_cost << std::endl;
+
+    std::vector<double> grad_opt;
+    std::cout << "constraint error is: " << constraint(u_opt, grad_opt) << std::endl;
 
     // send result back
+    int len_ur = robot_traj_opt.traj_control_size();
     robot_traj_opt.x0 = robot_traj_init.x0;
-    robot_traj_opt.u = Eigen::Map<Eigen::VectorXd>(u_opt.data(), robot_traj_opt.traj_control_size());
+    robot_traj_opt.u = Eigen::Map<Eigen::VectorXd>(u_opt.data(), len_ur);
 
     robot_traj_opt.compute();
 
+    // compute "optimal" human trajectory if not null
+    if (human_traj_hp_opt != nullptr) {
+        int len_uh = human_traj_hp_init.traj_control_size();
+        human_traj_hp_opt->update(human_traj_hp_init.x0,
+                                  Eigen::Map<Eigen::VectorXd>(u_opt.data()+len_ur, len_uh));
+        human_traj_rp_opt->update(human_traj_rp_init.x0,
+                                  Eigen::Map<Eigen::VectorXd>(u_opt.data()+len_ur+len_uh, len_uh));
+    }
+
     return true;
+}
+
+//----------------------------------------------------------------------------------
+double NestedTrajectoryOptimizer::check_constraint(const Trajectory &robot_traj, const Trajectory &human_traj_hp,
+                                                   const Trajectory &human_traj_rp)
+{
+    // convert to std vector
+    std::vector<double> u;
+    EigenToVector3(robot_traj.u, human_traj_hp.u, human_traj_rp.u, u);
+
+    std::vector<double> grad;
+
+    // construct the trajectories
+    int T = robot_traj.horizon();
+    double dt = robot_traj.dt();
+    robot_traj_.reset(new Trajectory(DIFFERENTIAL_MODEL, T, dt));
+    robot_traj_->x0 = robot_traj.x0;
+
+    human_traj_hp_.reset(new Trajectory(CONST_ACC_MODEL, T, dt));
+    human_traj_hp_->x0 = human_traj_hp.x0;
+
+    human_traj_rp_.reset(new Trajectory(CONST_ACC_MODEL, T, dt));
+    human_traj_rp_->x0 = human_traj_rp.x0;
+
+    return constraint(u, grad);
 }
 
 //----------------------------------------------------------------------------------

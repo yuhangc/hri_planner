@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/20/2017
+// Last revision: 3/21/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -72,6 +72,26 @@ double ProbabilisticCost::compute(const Trajectory& robot_traj, const Trajectory
     prob_rp -= prob_hp;
 
     cost += prob_hp.dot(costs_hp) + prob_rp.dot(costs_rp);
+
+    // output for debug
+    static int counter = 0;
+    ++counter;
+//
+//    std::cout << "control at iteration " << counter << " are: " << std::endl;
+//    std::cout << human_traj_hp.u.transpose() << std::endl;
+//    std::cout << human_traj_rp.u.transpose() << std::endl;
+//    std::cout << "---------------" << std::endl;
+//
+    std::cout << "cost at iteration " << counter << " is: " << cost << ", cost vectors are:" << std::endl;
+    std::cout << costs_hp.transpose() << std::endl;
+    std::cout << costs_rp.transpose() << std::endl;
+    std::cout << "-------------------" << std::endl;
+    std::cout << "probabilities are:" << std::endl;
+    std::cout << prob_hp.transpose() << std::endl;
+    std::cout << "------------------" << std::endl;
+    std::cout << "controls are:" << std::endl;
+    std::cout << robot_traj.u.transpose() << std::endl;
+    std::cout << std::endl;
 
     //! compute the gradient w.r.t. ur
     // non-interactive features

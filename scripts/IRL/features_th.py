@@ -140,7 +140,7 @@ def collision_obs(radius, pos):
 def goal_reward_term(x_goal):
     @feature
     def f(xh, uh):
-        return tt.sqrt(tt.sum(tt.sqr(xh - x_goal)))
+        return tt.sqrt(tt.sum(tt.sqr(xh[0:2] - x_goal[0:2])))
     return f
 
 

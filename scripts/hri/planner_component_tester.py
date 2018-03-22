@@ -228,9 +228,9 @@ def test_nested_optimizer(user_id, cond, trial, acomm, tcomm):
     log_path = "/home/yuhang/Documents/hri_log"
     succeeded = nested_optimizer_client(xh.flatten(), uh.flatten(), xr.flatten(),
                                         ur.flatten(), xh0.flatten(), xr0.flatten(),
-                                        np.array([8.0, 20.0, 50.0, 7.0, 4.0,
-                                                  8.0, 20.0, 50.0, 7.0, 2.0,
-                                                  10.0, 30.0, 10.0, 10.0]),
+                                        np.array([8.0, 20.0, 40.0, 7.0, 2.0,
+                                                  8.0, 20.0, 40.0, 7.0, 10.0,
+                                                  20.0, 30.0, 10.0, 10.0]),
                                         acomm, tcomm, log_path)
 
     # TODO: some visualization?
@@ -239,11 +239,15 @@ def test_nested_optimizer(user_id, cond, trial, acomm, tcomm):
 
     xh_pred_hp = human_traj_data[0].reshape(T, 4)
     xh_pred_rp = human_traj_data[1].reshape(T, 4)
+    xh_opt_hp = human_traj_data[2].reshape(T, 4)
+    xh_opt_rp = human_traj_data[3].reshape(T, 4)
     xr_opt = robot_traj_data.reshape(T, 3)
 
     fig, axes = plt.subplots()
     axes.plot(xh_pred_hp[:, 0], xh_pred_hp[:, 1], '-ok')
     axes.plot(xh_pred_rp[:, 0], xh_pred_rp[:, 1], '--ok')
+    axes.plot(xh_opt_hp[:, 0], xh_opt_hp[:, 1], '-xr')
+    axes.plot(xh_opt_rp[:, 0], xh_opt_rp[:, 1], '--xr')
     axes.plot(xh[:, 0], xh[:, 1], '-', color="grey")
     #
     axes.plot(xr[:, 0], xr[:, 1], 'b-')
@@ -276,4 +280,4 @@ if __name__ == "__main__":
     # test_prob_cost(0, "hp", 0)
 
     # test the nested optimizer
-    test_nested_optimizer(0, "hp", 2, 0, -10)
+    test_nested_optimizer(0, "hp", 0, 1, -10)
