@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/20/2017
+// Last revision: 3/21/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -25,7 +25,7 @@ namespace hri_planner {
 class ProbabilisticCostBase {
 public:
     // requires a belief model to construct
-    explicit ProbabilisticCostBase(const std::shared_ptr<BeliefModelBase> belief_model):
+    explicit ProbabilisticCostBase(const std::shared_ptr<BeliefModelBase>& belief_model):
             belief_model_(belief_model) {};
 
     virtual ~ProbabilisticCostBase() = default;
@@ -63,6 +63,18 @@ class ProbabilisticCost: public ProbabilisticCostBase {
 public:
     // constructor
     explicit ProbabilisticCost(const std::shared_ptr<BeliefModelBase>& belief_model):
+            ProbabilisticCostBase(belief_model) {};
+
+    double compute(const Trajectory& robot_traj, const Trajectory& human_traj_hp,
+                   const Trajectory& human_traj_rp, int acomm, double tcomm,
+                   Eigen::VectorXd& grad_ur, Eigen::VectorXd& grad_hp, Eigen::VectorXd& grad_rp) override;
+};
+
+
+//! a simplified version, assuming constant belief over the planning horizon
+class ProbabilisticCostSimplified: public ProbabilisticCostBase {
+public:
+    explicit ProbabilisticCostSimplified(const std::shared_ptr<BeliefModelBase>& belief_model):
             ProbabilisticCostBase(belief_model) {};
 
     double compute(const Trajectory& robot_traj, const Trajectory& human_traj_hp,

@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/25/2017
-// Last revision: 3/19/2017
+// Last revision: 3/22/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -15,6 +15,22 @@
 #include "hri_planner/human_belief_model.h"
 
 namespace hri_planner {
+
+//----------------------------------------------------------------------------------
+double BeliefModelBase::update_belief(int acomm, double tcomm, double tcurr)
+{
+    // compute cost sum
+    double cost_hp = std::accumulate(cost_hist_hp_.begin(), cost_hist_hp_.end(), 0.0);
+    double cost_rp = std::accumulate(cost_hist_rp_.begin(), cost_hist_rp_.end(), 0.0);
+
+    // update belief
+    double p_hp = std::exp(-cost_hp * fcorrection_[HumanPriority]) *
+                  belief_explicit(HumanPriority, tcurr, acomm, tcomm);
+    double p_rp = std::exp(-cost_rp * fcorrection_[RobotPriority]) *
+                  belief_explicit(RobotPriority, tcurr, acomm, tcomm);
+
+    return p_hp / (p_hp + p_rp);
+}
 
 //----------------------------------------------------------------------------------
 double BeliefModelBase::update_belief(const Eigen::VectorXd &xr, const Eigen::VectorXd &ur, const Eigen::VectorXd &xh,
@@ -40,7 +56,8 @@ double BeliefModelBase::update_belief(const Eigen::VectorXd &xr, const Eigen::Ve
     double p_rp = std::exp(-cost_rp * fcorrection_[RobotPriority]) *
             belief_explicit(RobotPriority, t0, acomm, tcomm);
 
-    return p_hp / (p_hp + p_rp);
+    prob_hp_ = p_hp / (p_hp + p_rp);
+    return prob_hp_;
 }
 
 //----------------------------------------------------------------------------------
@@ -79,7 +96,7 @@ void BeliefModelBase::update_belief(const Trajectory &robot_traj, const Trajecto
 }
 
 //----------------------------------------------------------------------------------
-void BeliefModelBase::reset(const Eigen::VectorXd &ur0)
+void BeliefModelBase::reset_hist(const Eigen::VectorXd &ur0)
 {
     ur_last_ = ur0;
 

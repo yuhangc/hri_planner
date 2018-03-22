@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/25/2017
-// Last revision: 3/19/2017
+// Last revision: 3/22/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -30,23 +30,32 @@ class BeliefModelBase {
 public:
     // requires the history length
     explicit BeliefModelBase(int T_hist, const std::vector<double>& fcorrection):
-            T_hist_(T_hist), fcorrection_(fcorrection) {};
+            T_hist_(T_hist), fcorrection_(fcorrection) {prob_hp_ = 0.5;};
 
     // virtual destructor
     virtual ~BeliefModelBase() = default;
 
-    // over loading compute belief
+    // overloading compute belief
+    double update_belief(int acomm, double tcomm, double tcurr);
     double update_belief(const Eigen::VectorXd& xr, const Eigen::VectorXd& ur, const Eigen::VectorXd& xh,
                          int acomm, double tcomm, double t0);
     void update_belief(const Trajectory& robot_traj, const Trajectory& human_traj,
                        int acomm, double tcomm, double t0, Eigen::VectorXd& belief, Eigen::MatrixXd& jacobian);
 
     // reset
-    void reset(const Eigen::VectorXd& ur0);
+    void reset_hist(const Eigen::VectorXd& ur0);
+
+    // get latest belief
+    double get_belief() const {
+        return prob_hp_;
+    }
 
 protected:
     // dimensions
     int T_hist_;
+
+    // current belief
+    double prob_hp_;
 
     // history of implicit costs
     std::deque<double> cost_hist_hp_;

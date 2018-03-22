@@ -216,7 +216,7 @@ bool NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen
     optimizer_.set_min_objective(cost_wrapper, this);
 
     // set constraint
-//    optimizer_.add_equality_constraint(constraint_wrapper, this, 1e-3);
+    optimizer_.add_equality_constraint(constraint_wrapper, this, 1e-3);
 
     // set tolerance
     optimizer_.set_xtol_abs(1e-3);

@@ -43,7 +43,7 @@ void create_belief_model(std::shared_ptr<hri_planner::BeliefModelBase>& belief_m
     ros::param::param<double>("~explicit_comm/fcorrection_rp", fcorrection[hri_planner::RobotPriority], 30.0);
 
     belief_model = std::make_shared<hri_planner::BeliefModelExponential>(T_hist, fcorrection, ratio, decay_rate);
-    belief_model->reset(Eigen::Vector2d::Zero());
+    belief_model->reset_hist(Eigen::Vector2d::Zero());
 }
 
 void create_human_costs(std::vector<std::shared_ptr<hri_planner::FeatureBase> >& features,
@@ -145,7 +145,7 @@ bool test_belief_update(hri_planner::TestComponent::Request& req,
 
     logger << "Now performing full belief update..." << std::endl;
 
-    belief_model->reset(Eigen::Vector2d::Zero());
+    belief_model->reset_hist(Eigen::Vector2d::Zero());
     belief_model->update_belief(robot_traj, human_traj, acomm, tcomm, 0.0, prob_hp, Jur);
 
     // log belief and jacobian
@@ -568,7 +568,8 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
 
     // create the probabilistic cost component
     std::shared_ptr<ProbabilisticCostBase> robot_cost;
-    robot_cost = std::make_shared<ProbabilisticCost>(belief_model);
+//    robot_cost = std::make_shared<ProbabilisticCost>(belief_model);
+    robot_cost = std::make_shared<ProbabilisticCostSimplified>(belief_model);
 
     int n_f_non_int = 2;
     int n_f_int = 2;

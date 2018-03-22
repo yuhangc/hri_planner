@@ -66,7 +66,7 @@ private:
 class NestedTrajectoryOptimizer {
 public:
     // constructor
-    NestedTrajectoryOptimizer(unsigned int dim, const nlopt::algorithm& alg=nlopt::LD_MMA);
+    explicit NestedTrajectoryOptimizer(unsigned int dim, const nlopt::algorithm& alg=nlopt::LD_MMA);
 
     // set cost functions
     void set_robot_cost(ProbabilisticCostBase* cost);

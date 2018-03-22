@@ -280,4 +280,4 @@ if __name__ == "__main__":
     # test_prob_cost(0, "hp", 0)
 
     # test the nested optimizer
-    test_nested_optimizer(0, "hp", 0, 1, -10)
+    test_nested_optimizer(0, "hp", 0, 0, -20)
