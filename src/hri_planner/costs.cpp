@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/7/2017
-// Last revision: 3/8/2017
+// Last revision: 3/22/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -73,8 +73,9 @@ void HumanCost::hessian_uh(const Trajectory &robot_traj, const Trajectory &human
     hess.setZero();
 
     int len = human_traj.traj_control_size();
+    Eigen::MatrixXd hess_f(len, len);
+
     for (int i = 0; i < nfeatures_; ++i) {
-        Eigen::MatrixXd hess_f(len, len);
         static_cast<FeatureHumanCost*>(features_[i].get())->hessian_uh(robot_traj, human_traj, hess_f);
 
         hess += weights_[i] * hess_f;
@@ -87,8 +88,9 @@ void HumanCost::hessian_uh_ur(const Trajectory &robot_traj, const Trajectory &hu
     hess.setZero();
 
     int len = human_traj.traj_control_size();
+    Eigen::MatrixXd hess_f(len, len);
+
     for (int i = 0; i < nfeatures_; ++i) {
-        Eigen::MatrixXd hess_f(len, len);
         static_cast<FeatureHumanCost*>(features_[i].get())->hessian_uh_ur(robot_traj, human_traj, hess_f);
 
         hess += weights_[i] * hess_f;
@@ -123,6 +125,36 @@ double SingleTrajectoryCostHuman::compute(const Trajectory &traj)
 void SingleTrajectoryCostHuman::grad(const Trajectory &traj, VecRef grad)
 {
     grad_uh(const_traj_, traj, grad);
+}
+
+//----------------------------------------------------------------------------------
+void SingleTrajectoryCostHuman::hessian_uh(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
+{
+    hess.setZero();
+
+    int len = human_traj.traj_control_size();
+    Eigen::MatrixXd hess_f(len, len);
+
+    for (int i = 0; i < nfeatures_; ++i) {
+        static_cast<FeatureHumanCost*>(features_[i].get())->hessian_uh(robot_traj, human_traj, hess_f);
+
+        hess += weights_[i] * hess_f;
+    }
+}
+
+//----------------------------------------------------------------------------------
+void SingleTrajectoryCostHuman::hessian_uh_ur(const Trajectory &robot_traj, const Trajectory &human_traj, MatRef hess)
+{
+    hess.setZero();
+
+    int len = human_traj.traj_control_size();
+    Eigen::MatrixXd hess_f(len, len);
+
+    for (int i = 0; i < nfeatures_; ++i) {
+        static_cast<FeatureHumanCost*>(features_[i].get())->hessian_uh_ur(robot_traj, human_traj, hess_f);
+
+        hess += weights_[i] * hess_f;
+    }
 }
 
 } // namespace

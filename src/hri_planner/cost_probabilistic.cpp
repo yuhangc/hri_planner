@@ -174,8 +174,6 @@ double ProbabilisticCostSimplified::compute(const Trajectory &robot_traj, const 
     double prob_hp = belief_model_->update_belief(acomm, tcomm, 0.0);
     double prob_rp = 1.0 - prob_hp;
 
-    std::cout << "prob is: " << prob_hp << std::endl;
-
     Eigen::VectorXd ones;
     ones.setOnes(costs_hp.size());
 

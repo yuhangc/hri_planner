@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/7/2017
-// Last revision: 3/8/2017
+// Last revision: 3/22/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -121,6 +121,10 @@ public:
     // overloading the compute function
     virtual double compute(const Trajectory& traj);
     virtual void grad(const Trajectory& traj, VecRef grad);
+
+    // also calculate hessians
+    void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
+    void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess);
 };
 
 } // namespace

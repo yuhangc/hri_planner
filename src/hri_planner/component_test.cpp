@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/27/2017
-// Last revision: 3/21/2017
+// Last revision: 3/22/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -369,8 +369,6 @@ bool test_simple_optimizer(hri_planner::TestComponent::Request& req,
     Trajectory robot_traj(DIFFERENTIAL_MODEL, T, dt);
     robot_traj.update(xr0, ur);
 
-    cost_human->set_trajectory_data(robot_traj);
-
     // create the optimizer
     int dim = T * nUr;
     TrajectoryOptimizer optimizer(static_cast<unsigned int>(dim), nlopt::LD_LBFGS);
@@ -396,7 +394,7 @@ bool test_simple_optimizer(hri_planner::TestComponent::Request& req,
     // optimize!
     ros::Time t_start = ros::Time::now();
     Trajectory traj_opt(CONST_ACC_MODEL, T, dt);
-    optimizer.optimize(traj_init, traj_opt);
+    optimizer.optimize(traj_init, robot_traj, traj_opt);
 
     ros::Duration t_elapse = ros::Time::now() - t_start;
     logger << "optimization finished successfully, took " << t_elapse.toSec() << " seconds." << std::endl;
@@ -511,6 +509,9 @@ bool test_probabilistic_cost(hri_planner::TestComponent::Request& req,
 bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
                            hri_planner::TestComponent::Response& res)
 {
+    // flag that controls the type of optimizer to test
+    bool flag_naive_optimizer = true;
+
     // extract the messages
     Eigen::Map<Eigen::VectorXd> xr(req.xr.data(), req.xr.size());
     Eigen::Map<Eigen::VectorXd> ur(req.ur.data(), req.ur.size());
@@ -548,6 +549,8 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
 
     auto cost_human_hp = std::make_shared<HumanCost>(w_hp, features_hp);
     auto cost_human_rp = std::make_shared<HumanCost>(w_rp, features_rp);
+    auto single_cost_hp = std::make_shared<SingleTrajectoryCostHuman>(w_hp, features_hp);
+    auto single_cost_rp = std::make_shared<SingleTrajectoryCostHuman>(w_rp, features_rp);
 
     logger << "human cost functions created..." << std::endl;
 
@@ -594,11 +597,25 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
 
     int dim = T * (nUr + 2 * nUh);
 
-    NestedTrajectoryOptimizer optimizer(static_cast<unsigned int>(dim), nlopt::LD_SLSQP);
+    std::shared_ptr<NestedOptimizerBase> optimizer;
 
-    // set costs
-    optimizer.set_robot_cost(robot_cost);
-    optimizer.set_human_cost(cost_human_hp, cost_human_rp);
+    if (flag_naive_optimizer) {
+        int dim_r = T * nUr;
+        int dim_h = T * nUh;
+
+        optimizer = std::make_shared<NaiveNestedOptimizer>(static_cast<unsigned int>(dim_r),
+                                                           static_cast<unsigned int>(dim_r),
+                                                           nlopt::LD_SLSQP, nlopt::LD_MMA);
+        optimizer->set_human_cost(single_cost_hp, single_cost_rp);
+    }
+    else {
+        optimizer = std::make_shared<NestedTrajectoryOptimizer>(static_cast<unsigned int>(dim),
+                                                                nlopt::LD_SLSQP);
+        optimizer->set_human_cost(cost_human_hp, cost_human_rp);
+    }
+
+    // set robot cost func
+    optimizer->set_robot_cost(robot_cost);
 
     // set bounds
     Eigen::VectorXd lb_ur(T * nUr);
@@ -617,14 +634,17 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
     lb_uh.setOnes(); lb_uh *= -10.0;
     ub_uh.setOnes(); ub_uh *= 10.0;
 
-    optimizer.set_bounds(lb_ur, ub_ur, lb_uh, ub_uh);
+    optimizer->set_bounds(lb_ur, ub_ur, lb_uh, ub_uh);
     logger << "nested optimizer created..." << std::endl;
 
     // set start trajectories
-    //add in some offset for the robot inintial condition
+    //add in some offset for the robot inintial condition and perturb the control
     Eigen::VectorXd xr0_offset(nXr);
     xr0_offset << 0.3, 0.3, 0.0;
     xr0 += xr0_offset;
+    for (int t = 0; t < T; ++t)
+        ur(t*2) = ur(2);
+
     Trajectory robot_traj(DIFFERENTIAL_MODEL, T, dt);
     robot_traj.update(xr0, ur);
 
@@ -639,56 +659,65 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
     // use this to generate feasible starting points
     // create a simple optimizer
     // first need to create single trajectory costs
-    auto single_cost_hp = std::make_shared<SingleTrajectoryCostHuman>(w_hp, features_hp);
-    auto single_cost_rp = std::make_shared<SingleTrajectoryCostHuman>(w_rp, features_rp);
-
-    single_cost_hp->set_trajectory_data(robot_traj);
-    single_cost_rp->set_trajectory_data(robot_traj);
-
-    dim = T * nUh;
-    TrajectoryOptimizer human_optimizer_hp(static_cast<unsigned int>(dim), nlopt::LD_MMA);
-    TrajectoryOptimizer human_optimizer_rp(static_cast<unsigned int>(dim), nlopt::LD_MMA);
-
-    human_optimizer_hp.set_cost_function(single_cost_hp);
-    human_optimizer_rp.set_cost_function(single_cost_rp);
-
-    human_optimizer_hp.set_bounds(lb_uh, ub_uh);
-    human_optimizer_rp.set_bounds(lb_uh, ub_uh);
-
-    logger << "created optimizers for initializing human trajectories..." << std::endl;
-
-    // optimize to get initial human trajectories
-    Trajectory human_traj_hp_opt(CONST_ACC_MODEL, T, dt);
-    Trajectory human_traj_rp_opt(CONST_ACC_MODEL, T, dt);
-
-    human_optimizer_hp.optimize(human_traj_hp, human_traj_hp_opt);
-    human_traj_logger << human_traj_hp_opt.x.transpose() << std::endl;
-
-    human_optimizer_rp.optimize(human_traj_rp, human_traj_rp_opt);
-    human_traj_logger << human_traj_rp_opt.x.transpose() << std::endl;
-
-    logger << "initialized human trajectories!" << std::endl;
-
-    logger << "initial robot pose is: " << xr0.transpose() << std::endl;
-    logger << "initial human pose is: " << xh0.transpose() << std::endl;
-
-    // check if the initial trajectories are feasible
-    double err = optimizer.check_constraint(robot_traj, human_traj_hp_opt, human_traj_rp_opt);
-    logger << "constraint error: " << err << std::endl;
-
-    // perform the full optimization!
-    ros::Time t_start = ros::Time::now();
+    ros::Time t_start;
     Trajectory robot_traj_opt(DIFFERENTIAL_MODEL, T ,dt);
     Trajectory human_traj_hp_new(CONST_ACC_MODEL, T, dt);
     Trajectory human_traj_rp_new(CONST_ACC_MODEL, T, dt);
-    optimizer.optimize(xr0, xh0, robot_traj, human_traj_hp_opt, human_traj_rp_opt,
-                       req.acomm, req.tcomm, robot_traj_opt, &human_traj_hp_new, &human_traj_rp_new);
+
+    if (!flag_naive_optimizer) {
+        dim = T * nUh;
+        TrajectoryOptimizer human_optimizer_hp(static_cast<unsigned int>(dim), nlopt::LD_MMA);
+        TrajectoryOptimizer human_optimizer_rp(static_cast<unsigned int>(dim), nlopt::LD_MMA);
+
+        human_optimizer_hp.set_cost_function(single_cost_hp);
+        human_optimizer_rp.set_cost_function(single_cost_rp);
+
+        human_optimizer_hp.set_bounds(lb_uh, ub_uh);
+        human_optimizer_rp.set_bounds(lb_uh, ub_uh);
+
+        logger << "created optimizers for initializing human trajectories..." << std::endl;
+
+        // optimize to get initial human trajectories
+        Trajectory human_traj_hp_opt(CONST_ACC_MODEL, T, dt);
+        Trajectory human_traj_rp_opt(CONST_ACC_MODEL, T, dt);
+
+        human_optimizer_hp.optimize(human_traj_hp, robot_traj, human_traj_hp_opt);
+        human_traj_logger << human_traj_hp_opt.x.transpose() << std::endl;
+
+        human_optimizer_rp.optimize(human_traj_rp, robot_traj, human_traj_rp_opt);
+        human_traj_logger << human_traj_rp_opt.x.transpose() << std::endl;
+
+        logger << "initialized human trajectories!" << std::endl;
+
+        logger << "initial robot pose is: " << xr0.transpose() << std::endl;
+        logger << "initial human pose is: " << xh0.transpose() << std::endl;
+
+        // check if the initial trajectories are feasible
+        double err = std::dynamic_pointer_cast<NestedTrajectoryOptimizer>(optimizer)->
+                check_constraint(robot_traj, human_traj_hp_opt, human_traj_rp_opt);
+        logger << "constraint error: " << err << std::endl;
+
+        // perform the full optimization!
+        t_start = ros::Time::now();
+        optimizer->optimize(xr0, xh0, robot_traj, human_traj_hp_opt, human_traj_rp_opt,
+                           req.acomm, req.tcomm, robot_traj_opt, &human_traj_hp_new, &human_traj_rp_new);
+    }
+    else {
+        // perform the full optimization!
+        t_start = ros::Time::now();
+        optimizer->optimize(xr0, xh0, robot_traj, human_traj_hp, human_traj_rp,
+                            req.acomm, req.tcomm, robot_traj_opt, &human_traj_hp_new, &human_traj_rp_new);
+    }
 
     // log the data
     ros::Duration t_elapse = ros::Time::now() - t_start;
     logger << "optimization finished! time taken: " << t_elapse.toSec() << std::endl;
     logger << "optimized robot trajectory is:" << std::endl;
     logger << robot_traj_opt.x.transpose() << std::endl;
+    logger << "optimized robot control is:" << std::endl;
+    logger << robot_traj_opt.u.transpose() << std::endl;
+    logger << "difference from initial control: " << std::endl;
+    logger << robot_traj_opt.u.transpose() - robot_traj.u.transpose() << std::endl;
 
     robot_traj_logger << robot_traj_opt.x.transpose() << std::endl;
     human_traj_logger << human_traj_hp_new.x.transpose() << std::endl;
