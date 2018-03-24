@@ -204,7 +204,12 @@ double ProbabilisticCostSimplified::compute(const Trajectory &robot_traj, const 
         Jc_rp += w_int_[i] * Jc;
     }
 
-    grad_ur += Jc_hp.transpose() * ones * prob_hp + Jc_rp.transpose() * ones * prob_rp;
+    Eigen::VectorXd grad_inc = Jc_hp.transpose() * ones * prob_hp + Jc_rp.transpose() * ones * prob_rp;
+    grad_ur += grad_inc;
+//    std::cout << "---------------" << std::endl;
+//    std::cout << grad_inc.transpose() << std::endl;
+//    std::cout << "---------------" << std::endl;
+//    grad_ur += Jc_hp.transpose() * ones * prob_hp + Jc_rp.transpose() * ones * prob_rp;
 
     //! compute gradient w.r.t. uh_hp and uh_rp
     Jc_hp.setZero(T, robot_traj.traj_control_size());

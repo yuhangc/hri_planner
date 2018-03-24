@@ -639,14 +639,21 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
 
     // set start trajectories
     //add in some offset for the robot inintial condition and perturb the control
-    Eigen::VectorXd xr0_offset(nXr);
-    xr0_offset << 0.3, 0.3, 0.0;
-    xr0 += xr0_offset;
-    for (int t = 0; t < T; ++t)
-        ur(t*2) = ur(2);
+//    Eigen::VectorXd xr0_offset(nXr);
+//    xr0_offset << 0.3, 0.3, 0.0;
+//    xr0 += xr0_offset;
+    for (int t = 0; t < T; ++t) {
+        ur(t * 2) = ur(2);
+        ur(t * 2 + 1) = 0.0;
+    }
+
+    logger << "initial control is: " << std::endl;
+    logger << ur.transpose() << std::endl;
 
     Trajectory robot_traj(DIFFERENTIAL_MODEL, T, dt);
     robot_traj.update(xr0, ur);
+
+//    robot_traj_logger << robot_traj.x.transpose() << std::endl;
 
     Trajectory human_traj_hp(CONST_ACC_MODEL, T, dt);
     human_traj_hp.update(xh0, uh);

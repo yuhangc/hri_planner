@@ -9,6 +9,7 @@
 //
 //----------------------------------------------------------------------------------
 
+#include <iostream>
 #include "hri_planner/costs.h"
 
 namespace hri_planner {

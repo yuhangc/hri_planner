@@ -228,7 +228,7 @@ def test_nested_optimizer(user_id, cond, trial, acomm, tcomm):
     log_path = "/home/yuhang/Documents/hri_log"
     succeeded = nested_optimizer_client(xh.flatten(), uh.flatten(), xr.flatten(),
                                         ur.flatten(), xh0.flatten(), xr0.flatten(),
-                                        np.array([8.0, 20.0, 40.0, 7.0, 2.0,
+                                        np.array([8.0, 20.0, 40.0, 7.0, 0.0,
                                                   8.0, 20.0, 40.0, 7.0, 10.0,
                                                   20.0, 30.0, 10.0, 10.0]),
                                         acomm, tcomm, log_path)

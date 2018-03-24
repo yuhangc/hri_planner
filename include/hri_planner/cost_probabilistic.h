@@ -42,6 +42,10 @@ public:
         human_traj_pred_ = new_traj;
     }
 
+    double get_belief() const {
+        return belief_model_->get_belief();
+    }
+
 protected:
     // a belief model
     std::shared_ptr<BeliefModelBase> belief_model_;

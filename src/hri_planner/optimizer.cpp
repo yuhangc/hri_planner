@@ -103,6 +103,7 @@ bool TrajectoryOptimizer::optimize(const Trajectory& traj_init, const Trajectory
     traj_opt.x0 = traj_init.x0;
     VectorToEigen(u_opt, traj_opt.u);
     traj_opt.compute();
+    traj_opt.compute_jacobian();
 
     return true;
 }
@@ -185,10 +186,10 @@ void NestedTrajectoryOptimizer::set_bounds(const Eigen::VectorXd &lb_ur, const E
 
 //----------------------------------------------------------------------------------
 double NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen::VectorXd &xh0,
-                                         const Trajectory &robot_traj_init, const Trajectory &human_traj_hp_init,
-                                         const Trajectory& human_traj_rp_init, int acomm, double tcomm,
-                                         Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt,
-                                         Trajectory* human_traj_rp_opt)
+                                           const Trajectory &robot_traj_init, const Trajectory &human_traj_hp_init,
+                                           const Trajectory& human_traj_rp_init, int acomm, double tcomm,
+                                           Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt,
+                                           Trajectory* human_traj_rp_opt)
 {
     // set communication action
     acomm_ = acomm;
@@ -426,10 +427,10 @@ void NaiveNestedOptimizer::set_bounds(const Eigen::VectorXd &lb_ur, const Eigen:
 
 //----------------------------------------------------------------------------------
 double NaiveNestedOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen::VectorXd &xh0,
-                                    const Trajectory &robot_traj_init, const Trajectory &human_traj_hp_init,
-                                    const Trajectory &human_traj_rp_init, int acomm, double tcomm,
-                                    Trajectory &robot_traj_opt, Trajectory *human_traj_hp_opt,
-                                    Trajectory *human_traj_rp_opt)
+                                      const Trajectory &robot_traj_init, const Trajectory &human_traj_hp_init,
+                                      const Trajectory &human_traj_rp_init, int acomm, double tcomm,
+                                      Trajectory &robot_traj_opt, Trajectory *human_traj_hp_opt,
+                                      Trajectory *human_traj_rp_opt)
 {
     // set communication action
     acomm_ = acomm;
@@ -461,7 +462,7 @@ double NaiveNestedOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen::V
     optimizer_.set_min_objective(cost_wrapper, this);
 
     // set tolerance
-    optimizer_.set_xtol_abs(1e-3);
+    optimizer_.set_xtol_abs(1e-2);
 
     // initial condition
     std::vector<double> u_opt;
@@ -536,8 +537,21 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
     cost_rp_cast->hessian_uh_ur(*robot_traj_, human_traj_rp_opt, hess_uh_ur_rp);
 
     // compute the full gradient of ur
-    grad_ur -= hess_uh_ur_hp * hess_uh_hp.colPivHouseholderQr().solve(grad_uh_hp)
-               + hess_uh_ur_rp * hess_uh_rp.colPivHouseholderQr().solve(grad_uh_rp);
+    Eigen::VectorXd sol_hp = hess_uh_hp.colPivHouseholderQr().solve(grad_uh_hp);
+    Eigen::VectorXd sol_rp = hess_uh_rp.colPivHouseholderQr().solve(grad_uh_rp);
+
+    Eigen::VectorXd grad_inc = hess_uh_ur_hp.transpose() * sol_hp + hess_uh_ur_rp.transpose() * sol_rp;
+    grad_ur -= grad_inc;
+
+//    std::cout << "-------------" << std::endl;
+//    std::cout << grad_inc.transpose() << std::endl;
+//    std::cout << "-------------" << std::endl;
+//    std::cout << hess_uh_ur_hp << std::endl;
+//    std::cout << "-------------" << std::endl;
+//    std::cout << hess_uh_ur_rp << std::endl;
+//    std::cout << "-------------" << std::endl;
+//    grad_ur -= hess_uh_ur_hp.transpose() * hess_uh_hp.colPivHouseholderQr().solve(grad_uh_hp)
+//               + hess_uh_ur_rp.transpose() * hess_uh_rp.colPivHouseholderQr().solve(grad_uh_rp);
 
     EigenToVector(grad_ur, grad);
 
@@ -546,6 +560,7 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
     std::cout << "at iteration " << counter << " cost is: " << cost << std::endl;
     std::cout << "gradient is: " << std::endl;
     std::cout << grad_ur.transpose() << std::endl;
+    std::cout << std::endl;
 
     return cost;
 }
