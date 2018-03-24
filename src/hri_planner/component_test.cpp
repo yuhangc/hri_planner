@@ -605,7 +605,7 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
 
         optimizer = std::make_shared<NaiveNestedOptimizer>(static_cast<unsigned int>(dim_r),
                                                            static_cast<unsigned int>(dim_r),
-                                                           nlopt::LD_SLSQP, nlopt::LD_MMA);
+                                                           nlopt::LD_SLSQP, nlopt::LD_SLSQP);
         optimizer->set_human_cost(single_cost_hp, single_cost_rp);
     }
     else {

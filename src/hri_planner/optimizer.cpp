@@ -89,7 +89,7 @@ bool TrajectoryOptimizer::optimize(const Trajectory& traj_init, const Trajectory
     optimizer_.set_min_objective(cost_wrapper, this);
 
     // set tolerance
-    optimizer_.set_xtol_abs(1e-5);
+    optimizer_.set_xtol_abs(1e-3);
 
     // initial condition
     std::vector<double> u_opt;
@@ -463,6 +463,7 @@ double NaiveNestedOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen::V
 
     // set tolerance
     optimizer_.set_xtol_abs(1e-2);
+//    optimizer_.set_xtol_rel(1e-3);
 
     // initial condition
     std::vector<double> u_opt;
@@ -528,8 +529,8 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
     Eigen::MatrixXd hess_uh_rp(len_uh, len_uh);
     Eigen::MatrixXd hess_uh_ur_rp(len_uh, len_ur);
 
-    SingleTrajectoryCostHuman* cost_hp_cast = dynamic_cast<SingleTrajectoryCostHuman*>(human_cost_hp_.get());
-    SingleTrajectoryCostHuman* cost_rp_cast = dynamic_cast<SingleTrajectoryCostHuman*>(human_cost_rp_.get());
+    auto cost_hp_cast = dynamic_cast<SingleTrajectoryCostHuman*>(human_cost_hp_.get());
+    auto cost_rp_cast = dynamic_cast<SingleTrajectoryCostHuman*>(human_cost_rp_.get());
 
     cost_hp_cast->hessian_uh(*robot_traj_, human_traj_hp_opt, hess_uh_hp);
     cost_hp_cast->hessian_uh_ur(*robot_traj_, human_traj_hp_opt, hess_uh_ur_hp);

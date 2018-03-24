@@ -184,14 +184,14 @@ class CollisionHRStatic(GaussianReward):
 
 
 class CollisionHRDynamic(GaussianReward):
-    def __init__(self, dyn, w, l):
+    def __init__(self, dyn, w, l, d):
         super(CollisionHRDynamic, self).__init__(dyn, 1.0)
 
         self.w = w
         self.l = l
+        self.d = d
 
         self.T = self.dyn.T
-        self.dt = 1.0
 
     def f(self, x, u, xr, ur):
         # transform x and x_target
@@ -199,10 +199,10 @@ class CollisionHRDynamic(GaussianReward):
         for t in range(self.T):
             # compute center
             th = xr[t, 2]
-            xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
+            xc = np.array([xr[t, 0] + self.d * np.cos(th), xr[t, 1] + self.d * np.sin(th)])
 
             # compute Gaussian length and width
-            gradius = np.array([self.l + ur[t, 0] * 2.0 * self.l, self.w])
+            gradius = np.array([self.l, self.w])
 
             # transform points
             R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
@@ -225,10 +225,10 @@ class CollisionHRDynamic(GaussianReward):
         for t in range(self.T):
             # compute center
             th = xr[t, 2]
-            xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
+            xc = np.array([xr[t, 0] + self.d * np.cos(th), xr[t, 1] + self.d * np.sin(th)])
 
             # compute Gaussian length and width
-            gradius = np.array([self.l + ur[t, 0] * 2.0 * self.l, self.w])
+            gradius = np.array([self.l, self.w])
 
             # transform points
             R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
@@ -256,10 +256,10 @@ class CollisionHRDynamic(GaussianReward):
         for t in range(self.T):
             # compute center
             th = xr[t, 2]
-            xc = np.array([xr[t, 0] + ur[t, 0] * self.dt * np.cos(th), xr[t, 1] + ur[t, 0] * self.dt * np.sin(th)])
+            xc = np.array([xr[t, 0] + self.d * np.cos(th), xr[t, 1] + self.d * np.sin(th)])
 
             # compute Gaussian length and width
-            gradius = np.array([self.l + ur[t, 0] * 2.0 * self.l, self.w])
+            gradius = np.array([self.l, self.w])
 
             # transform points
             R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
@@ -356,6 +356,7 @@ def print_feature_vals(xh, uh, xr, ur, xh0, x_goal, x_obs):
     print "acceleration feature Hessian: \n", f_acc.hessian(xh, uh, xr, ur)
 
     # goal reward
+    x_goal = np.array([0.73216, 6.00955])
     f_goal = TerminationReward(dyn, x_goal)
     print "goal reward feature: ", f_goal(xh, uh, xr, ur), " goal is: ", x_goal
     print "goal reward feature gradient: \n", f_goal.grad(xh, uh, xr, ur)
@@ -368,7 +369,7 @@ def print_feature_vals(xh, uh, xr, ur, xh0, x_goal, x_obs):
     print "collision feature Hessian: \n", f_collision.hessian(xh, uh, xr, ur)
 
     # dynamic collision avoidance with robot
-    f_collision_dyn = CollisionHRDynamic(dyn, 0.5, 0.5)
+    f_collision_dyn = CollisionHRDynamic(dyn, 0.5, 0.3, 0.5)
     print "dyn collision feature: ", f_collision_dyn(xh, uh, xr, ur)
     print "dyn collision feature gradient: \n", f_collision_dyn.grad(xh, uh, xr, ur)
     print "dyn collision feature Hessian: \n", f_collision_dyn.hessian(xh, uh, xr, ur)

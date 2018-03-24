@@ -352,14 +352,17 @@ void DynCollisionCost::grad_ur(const Trajectory &robot_traj, const Trajectory &h
 
         // compute the jacobian w.r.t. xr
         Eigen::MatrixXd J(2, nXr);
+//        J(0, 2) = x_trans(t*2+1);
+//        J(1, 2) = -x_trans(t*2);
+//
+//        Eigen::MatrixXd Jp(2, nXr);
+//        Jp << 1.0, 0.0, -d_ * std::sin(th),
+//                0.0, 1.0, -d_ * std::cos(th);
+//
+//        J -= rot_t.transpose() * Jp;
+        J.block(0, 0, 2, 2) = -rot_t;
         J(0, 2) = x_trans(t*2+1);
         J(1, 2) = -x_trans(t*2);
-
-        Eigen::MatrixXd Jp(2, nXr);
-        Jp << 1.0, 0.0, -d_ * std::sin(th),
-                0.0, 1.0, -d_ * std::cos(th);
-
-        J -= rot_t.transpose() * Jp;
         Jxr.push_back(J);
     }
 
@@ -455,14 +458,10 @@ void DynCollisionCost::hessian_uh_ur(const Trajectory &robot_traj, const Traject
 
         // compute the jacobian w.r.t. xr
         Eigen::MatrixXd J(2, nXr);
+        J.block(0, 0, 2, 2) = -rot_t;
         J(0, 2) = x_trans(t*2+1);
         J(1, 2) = -x_trans(t*2);
 
-        Eigen::MatrixXd Jp(2, nXr);
-        Jp << 1.0, 0.0, -d_ * std::sin(th),
-                0.0, 1.0, -d_ * std::cos(th);
-
-        J -= rot_t * Jp;
         Jxr.push_back(J);
     }
 
