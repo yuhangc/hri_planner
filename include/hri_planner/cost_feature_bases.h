@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/7/2017
-// Last revision: 3/12/2017
+// Last revision: 3/25/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -36,6 +36,9 @@ public:
     virtual double compute(const Trajectory& robot_traj, const Trajectory& human_traj) = 0;
     virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) = 0;
     virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, VecRef grad) = 0;
+
+    // set additional data
+    virtual void set_data(const void* data) = 0;
 };
 
 class FeatureTwiceDiff: public FeatureBase {
@@ -47,19 +50,6 @@ public:
     virtual void hessian_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) = 0;
     virtual void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) = 0;
 };
-
-// human cost features requires hessian to u_h and (u_h, u_r)
-class FeatureHumanCost: public FeatureBase {
-public:
-    // virtual destructor
-    virtual ~FeatureHumanCost(){};
-
-    virtual void hessian_uh(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) = 0;
-    virtual void hessian_uh_ur(const Trajectory& robot_traj, const Trajectory& human_traj, MatRef hess) = 0;
-};
-
-// robot features only require first-order derivatives
-typedef FeatureBase FeatureRobotCost;
 
 // commonly used Gaussian feature for collision avoidance
 class GaussianCost {

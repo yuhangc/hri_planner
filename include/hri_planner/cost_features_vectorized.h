@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/19/2017
+// Last revision: 3/25/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -11,6 +11,8 @@
 
 #ifndef HRI_PLANNER_COST_FEATURES_VECTORIZED_H
 #define HRI_PLANNER_COST_FEATURES_VECTORIZED_H
+
+#include <memory>
 
 #include <Eigen/Dense>
 
@@ -27,6 +29,9 @@ public:
     virtual void compute(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::VectorXd& costs) = 0;
     virtual void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Juh) = 0;
     virtual void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Jur) = 0;
+
+    static std::shared_ptr<FeatureVectorizedBase> create(const std::string &feature_type,
+                                                         const std::vector<double> &args);
 };
 
 //! vectorized gaussian cost

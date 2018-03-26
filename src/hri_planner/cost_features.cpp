@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/8/2017
-// Last revision: 3/13/2017
+// Last revision: 3/25/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -15,6 +15,49 @@
 namespace hri_planner {
 
 // TODO: some of the second derivatives are not exact, maybe fix them later?
+
+//----------------------------------------------------------------------------------
+std::shared_ptr<FeatureHumanCost> FeatureHumanCost::create(const std::string &feature_type,
+                                                           const std::vector<double> &args)
+{
+    if (feature_type == "Velocity") {
+        return std::make_shared<HumanVelCost>();
+    }
+    else if (feature_type == "Acceleration") {
+        return std::make_shared<HumanAccCost>();
+    }
+    else if (feature_type == "Goal") {
+        Eigen::VectorXd x_goal(2);
+        x_goal << args[0], args[1];
+        return std::make_shared<HumanGoalCost>(x_goal);
+    }
+    else if (feature_type == "Collision") {
+        return std::make_shared<CollisionCost>(args[0]);
+    }
+    else if (feature_type == "CollisionDynamic") {
+        return std::make_shared<DynCollisionCost>(args[0], args[1], args[2]);
+    }
+    else {
+        throw "Invalid feature type!";
+    }
+}
+
+//----------------------------------------------------------------------------------
+std::shared_ptr<FeatureRobotCost> FeatureRobotCost::create(const std::string &feature_type,
+                                                           const std::vector<double> &args)
+{
+    if (feature_type == "Control") {
+        return std::make_shared<RobotControlCost>();
+    }
+    else if (feature_type == "Goal") {
+        Eigen::VectorXd x_goal(2);
+        x_goal << args[0], args[1];
+        return std::make_shared<RobotGoalCost>(x_goal);
+    }
+    else {
+        throw "Invalid feature type!";
+    }
+}
 
 //----------------------------------------------------------------------------------
 double HumanVelCost::compute(const Trajectory &robot_traj, const Trajectory &human_traj)

@@ -42,6 +42,7 @@ add_message_files(
   FILES
   HumanStat.msg
   TrackedHumans.msg
+  PlannedTrajectories.msg
 )
 
 # Generate services in the 'srv' folder
@@ -129,6 +130,7 @@ add_library(hri_planner
         include/hri_planner/costs.h
         include/hri_planner/cost_probabilistic.h
         include/hri_planner/optimizer.h
+        include/hri_planner/planner.h
         src/hri_planner/shared_config.cpp
         src/hri_planner/human_belief_model.cpp
         src/hri_planner/dynamics.cpp
@@ -138,7 +140,8 @@ add_library(hri_planner
         src/hri_planner/cost_features_vectorized.cpp
         src/hri_planner/costs.cpp
         src/hri_planner/cost_probabilistic.cpp
-        src/hri_planner/optimizer.cpp)
+        src/hri_planner/optimizer.cpp
+        src/hri_planner/planner.cpp)
 target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} ${NLOPT_LIBRARIES})
 
 ## Declare C++ executables
@@ -156,6 +159,11 @@ target_link_libraries(fake_tracker ${catkin_LIBRARIES})
 add_executable(hri_planner_tester
         src/hri_planner/component_test.cpp)
 target_link_libraries(hri_planner_tester ${catkin_LIBRARIES} hri_planner)
+
+# the planner itself
+add_executable(planner_node
+        src/hri_planner/planner_node.cpp)
+target_link_libraries(planner_node ${catkin_LIBRARIES} hri_planner)
 
 # video processor
 add_executable(video_processor

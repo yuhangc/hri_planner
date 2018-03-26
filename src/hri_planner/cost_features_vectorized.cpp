@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/20/2017
+// Last revision: 3/25/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -12,6 +12,21 @@
 #include "hri_planner/cost_features_vectorized.h"
 
 namespace hri_planner {
+
+//----------------------------------------------------------------------------------
+std::shared_ptr<FeatureVectorizedBase> FeatureVectorizedBase::create(const std::string &feature_type,
+                                                                     const std::vector<double> &args)
+{
+    if (feature_type == "HumanEffort") {
+        return std::make_shared<HumanAccCostVec>();
+    }
+    else if (feature_type == "Collision") {
+        return std::make_shared<CollisionCostVec>(args[0]);
+    }
+    else {
+        throw "Invalid feature type!";
+    }
+}
 
 //----------------------------------------------------------------------------------
 void GaussianCostVec::compute(const Eigen::VectorXd &x, const int nX, const int T, const double a, const double b,

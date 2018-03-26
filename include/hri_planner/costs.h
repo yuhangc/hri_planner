@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/7/2017
-// Last revision: 3/22/2017
+// Last revision: 3/25/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -17,6 +17,7 @@
 #include <Eigen/Dense>
 
 #include "hri_planner/cost_feature_bases.h"
+#include "hri_planner/cost_features.h"
 
 namespace hri_planner {
 
@@ -46,6 +47,8 @@ public:
     // incrementally add in features
     void add_feature(double weight, FeatureBase* feature);
     void add_feature(double weight, const std::shared_ptr<FeatureBase> feature);
+
+    void set_data(const void* data) override {};
 
 protected:
     int nfeatures_;
