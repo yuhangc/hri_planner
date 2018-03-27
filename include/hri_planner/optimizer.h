@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/22/2017
+// Last revision: 3/26/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -21,14 +21,9 @@
 #include "hri_planner/trajectory.h"
 #include "hri_planner/costs.h"
 #include "hri_planner/cost_probabilistic.h"
+#include "utils/utils.h"
 
 namespace hri_planner {
-
-// helper functions
-void EigenToVector(const Eigen::VectorXd& eigen_vec, std::vector<double>& std_vec);
-void EigenToVector3(const Eigen::VectorXd& vec1, const Eigen::VectorXd& vec2,
-                    const Eigen::VectorXd& vec3, std::vector<double>& std_vec);
-void VectorToEigen(const std::vector<double>& std_vec, Eigen::VectorXd& eigen_vec);
 
 class TrajectoryOptimizer {
 public:
@@ -80,11 +75,10 @@ public:
                             const Eigen::VectorXd& lb_uh, const Eigen::VectorXd& ub_uh) = 0;
 
     // optimize!
-    virtual double optimize(const Eigen::VectorXd& xr0, const Eigen::VectorXd& xh0,
-                          const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
-                          const Trajectory& human_traj_rp_init, int acomm, double tcomm,
-                          Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt=nullptr,
-                          Trajectory* human_traj_rp_opt=nullptr) = 0;
+    virtual double optimize(const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
+                            const Trajectory& human_traj_rp_init, int acomm, double tcomm,
+                            Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt=nullptr,
+                            Trajectory* human_traj_rp_opt=nullptr) = 0;
 
 protected:
     // non-linear optimizer
@@ -129,11 +123,10 @@ public:
                     const Eigen::VectorXd& lb_uh, const Eigen::VectorXd& ub_uh) override;
 
     // optimize!
-    double optimize(const Eigen::VectorXd& xr0, const Eigen::VectorXd& xh0,
-                  const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
-                  const Trajectory& human_traj_rp_init, int acomm, double tcomm,
-                  Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt=nullptr,
-                  Trajectory* human_traj_rp_opt=nullptr) override;
+    double optimize(const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
+                    const Trajectory& human_traj_rp_init, int acomm, double tcomm,
+                    Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt=nullptr,
+                    Trajectory* human_traj_rp_opt=nullptr) override;
 
     // check constraint
     double check_constraint(const Trajectory& robot_traj, const Trajectory& human_traj_hp,
@@ -163,11 +156,10 @@ public:
                     const Eigen::VectorXd& lb_uh, const Eigen::VectorXd& ub_uh) override;
 
     // optimize!
-    double optimize(const Eigen::VectorXd& xr0, const Eigen::VectorXd& xh0,
-                  const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
-                  const Trajectory& human_traj_rp_init, int acomm, double tcomm,
-                  Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt=nullptr,
-                  Trajectory* human_traj_rp_opt=nullptr) override;
+    double optimize(const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
+                    const Trajectory& human_traj_rp_init, int acomm, double tcomm,
+                    Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt=nullptr,
+                    Trajectory* human_traj_rp_opt=nullptr) override;
 
 private:
     // optimizers for obtaining human trajectory

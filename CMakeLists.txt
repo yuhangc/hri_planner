@@ -112,6 +112,11 @@ find_package(NLopt REQUIRED)
 include_directories(NLopt_INCLUDE_DIRS)
 
 ## Declare C++ libraries
+add_library(utils
+        include/utils/utils.h
+        src/utils/utils.cpp)
+target_link_libraries(utils ${catkin_LIBRARIES})
+
 add_library(social_force
         include/social_force/social_force.h
         include/social_force/social_force_sim.h
@@ -142,7 +147,7 @@ add_library(hri_planner
         src/hri_planner/cost_probabilistic.cpp
         src/hri_planner/optimizer.cpp
         src/hri_planner/planner.cpp)
-target_link_libraries(hri_planner ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} ${NLOPT_LIBRARIES})
+target_link_libraries(hri_planner utils ${catkin_LIBRARIES} ${JSONCPP_LIBRARIES} ${NLOPT_LIBRARIES})
 
 ## Declare C++ executables
 # social force simulation

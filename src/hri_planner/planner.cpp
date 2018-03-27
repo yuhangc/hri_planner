@@ -55,17 +55,17 @@ Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     xh_meas_.setZero(nUh_);
 
     // create subscribers and publishers
-    robot_state_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("~amcl_pose", 1,
+    robot_state_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 1,
                                                                                &Planner::robot_state_callback, this);
 
-    robot_odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("~odom", 1, &Planner::robot_odom_callback, this);
+    robot_odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &Planner::robot_odom_callback, this);
 
-    human_state_sub_ = nh_.subscribe<std_msgs::Float64MultiArray>("~tracked_human", 1,
+    human_state_sub_ = nh_.subscribe<std_msgs::Float64MultiArray>("/tracked_human", 1,
                                                                   &Planner::human_state_callback, this);
 
-    robot_ctrl_pub_ = nh_.advertise<geometry_msgs::Twist>("~planner/cmd_vel", 1);
-    comm_pub_ = nh_.advertise<std_msgs::Int32>("~planner/communication", 1);
-    plan_pub_ = nh_.advertise<hri_planner::PlannedTrajectories>("~planner/full_plan", 1);
+    robot_ctrl_pub_ = nh_.advertise<geometry_msgs::Twist>("/planner/cmd_vel", 1);
+    comm_pub_ = nh_.advertise<std_msgs::Int32>("/planner/communication", 1);
+    plan_pub_ = nh_.advertise<hri_planner::PlannedTrajectories>("/planner/full_plan", 1);
 }
 
 //----------------------------------------------------------------------------------
@@ -251,25 +251,22 @@ void Planner::create_optimizer()
     Eigen::VectorXd lb_uh(dim_h);
     Eigen::VectorXd ub_uh(dim_h);
 
-    std::vector<double> lb_ur_vec;
-    std::vector<double> ub_ur_vec;
-    std::vector<double> lb_uh_vec;
-    std::vector<double> ub_uh_vec;
 
-    ros::param::get("~optimizer/bounds/lb_ur", lb_ur_vec);
-    ros::param::get("~optimizer/bounds/ub_ur", ub_ur_vec);
-    ros::param::get("~optimizer/bounds/lb_uh", lb_uh_vec);
-    ros::param::get("~optimizer/bounds/ub_uh", ub_uh_vec);
+
+    ros::param::get("~optimizer/bounds/lb_ur", lb_ur_vec_);
+    ros::param::get("~optimizer/bounds/ub_ur", ub_ur_vec_);
+    ros::param::get("~optimizer/bounds/lb_uh", lb_uh_vec_);
+    ros::param::get("~optimizer/bounds/ub_uh", ub_uh_vec_);
 
     for (int t = 0; t < T_; ++t) {
         for (int i = 0; i < nUr_; ++i) {
-            lb_ur(t*nUr_+i) = lb_ur_vec[i];
-            ub_ur(t*nUr_+i) = ub_ur_vec[i];
+            lb_ur(t*nUr_+i) = lb_ur_vec_[i];
+            ub_ur(t*nUr_+i) = ub_ur_vec_[i];
         }
 
         for (int i = 0; i < nUh_; ++i) {
-            lb_uh(t*nUh_+i) = lb_uh_vec[i];
-            ub_uh(t*nUh_+i) = ub_uh_vec[i];
+            lb_uh(t*nUh_+i) = lb_uh_vec_[i];
+            ub_uh(t*nUh_+i) = ub_uh_vec_[i];
         }
     }
 
@@ -298,8 +295,8 @@ void Planner::compute_plan()
     Trajectory human_traj_hp_opt_n(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt_n(CONST_ACC_MODEL, T_, dt_);
 
-    cost_no_comm = optimizer_->optimize(xr_, xh_, robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_,
-                                        acomm_, tcomm_, robot_traj_opt_n, &human_traj_hp_opt_n, &human_traj_rp_opt_n);
+    cost_no_comm = optimizer_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, acomm_, tcomm_,
+                                        robot_traj_opt_n, &human_traj_hp_opt_n, &human_traj_rp_opt_n);
 
     // optimize for communication
     double cost_comm;
@@ -307,8 +304,8 @@ void Planner::compute_plan()
     Trajectory human_traj_hp_opt(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt(CONST_ACC_MODEL, T_, dt_);
 
-    cost_comm = optimizer_->optimize(xr_, xh_, robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_,
-                                     intent_, 0.0, robot_traj_opt, &human_traj_hp_opt, &human_traj_rp_opt);
+    cost_comm = optimizer_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, intent_, 0.0,
+                                     robot_traj_opt, &human_traj_hp_opt, &human_traj_rp_opt);
     cost_comm += comm_cost_;
 
     // compare the cost and choose optimal actions
@@ -328,14 +325,25 @@ void Planner::compute_plan()
 
     // publish communicative action if any
     if (tcomm_ == 0.0) {
-
+        std_msgs::Int32 comm;
+        comm.data = acomm_;
+        comm_pub_.publish(comm);
     }
 
     // publish robot control
+    geometry_msgs::Twist cmd_vel;
+    cmd_vel.linear.x = robot_traj_opt_.u(0);
+    cmd_vel.angular.z = robot_traj_opt_.u(1);
 
     // publish full plan if specified
     if (flag_publish_full_plan_) {
-
+        PlannedTrajectories trajectories;
+        trajectories.T = T_;
+        trajectories.nXr = nXr_;
+        trajectories.nXh = nXh_;
+        utils::EigenToVector(robot_traj_opt_.x, trajectories.robot_traj_opt);
+        utils::EigenToVector(human_traj_hp_opt_.x, trajectories.human_traj_hp_opt);
+        utils::EigenToVector(human_traj_rp_opt_.x, trajectories.human_traj_rp_opt);
     }
 }
 
@@ -346,6 +354,9 @@ void Planner::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorX
     features_robot_["Goal"]->set_data(&xr_goal);
     features_human_["Goal_hp"]->set_data(&xh_goal);
     features_human_["Goal_rp"]->set_data(&xh_goal);
+
+    xr_goal_ = xr_goal;
+    xh_goal_ = xh_goal;
 
     // reset other things
     // assuming no communication at the beginning
@@ -363,10 +374,18 @@ void Planner::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorX
 void Planner::generate_init_guesses(Trajectory &robot_traj, Trajectory &human_traj_hp, Trajectory &human_traj_rp)
 {
     // create initial guesses for robot control and human trajectory
-    // FIXME: right now use very simple const vel guesses
+    //! use a closed-loop control law to generate initial control for the robot
+    Eigen::VectorXd ur;
+    generate_steer_posq(xr_, xr_goal_, ur);
 
-    Eigen::VectorXd ur(T_ * nUr_);
+    robot_traj.update(xr_, ur);
 
+    //! for human initial guess also use a control-based alg to generate
+    Eigen::VectorXd uh;
+    generate_steer_acc(xh_, xh_goal_, uh);
+
+    human_traj_hp.update(xh_, uh);
+    human_traj_rp.update(xh_, uh);
 }
 
 //----------------------------------------------------------------------------------
@@ -407,6 +426,77 @@ void Planner::shift_control(const Eigen::VectorXd &u_in, Eigen::VectorXd &u_out,
     else {
         // set control for new time step the same as last time step
         u_out.segment(len-dim, dim) = const_cast<Eigen::VectorXd&>(u_in).segment(len-dim, dim);
+    }
+}
+
+//----------------------------------------------------------------------------------
+void Planner::generate_steer_posq(const Eigen::VectorXd &x0, const Eigen::VectorXd &x_goal, Eigen::VectorXd &ur)
+{
+    // get parameters
+    double k_rho, k_v, k_alp, k_phi, gamma;
+    ros::param::param<double>("~steer_posq/k_rho", k_rho, 1.0);
+    ros::param::param<double>("~steer_posq/k_v", k_v, 3.8);
+    ros::param::param<double>("~steer_posq/k_alp", k_alp, 6.0);
+    ros::param::param<double>("~steer_posq/k_phi", k_phi, -1.0);
+    ros::param::param<double>("~steer_posq/gamma", gamma, 0.15);
+
+    Eigen::VectorXd xr(T_ * nXr_);
+    ur.resize(T_ * nUr_);
+
+    // create a differential dynamics object
+    DifferentialDynamics dyn(dt_);
+
+    Eigen::VectorXd x_last = x0;
+    for (int t = 0; t < T_; ++t) {
+        // compute desired control
+        double rho = (x_goal - x_last.head(2)).norm();
+        double phi = 0.0;   //! don't care about orientation for now
+        double th_z = std::atan2(x_goal(1) - x_last(1), x_goal(0) - x_last(0));
+        double alpha = utils::wrap_to_pi(th_z - x_last(2));
+
+        ur(t*nUr_) = utils::clamp(k_rho * std::tanh(k_v * rho), lb_ur_vec_[0], ub_ur_vec_[0]);
+        ur(t*nUr_+1) = utils::clamp(k_alp * alpha + k_phi * phi, lb_ur_vec_[1], ub_ur_vec_[1]);
+
+        dyn.forward_dyn(x_last, ur.segment(t*nUr_, nUr_), xr.segment(t*nXr_, nXr_));
+        x_last = xr.segment(t*nXr_, nXr_);
+    }
+}
+
+//----------------------------------------------------------------------------------
+void Planner::generate_steer_acc(const Eigen::VectorXd &x0, const Eigen::VectorXd &x_goal, Eigen::VectorXd &uh)
+{
+    double v_max, a_max;
+    double k_v;
+    ros::param::param<double>("~steer_acc/v_max", v_max, 1.0);
+    ros::param::param<double>("~steer_acc/a_max", a_max, 0.5);
+    ros::param::param<double>("~steer_acc/k_v", k_v, 1.0);
+
+    Eigen::VectorXd xh(T_ * nXh_);
+    uh.resize(T_ * nUh_);
+
+    // create a const acc dynamics object
+    ConstAccDynamics dyn(dt_);
+    Eigen::VectorXd x_last = x0;
+    for (int t = 0; t < T_; ++t) {
+        // compute desired velocity
+        Eigen::VectorXd x_diff = x_goal - x_last.head(2);
+        Eigen::VectorXd vd = k_v * x_diff;
+        double v_mag = utils::clamp(vd.norm(), 0.0, v_max);
+
+        vd.normalize();
+        vd *= v_mag;
+
+        // compute the desired acceleration
+        Eigen::VectorXd ad = (vd - x_last.tail(2)) / dt_;
+        double a_mag = utils::clamp(ad.norm(), 0.0, a_max);
+
+        ad.normalize();
+        ad *= a_mag;
+
+        // update
+        uh.segment(t*nUh_, nUh_) = ad;
+        dyn.forward_dyn(x_last, ad, xh.segment(t*nXh_, nXh_));
+        x_last = xh.segment(t*nXh_, nXh_);
     }
 }
 

@@ -706,14 +706,14 @@ bool test_nested_optimizer(hri_planner::TestComponent::Request& req,
 
         // perform the full optimization!
         t_start = ros::Time::now();
-        optimizer->optimize(xr0, xh0, robot_traj, human_traj_hp_opt, human_traj_rp_opt,
-                           req.acomm, req.tcomm, robot_traj_opt, &human_traj_hp_new, &human_traj_rp_new);
+        optimizer->optimize(robot_traj, human_traj_hp_opt, human_traj_rp_opt, req.acomm, req.tcomm,
+                            robot_traj_opt, &human_traj_hp_new, &human_traj_rp_new);
     }
     else {
         // perform the full optimization!
         t_start = ros::Time::now();
-        optimizer->optimize(xr0, xh0, robot_traj, human_traj_hp, human_traj_rp,
-                            req.acomm, req.tcomm, robot_traj_opt, &human_traj_hp_new, &human_traj_rp_new);
+        optimizer->optimize(robot_traj, human_traj_hp, human_traj_rp, req.acomm, req.tcomm,
+                            robot_traj_opt, &human_traj_hp_new, &human_traj_rp_new);
     }
 
     // log the data

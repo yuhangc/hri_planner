@@ -16,27 +16,6 @@
 namespace hri_planner {
 
 //----------------------------------------------------------------------------------
-void EigenToVector(const Eigen::VectorXd& eigen_vec, std::vector<double>& std_vec)
-{
-    std_vec.assign(eigen_vec.data(), eigen_vec.data() + eigen_vec.size());
-}
-
-//----------------------------------------------------------------------------------
-void EigenToVector3(const Eigen::VectorXd& vec1, const Eigen::VectorXd& vec2,
-                    const Eigen::VectorXd& vec3, std::vector<double>& std_vec)
-{
-    std_vec.assign(vec1.data(), vec1.data() + vec1.size());
-    std_vec.insert(std_vec.end(), vec2.data(), vec2.data() + vec2.size());
-    std_vec.insert(std_vec.end(), vec3.data(), vec3.data() + vec3.size());
-}
-
-//----------------------------------------------------------------------------------
-void VectorToEigen(const std::vector<double>& std_vec, Eigen::VectorXd& eigen_vec)
-{
-    eigen_vec = Eigen::Map<Eigen::VectorXd>(const_cast<double*>(std_vec.data()), std_vec.size());
-}
-
-//----------------------------------------------------------------------------------
 TrajectoryOptimizer::TrajectoryOptimizer(unsigned int dim, const nlopt::algorithm& alg)
 {
     optimizer_ = nlopt::opt(alg, dim);
@@ -93,7 +72,7 @@ bool TrajectoryOptimizer::optimize(const Trajectory& traj_init, const Trajectory
 
     // initial condition
     std::vector<double> u_opt;
-    EigenToVector(traj_init.u, u_opt);
+    utils::EigenToVector(traj_init.u, u_opt);
 
     // optimizer!
     double min_cost;
@@ -101,7 +80,7 @@ bool TrajectoryOptimizer::optimize(const Trajectory& traj_init, const Trajectory
 
     // send result back
     traj_opt.x0 = traj_init.x0;
-    VectorToEigen(u_opt, traj_opt.u);
+    utils::VectorToEigen(u_opt, traj_opt.u);
     traj_opt.compute();
     traj_opt.compute_jacobian();
 
@@ -122,7 +101,7 @@ double TrajectoryOptimizer::cost_func(const std::vector<double> &u, std::vector<
     cost_->grad(*traj_, grad_vec);
 
     // covert eigen vec to std vector
-    EigenToVector(grad_vec, grad);
+    utils::EigenToVector(grad_vec, grad);
 
     // return the cost
     return cost_->compute(*traj_);
@@ -185,8 +164,7 @@ void NestedTrajectoryOptimizer::set_bounds(const Eigen::VectorXd &lb_ur, const E
 }
 
 //----------------------------------------------------------------------------------
-double NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen::VectorXd &xh0,
-                                           const Trajectory &robot_traj_init, const Trajectory &human_traj_hp_init,
+double NestedTrajectoryOptimizer::optimize(const Trajectory &robot_traj_init, const Trajectory &human_traj_hp_init,
                                            const Trajectory& human_traj_rp_init, int acomm, double tcomm,
                                            Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt,
                                            Trajectory* human_traj_rp_opt)
@@ -217,8 +195,8 @@ double NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eig
     std::vector<double> lb;
     std::vector<double> ub;
 
-    EigenToVector3(lb_ur_, lb_uh_, lb_uh_, lb);
-    EigenToVector3(ub_ur_, ub_uh_, ub_uh_, ub);
+    utils::EigenToVector3(lb_ur_, lb_uh_, lb_uh_, lb);
+    utils::EigenToVector3(ub_ur_, ub_uh_, ub_uh_, ub);
 
     optimizer_.set_lower_bounds(lb);
     optimizer_.set_upper_bounds(ub);
@@ -234,7 +212,7 @@ double NestedTrajectoryOptimizer::optimize(const Eigen::VectorXd &xr0, const Eig
 
     // initial condition
     std::vector<double> u_opt;
-    EigenToVector3(robot_traj_init.u, human_traj_hp_init.u, human_traj_rp_init.u, u_opt);
+    utils::EigenToVector3(robot_traj_init.u, human_traj_hp_init.u, human_traj_rp_init.u, u_opt);
 
     // optimizer!
     double min_cost;
@@ -272,7 +250,7 @@ double NestedTrajectoryOptimizer::check_constraint(const Trajectory &robot_traj,
 {
     // convert to std vector
     std::vector<double> u;
-    EigenToVector3(robot_traj.u, human_traj_hp.u, human_traj_rp.u, u);
+    utils::EigenToVector3(robot_traj.u, human_traj_hp.u, human_traj_rp.u, u);
 
     std::vector<double> grad;
 
@@ -318,7 +296,7 @@ double NestedTrajectoryOptimizer::cost_func(const std::vector<double> &u, std::v
                                        grad_ur, grad_uh_hp, grad_uh_rp);
 
     // convert to single gradient vector
-    EigenToVector3(grad_ur, grad_uh_hp, grad_uh_rp, grad);
+    utils::EigenToVector3(grad_ur, grad_uh_hp, grad_uh_rp, grad);
 
     return cost;
 }
@@ -373,7 +351,7 @@ double NestedTrajectoryOptimizer::constraint(const std::vector<double> &u, std::
     grad_uh_rp = Ju_rp.transpose() * grad_uh_rp * 2.0;
 
     // convert to std vector
-    EigenToVector(grad_uh_hp + grad_uh_rp, grad);
+    utils::EigenToVector(grad_uh_hp + grad_uh_rp, grad);
 
     return constraint_val;
 }
@@ -426,8 +404,7 @@ void NaiveNestedOptimizer::set_bounds(const Eigen::VectorXd &lb_ur, const Eigen:
 }
 
 //----------------------------------------------------------------------------------
-double NaiveNestedOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen::VectorXd &xh0,
-                                      const Trajectory &robot_traj_init, const Trajectory &human_traj_hp_init,
+double NaiveNestedOptimizer::optimize(const Trajectory &robot_traj_init, const Trajectory &human_traj_hp_init,
                                       const Trajectory &human_traj_rp_init, int acomm, double tcomm,
                                       Trajectory &robot_traj_opt, Trajectory *human_traj_hp_opt,
                                       Trajectory *human_traj_rp_opt)
@@ -444,16 +421,18 @@ double NaiveNestedOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen::V
 
     human_traj_hp_.reset(new Trajectory(CONST_ACC_MODEL, T, dt));
     human_traj_hp_->x0 = human_traj_hp_init.x0;
+    human_traj_hp_->u = human_traj_hp_init.u;
 
     human_traj_rp_.reset(new Trajectory(CONST_ACC_MODEL, T, dt));
     human_traj_rp_->x0 = human_traj_rp_init.x0;
+    human_traj_rp_->u = human_traj_rp_init.u;
 
     // set lower and upper bounds
     std::vector<double> lb;
     std::vector<double> ub;
 
-    EigenToVector(lb_ur_, lb);
-    EigenToVector(ub_ur_, ub);
+    utils::EigenToVector(lb_ur_, lb);
+    utils::EigenToVector(ub_ur_, ub);
 
     optimizer_.set_lower_bounds(lb);
     optimizer_.set_upper_bounds(ub);
@@ -467,10 +446,10 @@ double NaiveNestedOptimizer::optimize(const Eigen::VectorXd &xr0, const Eigen::V
 
     // initial condition
     std::vector<double> u_opt;
-    EigenToVector(robot_traj_init.u, u_opt);
+    utils::EigenToVector(robot_traj_init.u, u_opt);
 
-    *human_traj_hp_ = human_traj_hp_init;
-    *human_traj_rp_ = human_traj_rp_init;
+//    *human_traj_hp_ = human_traj_hp_init;
+//    *human_traj_rp_ = human_traj_rp_init;
 
     // optimizer!
     double min_cost;
@@ -554,7 +533,7 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
 //    grad_ur -= hess_uh_ur_hp.transpose() * hess_uh_hp.colPivHouseholderQr().solve(grad_uh_hp)
 //               + hess_uh_ur_rp.transpose() * hess_uh_rp.colPivHouseholderQr().solve(grad_uh_rp);
 
-    EigenToVector(grad_ur, grad);
+    utils::EigenToVector(grad_ur, grad);
 
     static int counter = 0;
     ++counter;

@@ -30,6 +30,7 @@
 #include "hri_planner/cost_probabilistic.h"
 #include "hri_planner/human_belief_model.h"
 #include "hri_planner/optimizer.h"
+#include "utils/utils.h"
 
 #include "hri_planner/PlannedTrajectories.h"
 
@@ -85,6 +86,10 @@ private:
     Eigen::VectorXd ur_meas_;
     Eigen::VectorXd xh_meas_;
 
+    // goals for robot and human
+    Eigen::VectorXd xr_goal_;
+    Eigen::VectorXd xh_goal_;
+
     // the optimal plan
     Trajectory robot_traj_opt_;
     Trajectory human_traj_hp_opt_;
@@ -94,6 +99,12 @@ private:
     Trajectory robot_traj_init_;
     Trajectory human_traj_hp_init_;
     Trajectory human_traj_rp_init_;
+
+    // control bounds
+    std::vector<double> lb_ur_vec_;
+    std::vector<double> ub_ur_vec_;
+    std::vector<double> lb_uh_vec_;
+    std::vector<double> ub_uh_vec_;
 
     // whether to publish the full plan
     bool flag_publish_full_plan_;
@@ -130,6 +141,9 @@ private:
     void update_init_guesses();
 
     void shift_control(const Eigen::VectorXd& u_in, Eigen::VectorXd& u_out, int dim, bool pad_zero);
+
+    void generate_steer_posq(const Eigen::VectorXd& x0, const Eigen::VectorXd& x_goal, Eigen::VectorXd& ur);
+    void generate_steer_acc(const Eigen::VectorXd& x0, const Eigen::VectorXd& x_goal, Eigen::VectorXd& uh);
 };
 
 } // namespace
