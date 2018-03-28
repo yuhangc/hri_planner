@@ -52,7 +52,7 @@ Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     // measurements
     xr_meas_.setZero(nXr_);
     ur_meas_.setZero(nUr_);
-    xh_meas_.setZero(nUh_);
+    xh_meas_.setZero(nXh_);
 
     // create subscribers and publishers
     robot_state_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 1,
@@ -66,6 +66,8 @@ Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     robot_ctrl_pub_ = nh_.advertise<geometry_msgs::Twist>("/planner/cmd_vel", 1);
     comm_pub_ = nh_.advertise<std_msgs::Int32>("/planner/communication", 1);
     plan_pub_ = nh_.advertise<hri_planner::PlannedTrajectories>("/planner/full_plan", 1);
+
+    ROS_INFO("All subscribers and publishers initialized!");
 }
 
 //----------------------------------------------------------------------------------
@@ -108,13 +110,15 @@ void Planner::create_human_costs(std::shared_ptr<HumanCost>& human_cost_hp,
         for (int i = 0; i < n_features; ++i) {
             std::string feature_str = "~human_cost_" + type_str + "/feature" + std::to_string(i);
 
+            ROS_INFO("now loading feature %s ...", feature_str.c_str());
+
             std::string feature_name;
             ros::param::param<std::string>(feature_str + "/name", feature_name, "");
 
             int n_args;
             std::vector<double> args;
 
-            ros::param::param<int>(feature_str + "/n_args", n_args, 0);
+            ros::param::param<int>(feature_str + "/nargs", n_args, 0);
             if (n_args > 0)
                 ros::param::get(feature_str + "/args", args);
 
@@ -157,6 +161,7 @@ void Planner::create_robot_costs(std::shared_ptr<ProbabilisticCostBase>& robot_c
 
     for (int i = 0; i < n_non_int; ++i) {
         std::string feature_str = "~robot_cost_non_int/feature" + std::to_string(i);
+        ROS_INFO("now loading feature %s ...", feature_str.c_str());
 
         std::string feature_name;
         ros::param::param<std::string>(feature_str + "/name", feature_name, "");
@@ -164,7 +169,7 @@ void Planner::create_robot_costs(std::shared_ptr<ProbabilisticCostBase>& robot_c
         int n_args;
         std::vector<double> args;
 
-        ros::param::param<int>(feature_str + "/n_args", n_args, 0);
+        ros::param::param<int>(feature_str + "/nargs", n_args, 0);
         if (n_args > 0)
             ros::param::get(feature_str + "/args", args);
 
@@ -185,6 +190,7 @@ void Planner::create_robot_costs(std::shared_ptr<ProbabilisticCostBase>& robot_c
 
     for (int i = 0; i < n_int; ++i) {
         std::string feature_str = "~robot_cost_int/feature" + std::to_string(i);
+        ROS_INFO("now loading feature %s ...", feature_str.c_str());
 
         std::string feature_name;
         ros::param::param<std::string>(feature_str + "/name", feature_name, "");
@@ -192,7 +198,7 @@ void Planner::create_robot_costs(std::shared_ptr<ProbabilisticCostBase>& robot_c
         int n_args;
         std::vector<double> args;
 
-        ros::param::param<int>(feature_str + "/n_args", n_args, 0);
+        ros::param::param<int>(feature_str + "/nargs", n_args, 0);
         if (n_args > 0)
             ros::param::get(feature_str + "/args", args);
 
@@ -206,6 +212,7 @@ void Planner::create_robot_costs(std::shared_ptr<ProbabilisticCostBase>& robot_c
 
     // create a belief model
     create_belief_model(belief_model_);
+    ROS_INFO("Belief model created...");
 
     // create the robot cost function and set cost features
     robot_cost = std::make_shared<ProbabilisticCostSimplified>(belief_model_);
@@ -225,9 +232,13 @@ void Planner::create_optimizer()
 
     create_human_costs(human_cost_hp, human_cost_rp, single_cost_hp, single_cost_rp);
 
+    ROS_INFO("Human cost func created...");
+
     // create the robot cost functions
     std::shared_ptr<ProbabilisticCostBase> robot_cost;
     create_robot_costs(robot_cost);
+
+    ROS_INFO("Robot cost func created...");
 
     // load optimizer configuration
 //    std::string optimizer_type;
@@ -241,17 +252,17 @@ void Planner::create_optimizer()
                                                         static_cast<unsigned int>(dim_r),
                                                         nlopt::LD_SLSQP, nlopt::LD_SLSQP);
 
+    ROS_INFO("Optimizer created...");
+
     // set costs
     optimizer_->set_robot_cost(robot_cost);
-    optimizer_->set_human_cost(human_cost_hp, human_cost_rp);
+    optimizer_->set_human_cost(single_cost_hp, single_cost_rp);
 
     // load and set bounds
     Eigen::VectorXd lb_ur(dim_r);
     Eigen::VectorXd ub_ur(dim_r);
     Eigen::VectorXd lb_uh(dim_h);
     Eigen::VectorXd ub_uh(dim_h);
-
-
 
     ros::param::get("~optimizer/bounds/lb_ur", lb_ur_vec_);
     ros::param::get("~optimizer/bounds/ub_ur", ub_ur_vec_);
@@ -270,12 +281,19 @@ void Planner::create_optimizer()
         }
     }
 
+    std::cout << "bounds:" << std::endl;
+    std::cout << lb_ur.transpose() << std::endl;
+    std::cout << ub_ur.transpose() << std::endl;
+    std::cout << lb_uh.transpose() << std::endl;
+    std::cout << ub_uh.transpose() << std::endl;
+
     optimizer_->set_bounds(lb_ur, ub_ur, lb_uh, ub_uh);
 }
 
 //----------------------------------------------------------------------------------
 void Planner::compute_plan()
 {
+    ROS_INFO("Start to compute plan...");
     // copy the current state measurements
     xr_ = xr_meas_;
     ur_ = ur_meas_;
@@ -295,8 +313,10 @@ void Planner::compute_plan()
     Trajectory human_traj_hp_opt_n(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt_n(CONST_ACC_MODEL, T_, dt_);
 
+    std::cout << "before optimization" << std::endl;
     cost_no_comm = optimizer_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, acomm_, tcomm_,
                                         robot_traj_opt_n, &human_traj_hp_opt_n, &human_traj_rp_opt_n);
+    std::cout << "after optimization" << std::endl;
 
     // optimize for communication
     double cost_comm;
@@ -323,6 +343,8 @@ void Planner::compute_plan()
         human_traj_rp_opt_ = human_traj_hp_opt;
     }
 
+    ROS_INFO("Got plan!");
+
     // publish communicative action if any
     if (tcomm_ == 0.0) {
         std_msgs::Int32 comm;
@@ -334,6 +356,7 @@ void Planner::compute_plan()
     geometry_msgs::Twist cmd_vel;
     cmd_vel.linear.x = robot_traj_opt_.u(0);
     cmd_vel.angular.z = robot_traj_opt_.u(1);
+    robot_ctrl_pub_.publish(cmd_vel);
 
     // publish full plan if specified
     if (flag_publish_full_plan_) {
@@ -344,6 +367,8 @@ void Planner::compute_plan()
         utils::EigenToVector(robot_traj_opt_.x, trajectories.robot_traj_opt);
         utils::EigenToVector(human_traj_hp_opt_.x, trajectories.human_traj_hp_opt);
         utils::EigenToVector(human_traj_rp_opt_.x, trajectories.human_traj_rp_opt);
+
+        plan_pub_.publish(trajectories);
     }
 }
 

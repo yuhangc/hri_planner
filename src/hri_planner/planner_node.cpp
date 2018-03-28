@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2017
-// Last revision: 3/26/2017
+// Last revision: 3/27/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -15,6 +15,7 @@
 
 #include <ros/ros.h>
 #include <std_msgs/Float64MultiArray.h>
+#include <std_msgs/Bool.h>
 
 #include "hri_planner/planner.h"
 
@@ -36,6 +37,8 @@ void goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_msg)
     int dim;
     ros::param::param<int>("~dimension/dim_goal", dim, 2);
 
+    ROS_INFO("Received new goal, reset planner...");
+
     xr_goal.resize(dim);
     xh_goal.resize(dim);
 
@@ -47,9 +50,9 @@ void goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_msg)
     flag_start_planning = true;
 }
 
-void human_state_callback(const std_msgs::Float64MultiArrayConstPtr& state_msg)
+void pause_planner_callback(const std_msgs::BoolConstPtr& msg)
 {
-    flag_pause_planning = false;
+    flag_pause_planning = msg->data;
 }
 
 int main(int argc, char** argv)
@@ -64,15 +67,15 @@ int main(int argc, char** argv)
 
     // subscribers
     auto goal_sub = nh.subscribe<std_msgs::Float64MultiArray>("/planner/set_goal", 1, &goal_callback);
-    auto human_state_sub = nh.subscribe<std_msgs::Float64MultiArray>("/tracked_human", 1, &human_state_callback);
+    auto pause_planner_sub = nh.subscribe<std_msgs::Bool>("/planner/pause", 1, &pause_planner_callback);
 
     // get rate
     double planner_rate;
-    ros::param::param<double>("~planner_rate", planner_rate, 2.0);
+    ros::param::param<double>("~planner/planner_rate", planner_rate, 2.0);
 
     // operating mode
     std::string mode;
-    ros::param::param<std::string>("~planner_mode", mode, "simulation");
+    ros::param::param<std::string>("~planner/planner_mode", mode, "simulation");
 
     ros::Rate rate(planner_rate);
 
@@ -82,20 +85,27 @@ int main(int argc, char** argv)
     flag_pause_planning = true;
 
     while (!ros::isShuttingDown()) {
+        ros::spinOnce();
+
         switch (planner_state) {
             case Idle:
+                ROS_INFO("In state Idle");
                 if (flag_start_planning) {
                     flag_start_planning = false;
                     planner.reset_planner(xr_goal, xh_goal);
 
                     planner_state = Planning;
                 }
+                break;
             case Waiting:
+                ROS_INFO("In state Waiting");
                 if (!flag_pause_planning) {
                     flag_pause_planning = true;
                     planner_state = Planning;
                 }
+                break;
             case Planning:
+                ROS_INFO("In state Planning");
                 planner.compute_plan();
 
                 if (mode == "simulation") {

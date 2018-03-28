@@ -54,12 +54,8 @@ bool TrajectoryOptimizer::optimize(const Trajectory& traj_init, const Trajectory
     std::vector<double> lb;
     std::vector<double> ub;
 
-    for (int t = 0; t < traj_init.horizon(); ++t) {
-        for (int i = 0; i < traj_init.control_size(); ++i) {
-            lb.push_back(lb_(i));
-            ub.push_back(ub_(i));
-        }
-    }
+    utils::EigenToVector(lb_, lb);
+    utils::EigenToVector(ub_, ub);
 
     optimizer_.set_lower_bounds(lb);
     optimizer_.set_upper_bounds(ub);
