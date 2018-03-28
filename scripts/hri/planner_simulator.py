@@ -76,7 +76,7 @@ class PlannerSimulator(object):
         self.xh0 = init_data[test_id, 0:self.nXh_]
         self.xr0 = init_data[test_id, self.nXh_:(self.nXh_+self.nXr_)]
 
-        self.human_traj = traj_data
+        self.human_traj = traj_data[:, 0:self.nXh_]
 
     # main function to run
     def run_simulation(self):
@@ -110,13 +110,10 @@ class PlannerSimulator(object):
 
                 self.goal_pub.publish(goal_data)
             else:
-                pause_data = Bool
+                pause_data = Bool()
                 pause_data.data = False
 
                 self.planner_pause_pub.publish(pause_data)
-
-            # append to full trajectory
-            self.robot_traj.append(self.xr_)
 
             # wait for the planner to finish
             while not (self.flag_plan_updated and self.flag_ctrl_updated):
@@ -124,8 +121,17 @@ class PlannerSimulator(object):
                     return
                 rospy.sleep(0.01)
 
+            # reset the flags
+            self.flag_plan_updated = False
+            self.flag_ctrl_updated = False
+
             # execute the control and update pose and vel of the robot
+            print self.xr_, " | ", self.robot_ctrl_
+            print [self.robot_traj_opt_[0:3]]
             self.xr_, self.ur_ = self.robot_dynamics(self.xr_, self.robot_ctrl_)
+
+            # append to full trajectory
+            self.robot_traj.append(self.xr_.copy())
 
             # update pose and vel of human
             self.xh_ = self.human_traj[t]
@@ -133,7 +139,7 @@ class PlannerSimulator(object):
             # visualize the plan
             row = t / n_cols
             col = t % n_cols
-            self.visualize(axes[row][col], t)
+            self.visualize(axes[row][col], t+1)
 
         # show visualization
         plt.show()
@@ -145,7 +151,7 @@ class PlannerSimulator(object):
         robot_state.pose.pose.position.x = self.xr_[0]
         robot_state.pose.pose.position.y = self.xr_[1]
         robot_state.pose.pose.orientation.w = np.cos(self.xr_[2] * 0.5)
-        robot_state.pose.pose.orientation.x = np.sin(self.xr_[2] * 0.5)
+        robot_state.pose.pose.orientation.z = np.sin(self.xr_[2] * 0.5)
 
         self.robot_state_pub.publish(robot_state)
 
@@ -166,8 +172,8 @@ class PlannerSimulator(object):
     # visualize the "frame"
     def visualize(self, ax, t):
         # plot previous trajectories
-        robot_traj = np.asarray(self.robot_traj[:t])
-        human_traj = np.asarray(self.human_traj[:t])
+        robot_traj = np.asarray(self.robot_traj[:t]).reshape(t, self.nXr_)
+        human_traj = np.asarray(self.human_traj[:t]).reshape(t, self.nXh_)
 
         ax.plot(robot_traj[:, 0], robot_traj[:, 1], "-o",
                 color=(0.3, 0.3, 0.9), fillstyle="none", lw=1.5, label="robot_traj")
@@ -185,6 +191,8 @@ class PlannerSimulator(object):
         ax.plot(human_plan_rp[:, 0], human_plan_rp[:, 1], "--",
                 color=(0.1, 0.1, 0.1, 0.5), lw=1.0, label="human_pred_rp")
 
+        ax.axis("equal")
+
     # robot dynamics
     def robot_dynamics(self, x, u):
         # get parameters
@@ -192,13 +200,24 @@ class PlannerSimulator(object):
         a_max = rospy.get_param("~robot_dynamics/a_max", [1.0, 3.0])
         v_std = rospy.get_param("~robot_dynamics/v_std", [0.0, 0.0])
 
+        v_max = np.asarray(v_max)
+        a_max = np.asarray(a_max)
+        v_std = np.asarray(v_std)
+
         # try to reach the commanded velocity
         u = np.clip(u, -v_max, v_max)
         u = np.clip(u, self.ur_ - a_max * self.dt_, self.ur_ + a_max * self.dt_)
 
         # sample velocity noise
-        dv = np.random.normal(0.0, v_std[0], 1)
-        dom = np.random.normal(0.0, v_std[1], 1)
+        if v_std[0] > 0:
+            dv = np.random.normal(0.0, v_std[0], 1)
+        else:
+            dv = 0.0
+
+        if v_std[1] > 0:
+            dom = np.random.normal(0.0, v_std[1], 1)
+        else:
+            dom = 0.0
 
         u += np.array([dv, dom])
 
@@ -206,12 +225,13 @@ class PlannerSimulator(object):
         th = x[2]
         th_new = th + u[1] * self.dt_
 
-        if u[1] > 1e-3:
-            x[0] += u[0] / u[1] * (np.sin(th_new) - np.sin(th))
-            x[1] -= u[0] / u[1] * (np.cos(th_new) - np.cos(th))
+        if np.abs(u[1]) > 1e-3:
+            R = u[0] / u[1]
+            x[0] += R * (np.sin(th_new) - np.sin(th))
+            x[1] -= R * (np.cos(th_new) - np.cos(th))
         else:
             x[0] += u[0] * np.cos(th) * self.dt_
-            x[1] += u[1] * np.sin(th) * self.dt_
+            x[1] += u[0] * np.sin(th) * self.dt_
 
         x[2] = th_new
 
@@ -221,6 +241,7 @@ class PlannerSimulator(object):
     def comm_callback(self, comm_msg):
         self.acomm_ = comm_msg.data
         self.flag_comm_updated = True
+        print "received communication: ", self.acomm_
 
     def robot_ctrl_callback(self, ctrl_msg):
         self.robot_ctrl_[0] = ctrl_msg.linear.x
@@ -234,6 +255,7 @@ class PlannerSimulator(object):
         self.human_traj_rp_opt_ = np.asarray(plan_msg.human_traj_rp_opt)
         print "plan updated!"
         self.flag_plan_updated = True
+
 
 if __name__ == "__main__":
     rospy.init_node("planner_simulator")

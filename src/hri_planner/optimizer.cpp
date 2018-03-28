@@ -531,12 +531,12 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
 
     utils::EigenToVector(grad_ur, grad);
 
-    static int counter = 0;
-    ++counter;
-    std::cout << "at iteration " << counter << " cost is: " << cost << std::endl;
-    std::cout << "gradient is: " << std::endl;
-    std::cout << grad_ur.transpose() << std::endl;
-    std::cout << std::endl;
+//    static int counter = 0;
+//    ++counter;
+//    std::cout << "at iteration " << counter << " cost is: " << cost << std::endl;
+//    std::cout << "gradient is: " << std::endl;
+//    std::cout << grad_ur.transpose() << std::endl;
+//    std::cout << std::endl;
 
     return cost;
 }

@@ -281,12 +281,6 @@ void Planner::create_optimizer()
         }
     }
 
-    std::cout << "bounds:" << std::endl;
-    std::cout << lb_ur.transpose() << std::endl;
-    std::cout << ub_ur.transpose() << std::endl;
-    std::cout << lb_uh.transpose() << std::endl;
-    std::cout << ub_uh.transpose() << std::endl;
-
     optimizer_->set_bounds(lb_ur, ub_ur, lb_uh, ub_uh);
 }
 
@@ -313,10 +307,8 @@ void Planner::compute_plan()
     Trajectory human_traj_hp_opt_n(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt_n(CONST_ACC_MODEL, T_, dt_);
 
-    std::cout << "before optimization" << std::endl;
     cost_no_comm = optimizer_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, acomm_, tcomm_,
                                         robot_traj_opt_n, &human_traj_hp_opt_n, &human_traj_rp_opt_n);
-    std::cout << "after optimization" << std::endl;
 
     // optimize for communication
     double cost_comm;
@@ -357,6 +349,12 @@ void Planner::compute_plan()
     cmd_vel.linear.x = robot_traj_opt_.u(0);
     cmd_vel.angular.z = robot_traj_opt_.u(1);
     robot_ctrl_pub_.publish(cmd_vel);
+
+    std::cout << "---------------" << std::endl;
+//    std::cout << robot_traj_opt_.u.transpose() << std::endl;
+    std::cout << robot_traj_opt.x0.transpose() << std::endl;
+    std::cout << robot_traj_opt.u.head(nUr_).transpose() << std::endl;
+    std::cout << robot_traj_opt.x.head(nXr_).transpose() << std::endl;
 
     // publish full plan if specified
     if (flag_publish_full_plan_) {
