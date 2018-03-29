@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/22/2017
+// Last revision: 3/28/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -495,6 +495,8 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
 
     cost = robot_cost_->compute(*robot_traj_, human_traj_hp_opt, human_traj_rp_opt, acomm_, tcomm_,
                                 grad_ur, grad_uh_hp, grad_uh_rp);
+
+    robot_cost_->get_partial_cost(cost_hp_, cost_rp_);
 
     // compute the hessians for human cost functions
     int len_uh = human_traj_hp_->traj_control_size();

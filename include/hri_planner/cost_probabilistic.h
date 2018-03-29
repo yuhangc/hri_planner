@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/21/2017
+// Last revision: 3/28/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -46,6 +46,11 @@ public:
         return belief_model_->get_belief();
     }
 
+    double get_partial_cost(double& cost_hp, double& cost_rp) const {
+        cost_hp = cost_hp_;
+        cost_rp = cost_rp_;
+    }
+
 protected:
     // a belief model
     std::shared_ptr<BeliefModelBase> belief_model_;
@@ -59,6 +64,10 @@ protected:
     std::vector<std::shared_ptr<FeatureVectorizedBase> > f_int_;
 
     Trajectory human_traj_pred_;
+
+    // record "partial costs" - cost for each scenario
+    double cost_hp_;
+    double cost_rp_;
 };
 
 

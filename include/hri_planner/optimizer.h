@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/26/2017
+// Last revision: 3/28/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -80,6 +80,12 @@ public:
                             Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt=nullptr,
                             Trajectory* human_traj_rp_opt=nullptr) = 0;
 
+    // get partial costs
+    void get_partial_cost(double& cost_hp, double& cost_rp) {
+        cost_hp = cost_hp_;
+        cost_rp = cost_rp_;
+    }
+
 protected:
     // non-linear optimizer
     nlopt::opt optimizer_;
@@ -103,6 +109,10 @@ protected:
     // explicit communication action and time
     int acomm_;
     double tcomm_;
+
+    // keep track of the partial costs
+    double cost_hp_;
+    double cost_rp_;
 
     // wrapper cost function
     virtual double cost_func(const std::vector<double>& u, std::vector<double>& grad) = 0;

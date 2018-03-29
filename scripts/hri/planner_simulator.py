@@ -45,6 +45,10 @@ class PlannerSimulator(object):
         self.robot_traj = []
         self.human_traj = []
 
+        # stores the beliefs and cost history
+        self.belief_hist = []
+        self.cost_hist = []
+
         # goals
         self.xr_goal = np.zeros((2, ))
         self.xh_goal = np.zeros((2, ))
@@ -58,6 +62,8 @@ class PlannerSimulator(object):
         self.comm_sub = rospy.Subscriber("/planner/communication", Int32, self.comm_callback)
         self.ctrl_sub = rospy.Subscriber("/planner/cmd_vel", Twist, self.robot_ctrl_callback)
         self.plan_sub = rospy.Subscriber("/planner/full_plan", PlannedTrajectories, self.plan_callback)
+        self.belief_cost_sub = rospy.Subscriber("/planner/belief_and_costs",
+                                                Float64MultiArray, self.belief_cost_callback)
 
         self.robot_state_pub = rospy.Publisher("/amcl_pose", PoseWithCovarianceStamped, queue_size=1)
         self.robot_vel_pub = rospy.Publisher("/odom", Odometry, queue_size=1)
@@ -108,6 +114,10 @@ class PlannerSimulator(object):
                 for xh in self.xh_goal:
                     goal_data.data.append(xh)
 
+                # set intent data
+                # FIXME: use a fixed value for now
+                goal_data.data.append(0.0)
+
                 self.goal_pub.publish(goal_data)
             else:
                 pause_data = Bool()
@@ -126,8 +136,7 @@ class PlannerSimulator(object):
             self.flag_ctrl_updated = False
 
             # execute the control and update pose and vel of the robot
-            print self.xr_, " | ", self.robot_ctrl_
-            print [self.robot_traj_opt_[0:3]]
+            print "executing control: ", self.robot_ctrl_
             self.xr_, self.ur_ = self.robot_dynamics(self.xr_, self.robot_ctrl_)
 
             # append to full trajectory
@@ -139,7 +148,10 @@ class PlannerSimulator(object):
             # visualize the plan
             row = t / n_cols
             col = t % n_cols
-            self.visualize(axes[row][col], t+1)
+            self.visualize_frame(axes[row][col], t+1)
+
+        # visualize beliefs and partial costs
+        self.visualize_belief_and_costs()
 
         # show visualization
         plt.show()
@@ -170,7 +182,7 @@ class PlannerSimulator(object):
         self.human_state_pub.publish(human_state)
 
     # visualize the "frame"
-    def visualize(self, ax, t):
+    def visualize_frame(self, ax, t):
         # plot previous trajectories
         robot_traj = np.asarray(self.robot_traj[:t]).reshape(t, self.nXr_)
         human_traj = np.asarray(self.human_traj[:t]).reshape(t, self.nXh_)
@@ -192,6 +204,16 @@ class PlannerSimulator(object):
                 color=(0.1, 0.1, 0.1, 0.5), lw=1.0, label="human_pred_rp")
 
         ax.axis("equal")
+
+    # visualize belief changes and partial costs
+    def visualize_belief_and_costs(self):
+        beliefs = np.asarray(self.belief_hist)
+        costs = np.asarray(self.cost_hist)
+
+        fig, ax = plt.subplots(2, 1)
+        ax[0].plot(beliefs, '-ks', lw=1.5)
+        ax[1].plot(costs[:, 0], '-bs', lw=1.5)
+        ax[1].plot(costs[:, 1], '--b^', lw=1.5)
 
     # robot dynamics
     def robot_dynamics(self, x, u):
@@ -246,15 +268,17 @@ class PlannerSimulator(object):
     def robot_ctrl_callback(self, ctrl_msg):
         self.robot_ctrl_[0] = ctrl_msg.linear.x
         self.robot_ctrl_[1] = ctrl_msg.angular.z
-        print "control updated!"
         self.flag_ctrl_updated = True
 
     def plan_callback(self, plan_msg):
         self.robot_traj_opt_ = np.asarray(plan_msg.robot_traj_opt)
         self.human_traj_hp_opt_ = np.asarray(plan_msg.human_traj_hp_opt)
         self.human_traj_rp_opt_ = np.asarray(plan_msg.human_traj_rp_opt)
-        print "plan updated!"
         self.flag_plan_updated = True
+
+    def belief_cost_callback(self, msg):
+        self.belief_hist.append(msg.data[0])
+        self.cost_hist.append(msg.data[1:3])
 
 
 if __name__ == "__main__":

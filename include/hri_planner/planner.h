@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2017
-// Last revision: 3/26/2017
+// Last revision: 3/28/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -45,7 +45,7 @@ public:
     void compute_plan();
 
     // reset the planner with new goals
-    void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal);
+    void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal, const int intent);
 
 private:
     // dimensions
@@ -106,8 +106,9 @@ private:
     std::vector<double> lb_uh_vec_;
     std::vector<double> ub_uh_vec_;
 
-    // whether to publish the full plan
+    // whether to publish the full plan and belief/costs
     bool flag_publish_full_plan_;
+    bool flag_publish_belief_cost_;
 
     // whether to generate initial guess from scratch
     bool flag_gen_init_guesses_;
@@ -122,6 +123,7 @@ private:
     ros::Publisher robot_ctrl_pub_;
     ros::Publisher comm_pub_;
     ros::Publisher plan_pub_;
+    ros::Publisher belief_cost_pub_;
 
     // creation routines
     void create_belief_model(std::shared_ptr<BeliefModelBase>& belief_model);

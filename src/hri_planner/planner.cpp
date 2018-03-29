@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2017
-// Last revision: 3/26/2017
+// Last revision: 3/28/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -66,6 +66,7 @@ Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     robot_ctrl_pub_ = nh_.advertise<geometry_msgs::Twist>("/planner/cmd_vel", 1);
     comm_pub_ = nh_.advertise<std_msgs::Int32>("/planner/communication", 1);
     plan_pub_ = nh_.advertise<hri_planner::PlannedTrajectories>("/planner/full_plan", 1);
+    belief_cost_pub_ = nh_.advertise<std_msgs::Float64MultiArray>("/planner/belief_and_costs", 1);
 
     ROS_INFO("All subscribers and publishers initialized!");
 }
@@ -309,6 +310,7 @@ void Planner::compute_plan()
 
     cost_no_comm = optimizer_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, acomm_, tcomm_,
                                         robot_traj_opt_n, &human_traj_hp_opt_n, &human_traj_rp_opt_n);
+    ROS_INFO("min cost no communication is: %f", cost_no_comm);
 
     // optimize for communication
     double cost_comm;
@@ -318,13 +320,14 @@ void Planner::compute_plan()
 
     cost_comm = optimizer_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, intent_, 0.0,
                                      robot_traj_opt, &human_traj_hp_opt, &human_traj_rp_opt);
+    ROS_INFO("min cost with communication is: %f", cost_comm);
     cost_comm += comm_cost_;
 
     // compare the cost and choose optimal actions
     if (cost_comm < cost_no_comm) {
         robot_traj_opt_ = robot_traj_opt_n;
         human_traj_hp_opt_ = human_traj_hp_opt_n;
-        human_traj_rp_opt_ = human_traj_hp_opt_n;
+        human_traj_rp_opt_ = human_traj_rp_opt_n;
 
         acomm_ = intent_;
         tcomm_ = 0.0;
@@ -332,7 +335,7 @@ void Planner::compute_plan()
     else {
         robot_traj_opt_ = robot_traj_opt;
         human_traj_hp_opt_ = human_traj_hp_opt;
-        human_traj_rp_opt_ = human_traj_hp_opt;
+        human_traj_rp_opt_ = human_traj_rp_opt;
     }
 
     ROS_INFO("Got plan!");
@@ -350,11 +353,7 @@ void Planner::compute_plan()
     cmd_vel.angular.z = robot_traj_opt_.u(1);
     robot_ctrl_pub_.publish(cmd_vel);
 
-    std::cout << "---------------" << std::endl;
-//    std::cout << robot_traj_opt_.u.transpose() << std::endl;
-    std::cout << robot_traj_opt.x0.transpose() << std::endl;
-    std::cout << robot_traj_opt.u.head(nUr_).transpose() << std::endl;
-    std::cout << robot_traj_opt.x.head(nXr_).transpose() << std::endl;
+//    std::cout << "---------------" << std::endl;
 
     // publish full plan if specified
     if (flag_publish_full_plan_) {
@@ -368,10 +367,23 @@ void Planner::compute_plan()
 
         plan_pub_.publish(trajectories);
     }
+
+    // get partial cost and publish belief + cost
+    if (flag_publish_belief_cost_) {
+        double cost_rp, cost_hp;
+        optimizer_->get_partial_cost(cost_hp, cost_rp);
+
+        std_msgs::Float64MultiArray data;
+        data.data.push_back(belief_model_->get_belief());
+        data.data.push_back(cost_hp);
+        data.data.push_back(cost_rp);
+
+        belief_cost_pub_.publish(data);
+    }
 }
 
 //----------------------------------------------------------------------------------
-void Planner::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorXd &xh_goal)
+void Planner::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorXd &xh_goal, const int intent)
 {
     // update the goals for robot and human
     features_robot_["Goal"]->set_data(&xr_goal);
@@ -380,6 +392,9 @@ void Planner::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorX
 
     xr_goal_ = xr_goal;
     xh_goal_ = xh_goal;
+
+    // update robot intent
+    intent_ = intent;
 
     // reset other things
     // assuming no communication at the beginning

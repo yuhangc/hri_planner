@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2017
-// Last revision: 3/27/2017
+// Last revision: 3/28/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -31,6 +31,7 @@ bool flag_start_planning;
 bool flag_pause_planning;
 Eigen::VectorXd xr_goal;
 Eigen::VectorXd xh_goal;
+int intent;
 
 void goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_msg)
 {
@@ -46,6 +47,9 @@ void goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_msg)
         xr_goal(i) = goal_msg->data[i];
         xh_goal(i) = goal_msg->data[i+dim];
     }
+
+    // the last value of goal is intent
+    intent = static_cast<int>(goal_msg->data[dim << 1]);
 
     flag_start_planning = true;
 }
@@ -92,7 +96,7 @@ int main(int argc, char** argv)
                 ROS_INFO("In state Idle");
                 if (flag_start_planning) {
                     flag_start_planning = false;
-                    planner.reset_planner(xr_goal, xh_goal);
+                    planner.reset_planner(xr_goal, xh_goal, intent);
 
                     planner_state = Planning;
                 }

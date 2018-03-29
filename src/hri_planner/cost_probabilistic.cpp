@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2017
-// Last revision: 3/21/2017
+// Last revision: 3/28/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -71,7 +71,9 @@ double ProbabilisticCost::compute(const Trajectory& robot_traj, const Trajectory
     prob_rp.setOnes(T);
     prob_rp -= prob_hp;
 
-    cost += prob_hp.dot(costs_hp) + prob_rp.dot(costs_rp);
+    cost_hp_ = prob_hp.dot(costs_hp);
+    cost_rp_ = prob_rp.dot(costs_rp);
+    cost += cost_hp_ + cost_rp_;
 
     // output for debug
     static int counter = 0;
@@ -177,7 +179,9 @@ double ProbabilisticCostSimplified::compute(const Trajectory &robot_traj, const 
     Eigen::VectorXd ones;
     ones.setOnes(costs_hp.size());
 
-    cost += prob_hp * ones.dot(costs_hp) + prob_rp * ones.dot(costs_rp);
+    cost_hp_ = ones.dot(costs_hp);
+    cost_rp_ = ones.dot(costs_rp);
+    cost += prob_hp * cost_hp_ + prob_rp * cost_rp_;
 
     //! compute the gradient w.r.t. ur
     // non-interactive features
