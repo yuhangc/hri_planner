@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/27/2017
-// Last revision: 3/22/2017
+// Last revision: 3/29/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -39,8 +39,8 @@ void create_belief_model(std::shared_ptr<hri_planner::BeliefModelBase>& belief_m
     ros::param::param<int>("~explicit_comm/history_length", T_hist, 10);
     ros::param::param<double>("~explicit_comm/ratio", ratio, 100.0);
     ros::param::param<double>("~explicit_comm/decay_rate", decay_rate, 2.5);
-    ros::param::param<double>("~explicit_comm/fcorrection_hp", fcorrection[hri_planner::HumanPriority], 3.0);
-    ros::param::param<double>("~explicit_comm/fcorrection_rp", fcorrection[hri_planner::RobotPriority], 30.0);
+    ros::param::param<double>("~explicit_comm/fcorrection_hp", fcorrection[hri_planner::HumanPriority], 2.0);
+    ros::param::param<double>("~explicit_comm/fcorrection_rp", fcorrection[hri_planner::RobotPriority], 20.0);
 
     belief_model = std::make_shared<hri_planner::BeliefModelExponential>(T_hist, fcorrection, ratio, decay_rate);
     belief_model->reset_hist(Eigen::Vector2d::Zero());
@@ -108,31 +108,34 @@ bool test_belief_update(hri_planner::TestComponent::Request& req,
 
     logger << "Belief model initialized..." << std::endl;
 
-    int T = 10;
     int nXr = 3;
     int nUr = 2;
     int nXh = 4;
     int nUh = 2;
     double dt = 0.5;
 
+    int T = (int)req.xr.size() / nXr;
+
     // extract acomm and tcomm from xr0
     int acomm = req.acomm;
     double tcomm = req.tcomm;
 
     // test the simple update
-    Eigen::VectorXd prob_hp(T);
+    Eigen::VectorXd prob_hp(T+1);
+    prob_hp(0) = belief_model->get_belief();
 
     for (int t = 0; t < T; ++t) {
         Eigen::VectorXd xr_t = xr.segment(t * nXr, nXr);
         Eigen::VectorXd ur_t = ur.segment(t * nUr, nUr);
         Eigen::VectorXd xh_t = xh.segment(t * nXh, nXh);
 
-        prob_hp(t) = belief_model->update_belief(xr_t, ur_t, xh_t, acomm, tcomm, (t+1) * dt);
+        prob_hp(t+1) = belief_model->update_belief(xr_t, ur_t, xh_t, acomm, tcomm, (t+1) * dt);
     }
     belief_logger << prob_hp.transpose() << std::endl;
 
     // test full update
     // using the exact trajectory
+    /*
     hri_planner::Trajectory robot_traj(hri_planner::DIFFERENTIAL_MODEL, T, dt);
     hri_planner::Trajectory human_traj(hri_planner::CONST_ACC_MODEL, T, dt);
 
@@ -153,6 +156,10 @@ bool test_belief_update(hri_planner::TestComponent::Request& req,
 
     logger << "Jacobian of belief w.r.t. ur:" << std::endl;
     logger << Jur << std::endl;
+     */
+
+    logger.close();
+    belief_logger.close();
 
     return true;
 }

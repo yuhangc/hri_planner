@@ -71,11 +71,10 @@ def test_belief_update(user_id, cond, trial, acomm, tcomm):
     traj_data = np.loadtxt(path + "/block" + str(trial) + ".txt", delimiter=',')
     init_data = np.loadtxt(path + "/init.txt", delimiter=",")
 
-    T = 10
-    xh = traj_data[:T, 0:4]
-    uh = traj_data[:T, 4:6]
-    xr = traj_data[:T, 6:9]
-    ur = traj_data[:T, 9:11]
+    xh = traj_data[:, 0:4]
+    uh = traj_data[:, 4:6]
+    xr = traj_data[:, 6:9]
+    ur = traj_data[:, 9:11]
     xh0 = init_data[trial, 0:4]
     xr0 = init_data[trial, 4:7]
 
@@ -97,8 +96,9 @@ def test_belief_update(user_id, cond, trial, acomm, tcomm):
     axes[0].axis("equal")
     axes[0].legend()
 
-    axes[1].plot(belief_data[0], '-ob', lw=1, fillstyle="none")
-    axes[1].plot(belief_data[1], '--xk', lw=1, fillstyle="none")
+    # axes[1].plot(belief_data[0], '-ob', lw=1, fillstyle="none")
+    # axes[1].plot(belief_data[1], '--xk', lw=1, fillstyle="none")
+    axes[1].plot(belief_data, '-sb', lw=1.5, fillstyle="none")
 
     if cond == "hp":
         title = "human priority"
@@ -260,17 +260,17 @@ def test_nested_optimizer(user_id, cond, trial, acomm, tcomm):
 
 
 if __name__ == "__main__":
-    # # no communication
-    # test_belief_update(0, "hp", 0, 0, -100)
-    # # communication matches action
-    # test_belief_update(0, "hp", 0, 0, 0)
-    # # communication doesn't match action
-    # test_belief_update(0, "hp", 0, 1, 0)
-    #
-    # # robot priority scenarios
-    # test_belief_update(0, "rp", 0, 0, -100)
-    # test_belief_update(0, "rp", 0, 0, 0)
-    # test_belief_update(0, "rp", 0, 1, 0)
+    # no communication
+    test_belief_update(0, "hp", 0, 0, -20)
+    # communication matches action
+    test_belief_update(0, "hp", 0, 0, 0)
+    # communication doesn't match action
+    test_belief_update(0, "hp", 0, 1, 0)
+
+    # robot priority scenarios
+    test_belief_update(0, "rp", 0, 0, -20)
+    test_belief_update(0, "rp", 0, 0, 0)
+    test_belief_update(0, "rp", 0, 1, 0)
 
     # # test the cost features
     # test_cost_features(0, "hp", 0)
@@ -282,4 +282,4 @@ if __name__ == "__main__":
     # test_prob_cost(0, "hp", 0)
 
     # test the nested optimizer
-    test_nested_optimizer(0, "hp", 0, 0, -20)
+    # test_nested_optimizer(0, "hp", 0, 0, -20)

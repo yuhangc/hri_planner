@@ -36,6 +36,7 @@ class PlannerSimulator(object):
         self.human_traj_rp_opt_ = None
 
         self.acomm_ = -1
+        self.robot_intent_ = -1
 
         self.robot_ctrl_ = np.zeros((self.nUr_, ))
 
@@ -84,6 +85,9 @@ class PlannerSimulator(object):
 
         self.human_traj = traj_data[:, 0:self.nXh_]
 
+        # FIXME: fix the intent for now
+        self.robot_intent_ = 0  # human priority
+
     # main function to run
     def run_simulation(self):
         # total "simulation" time is length of pre-defined human trajectory
@@ -115,8 +119,7 @@ class PlannerSimulator(object):
                     goal_data.data.append(xh)
 
                 # set intent data
-                # FIXME: use a fixed value for now
-                goal_data.data.append(0.0)
+                goal_data.data.append(self.robot_intent_)
 
                 self.goal_pub.publish(goal_data)
             else:
@@ -203,7 +206,12 @@ class PlannerSimulator(object):
         ax.plot(human_plan_rp[:, 0], human_plan_rp[:, 1], "--",
                 color=(0.1, 0.1, 0.1, 0.5), lw=1.0, label="human_pred_rp")
 
+        # plot the goals
+        ax.plot(self.xr_goal[0], self.xr_goal[1], 'ob')
+        ax.plot(self.xh_goal[0], self.xh_goal[1], 'ok')
+
         ax.axis("equal")
+        ax.set_title("t = " + str(t))
 
     # visualize belief changes and partial costs
     def visualize_belief_and_costs(self):
@@ -212,8 +220,24 @@ class PlannerSimulator(object):
 
         fig, ax = plt.subplots(2, 1)
         ax[0].plot(beliefs, '-ks', lw=1.5)
-        ax[1].plot(costs[:, 0], '-bs', lw=1.5)
-        ax[1].plot(costs[:, 1], '--b^', lw=1.5)
+        ax[0].set_title("belief of human having priority")
+
+        ax[1].plot(costs[:, 0], '-bs', lw=1.5, fillstyle="none", label="cost no communication")
+        ax[1].plot(costs[:, 1], '--b^', lw=1.5, fillstyle="none", label="cost communication")
+        ax[1].set_title("robot intent is" + str(self.robot_intent_))
+        ax[1].legend()
+
+        # plot for partial costs
+        fig, ax = plt.subplots(2, 1)
+        ax[0].plot(costs[:, 2], '-bs', lw=1.5, fillstyle="none", label="cost hp")
+        ax[0].plot(costs[:, 3], '--b^', lw=1.5, fillstyle="none", label="cost rp")
+        ax[0].legend()
+        ax[0].set_title("no communication")
+
+        ax[1].plot(costs[:, 4], '-bs', lw=1.5, fillstyle="none", label="cost hp")
+        ax[1].plot(costs[:, 5], '--b^', lw=1.5, fillstyle="none", label="cost rp")
+        ax[1].legend()
+        ax[1].set_title("with communication")
 
     # robot dynamics
     def robot_dynamics(self, x, u):
@@ -278,7 +302,7 @@ class PlannerSimulator(object):
 
     def belief_cost_callback(self, msg):
         self.belief_hist.append(msg.data[0])
-        self.cost_hist.append(msg.data[1:3])
+        self.cost_hist.append(msg.data[1:7])
 
 
 if __name__ == "__main__":

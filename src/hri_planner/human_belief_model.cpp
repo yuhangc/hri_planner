@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/25/2017
-// Last revision: 3/22/2017
+// Last revision: 3/29/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -37,8 +37,12 @@ double BeliefModelBase::update_belief(const Eigen::VectorXd &xr, const Eigen::Ve
                                       int acomm, double tcomm, double t0)
 {
     // add in new costs
-    cost_hist_hp_.push_back(implicit_cost_simple(HumanPriority, xr, ur, xh));
-    cost_hist_rp_.push_back(implicit_cost_simple(RobotPriority, xr, ur, xh));
+    double new_cost_hp = implicit_cost_simple(HumanPriority, xr, ur, xh);
+    double new_cost_rp = implicit_cost_simple(RobotPriority, xr, ur, xh);
+    cost_hist_hp_.push_back(new_cost_hp);
+    cost_hist_rp_.push_back(new_cost_rp);
+
+//    std::cout << "new implicit costs: " << new_cost_hp << ", " << new_cost_rp << std::endl;
 
     // pop out old ones
     if (cost_hist_hp_.size() > T_hist_)
@@ -141,19 +145,24 @@ double BeliefModelExponential::implicit_cost_simple(const int intent, const Eige
     double cost = 0.0;
 
     Eigen::Vector2d x_rel(xh(0) - xr(0), xh(1) - xr(1));
-    Eigen::Vector2d u_rel(ur(0) * std::cos(xr(2)), ur(0) * std::sin(xr(2)));
+    Eigen::Vector2d u_rel(ur(0) * std::cos(xr(2)) - xh(2), ur(0) * std::sin(xr(2)) - xh(3));
 
-    double prod = u_rel.dot(x_rel);
+    double d_rel = x_rel.norm();
+    double dir = u_rel.dot(x_rel) / (u_rel.norm() * d_rel);
 
-    if (prod <= 0)
+//    std::cout << "relative position: " << x_rel.transpose()
+//              << ", relative velocity: " << u_rel.transpose()
+//              << ", real velocity: " << ur(0) << ", dir: " << dir << std::endl;
+
+    if (dir <= 0 && d_rel > 1.0)
         return cost;
 
     if (intent == HumanPriority) {
-        cost += prod / std::max(1.0, x_rel.squaredNorm());
+        cost += std::abs(dir) * ur(0) / std::max(1.0, x_rel.squaredNorm());
     }
     else {
         double v_inc = ur(0) - ur_last_(0);
-        cost += v_inc * v_inc;
+        cost += v_inc * v_inc / std::max(1.0, x_rel.squaredNorm());
 
         ur_last_ = ur;
     }

@@ -47,6 +47,7 @@ Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
 
     // flags
     ros::param::param<bool>("~planner/publish_full_plan", flag_publish_full_plan_, false);
+    ros::param::param<bool>("~planner/publish_belief_cost", flag_publish_belief_cost_, false);
     flag_gen_init_guesses_ = true;
 
     // measurements
@@ -303,23 +304,25 @@ void Planner::compute_plan()
     update_init_guesses();
 
     // optimize for no communication
-    double cost_no_comm;
+    double cost_no_comm, cost_hp_no_comm, cost_rp_no_comm;
     Trajectory robot_traj_opt_n(DIFFERENTIAL_MODEL, T_, dt_);
     Trajectory human_traj_hp_opt_n(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt_n(CONST_ACC_MODEL, T_, dt_);
 
     cost_no_comm = optimizer_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, acomm_, tcomm_,
                                         robot_traj_opt_n, &human_traj_hp_opt_n, &human_traj_rp_opt_n);
+    optimizer_->get_partial_cost(cost_hp_no_comm, cost_rp_no_comm);
     ROS_INFO("min cost no communication is: %f", cost_no_comm);
 
     // optimize for communication
-    double cost_comm;
+    double cost_comm, cost_hp_comm, cost_rp_comm;
     Trajectory robot_traj_opt(DIFFERENTIAL_MODEL, T_, dt_);
     Trajectory human_traj_hp_opt(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt(CONST_ACC_MODEL, T_, dt_);
 
     cost_comm = optimizer_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, intent_, 0.0,
                                      robot_traj_opt, &human_traj_hp_opt, &human_traj_rp_opt);
+    optimizer_->get_partial_cost(cost_hp_comm, cost_rp_comm);
     ROS_INFO("min cost with communication is: %f", cost_comm);
     cost_comm += comm_cost_;
 
@@ -370,13 +373,14 @@ void Planner::compute_plan()
 
     // get partial cost and publish belief + cost
     if (flag_publish_belief_cost_) {
-        double cost_rp, cost_hp;
-        optimizer_->get_partial_cost(cost_hp, cost_rp);
-
         std_msgs::Float64MultiArray data;
         data.data.push_back(belief_model_->get_belief());
-        data.data.push_back(cost_hp);
-        data.data.push_back(cost_rp);
+        data.data.push_back(cost_no_comm);
+        data.data.push_back(cost_comm);
+        data.data.push_back(cost_hp_no_comm);
+        data.data.push_back(cost_rp_no_comm);
+        data.data.push_back(cost_hp_comm);
+        data.data.push_back(cost_rp_comm);
 
         belief_cost_pub_.publish(data);
     }

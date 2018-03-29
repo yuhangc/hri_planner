@@ -15,6 +15,7 @@ planner:
   planner_rate: 2.0
   planner_mode: simulation
   publish_full_plan: true
+  publish_belief_cost: true
 
   comm_cost: 5.0
 
@@ -23,8 +24,8 @@ explicit_comm:
   history_length: 10
   ratio: 100.0
   decay_rate: 2.5
-  fcorrection_hp: 3.0
-  fcorrection_rp: 30.0
+  fcorrection_hp: 2.0
+  fcorrection_rp: 20.0
 
 # human costs
 human_cost:
@@ -103,7 +104,7 @@ robot_cost_non_int:
 robot_cost_int:
   feature0:
     name: HumanEffort
-    weight: 5.0
+    weight: 30.0
 
   feature1:
     name: Collision
