@@ -161,8 +161,23 @@ double BeliefModelExponential::implicit_cost_simple(const int intent, const Eige
         cost += std::abs(dir) * ur(0) / std::max(1.0, x_rel.squaredNorm());
     }
     else {
-        double v_inc = ur(0) - ur_last_(0);
-        cost += v_inc * v_inc / std::max(1.0, x_rel.squaredNorm());
+//        double v_inc = ur(0) - ur_last_(0);
+//        cost += v_inc * v_inc / std::max(1.0, x_rel.squaredNorm());
+
+        //! cost is based on difference between a desired control and actual control
+        // first cap the "desired control"
+        // FIXME: hard-code a threshold
+        double v_inc = ur_nav_(0) - ur_last_(0);
+        double th = 0.2;
+
+        if (std::abs(v_inc) > th)
+            v_inc = v_inc * th / std::abs(v_inc);
+
+//        std::cout << "ur: " << ur.transpose() << ", ur desired: " << ur_nav_.transpose()
+//                  << ", vd: " << ur_last_(0) + v_inc << std::endl;
+
+        double v_diff = ur_last_(0) + v_inc - ur(0);
+        cost+= v_diff * v_diff / std::max(1.0, x_rel.squaredNorm());
 
         ur_last_ = ur;
     }

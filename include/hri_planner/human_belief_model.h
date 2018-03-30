@@ -50,6 +50,11 @@ public:
         return prob_hp_;
     }
 
+    // set velocity from navigation function/control
+    void set_ur_nav(const Eigen::VectorXd& ur_nav) {
+        ur_nav_ = ur_nav;
+    }
+
 protected:
     // dimensions
     int T_hist_;
@@ -62,6 +67,7 @@ protected:
     std::deque<double> cost_hist_rp_;
 
     Eigen::VectorXd ur_last_;
+    Eigen::VectorXd ur_nav_;
 
     // implicit belief update parameters
     std::vector<double> fcorrection_;

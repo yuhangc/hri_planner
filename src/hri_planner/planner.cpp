@@ -29,6 +29,13 @@ Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     // communication cost
     ros::param::param<double>("~planner/comm_cost", comm_cost_, 5.0);
 
+    // parameters for initializing robot trajectory
+    ros::param::param<double>("~steer_posq/k_rho", k_rho_, 1.0);
+    ros::param::param<double>("~steer_posq/k_v", k_v_, 3.8);
+    ros::param::param<double>("~steer_posq/k_alp", k_alp_, 6.0);
+    ros::param::param<double>("~steer_posq/k_phi", k_phi_, -1.0);
+    ros::param::param<double>("~steer_posq/gamma", gamma_, 0.15);
+
     // create the optimizer
     create_optimizer();
 
@@ -296,6 +303,19 @@ void Planner::compute_plan()
     xh_ = xh_meas_;
 
     // first update current belief
+    // compute some parameters needed to update belief
+    // FIXME: compute desired control right here, should move to some function
+    Eigen::VectorXd ur_d(nUr_);
+    double rho = (xr_goal_ - xr_.head(2)).norm();
+    double phi = 0.0;   //! don't care about orientation for now
+    double th_z = std::atan2(xr_goal_(1) - xr_(1), xr_goal_(0) - xr_(0));
+    double alpha = utils::wrap_to_pi(th_z - xr_(2));
+
+    ur_d(0) = utils::clamp(k_rho_ * std::tanh(k_v_ * rho), lb_ur_vec_[0], ub_ur_vec_[0]);
+    ur_d(1) = utils::clamp(k_alp_ * alpha + k_phi_ * phi, lb_ur_vec_[1], ub_ur_vec_[1]);
+
+    belief_model_->set_ur_nav(ur_d);
+
     // FIXME: decrease tcomm each time, t_curr is always 0
     tcomm_ -= dt_;
     belief_model_->update_belief(xr_, ur_, xh_, acomm_, tcomm_, 0.0);
@@ -474,14 +494,6 @@ void Planner::shift_control(const Eigen::VectorXd &u_in, Eigen::VectorXd &u_out,
 //----------------------------------------------------------------------------------
 void Planner::generate_steer_posq(const Eigen::VectorXd &x0, const Eigen::VectorXd &x_goal, Eigen::VectorXd &ur)
 {
-    // get parameters
-    double k_rho, k_v, k_alp, k_phi, gamma;
-    ros::param::param<double>("~steer_posq/k_rho", k_rho, 1.0);
-    ros::param::param<double>("~steer_posq/k_v", k_v, 3.8);
-    ros::param::param<double>("~steer_posq/k_alp", k_alp, 6.0);
-    ros::param::param<double>("~steer_posq/k_phi", k_phi, -1.0);
-    ros::param::param<double>("~steer_posq/gamma", gamma, 0.15);
-
     Eigen::VectorXd xr(T_ * nXr_);
     ur.resize(T_ * nUr_);
 
@@ -496,8 +508,8 @@ void Planner::generate_steer_posq(const Eigen::VectorXd &x0, const Eigen::Vector
         double th_z = std::atan2(x_goal(1) - x_last(1), x_goal(0) - x_last(0));
         double alpha = utils::wrap_to_pi(th_z - x_last(2));
 
-        ur(t*nUr_) = utils::clamp(k_rho * std::tanh(k_v * rho), lb_ur_vec_[0], ub_ur_vec_[0]);
-        ur(t*nUr_+1) = utils::clamp(k_alp * alpha + k_phi * phi, lb_ur_vec_[1], ub_ur_vec_[1]);
+        ur(t*nUr_) = utils::clamp(k_rho_ * std::tanh(k_v_ * rho), lb_ur_vec_[0], ub_ur_vec_[0]);
+        ur(t*nUr_+1) = utils::clamp(k_alp_ * alpha + k_phi_ * phi, lb_ur_vec_[1], ub_ur_vec_[1]);
 
         dyn.forward_dyn(x_last, ur.segment(t*nUr_, nUr_), xr.segment(t*nXr_, nXr_));
         x_last = xr.segment(t*nXr_, nXr_);

@@ -115,8 +115,8 @@ robot_cost_int:
 # optimizer settings
 optimizer:
   bounds:
-    lb_ur: [-0.55, -3.0]
-    ub_ur: [0.55, 3.0]
+    lb_ur: [-0.5, -3.0]
+    ub_ur: [0.5, 3.0]
     lb_uh: [-10.0, -10.0]
     ub_uh: [10.0, 10.0]
 

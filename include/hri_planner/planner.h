@@ -74,6 +74,13 @@ private:
     // true intent of the robot
     int intent_;
 
+    // parameters for initializing trajectory
+    double k_rho_;
+    double k_v_;
+    double k_alp_;
+    double k_phi_;
+    double gamma_;
+
     // robot state and control
     Eigen::VectorXd xr_;
     Eigen::VectorXd ur_;

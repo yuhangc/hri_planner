@@ -129,6 +129,20 @@ bool test_belief_update(hri_planner::TestComponent::Request& req,
         Eigen::VectorXd ur_t = ur.segment(t * nUr, nUr);
         Eigen::VectorXd xh_t = xh.segment(t * nXh, nXh);
 
+        Eigen::VectorXd ur_d(2);
+        Eigen::VectorXd xr_goal(2);
+        xr_goal << 6.0, 6.0;
+        double rho = (xr_goal - xr_t.head(2)).norm();
+        double phi = 0.0;   //! don't care about orientation for now
+        double th_z = std::atan2(xr_goal(1) - xr_t(1), xr_goal(0) - xr_t(0));
+        double alpha = utils::wrap_to_pi(th_z - xr_t(2));
+        std::cout << "alpha: " << alpha << std::endl;
+
+        ur_d(0) = utils::clamp(1.0 * std::tanh(3.8 * rho), -0.5, 0.5);
+        ur_d(1) = utils::clamp(6.0 * alpha - 1.0 * phi, -2.0, 2.0);
+
+        belief_model->set_ur_nav(ur_d);
+
         prob_hp(t+1) = belief_model->update_belief(xr_t, ur_t, xh_t, acomm, tcomm, (t+1) * dt);
     }
     belief_logger << prob_hp.transpose() << std::endl;
