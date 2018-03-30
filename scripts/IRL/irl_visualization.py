@@ -16,23 +16,23 @@ def collision_hr(xr, radius):
     return f
 
 
-def collision_hr_dynamic(xr, ur, w, l, dt=0.5):
+def collision_hr_dynamic(xr, ur, w, l, d):
     @features.feature
     def f(xh):
         # compute center
         th = xr[2]
-        xc = xr[0] + ur[0] * dt * np.cos(th)
-        yc = xr[1] + ur[0] * dt * np.sin(th)
+        xc = xr[0] + d * np.cos(th)
+        yc = xr[1] + d * np.sin(th)
 
         # compute Gaussian length and width
         gw = w
-        gl = l + ur[0] * 2.0 * l
+        gl = l
 
         # convert to robot reference frame
-        d = (xh[0] - xc, xh[1] - yc)
+        xd = (xh[0] - xc, xh[1] - yc)
 
-        x_hr = np.cos(th) * d[0] + np.sin(th) * d[1]
-        y_hr = -np.sin(th) * d[0] + np.cos(th) * d[1]
+        x_hr = np.cos(th) * xd[0] + np.sin(th) * xd[1]
+        y_hr = -np.sin(th) * xd[0] + np.cos(th) * xd[1]
 
         # compute cost
         return np.exp(-(x_hr**2/(gl**2) + y_hr**2/(gw**2)))
@@ -88,7 +88,7 @@ def visualize_features_basic():
     x_goal = np.array([0.5, 6.0])
 
     f_chr = -collision_hr(xr, 0.5)
-    f_chr_dyn = -collision_hr_dynamic(xr, ur, 0.5, 0.5, dt=1.0)
+    f_chr_dyn = -collision_hr_dynamic(xr, ur, 0.5, 0.5, 0.3)
     f_obs = -collision_obs(obs_pos, 0.5)
     f_goal = -goal_reward_term(x_goal)
 
@@ -140,7 +140,7 @@ def visualize_features_with_data(path, trial, th):
     for t in range(0, len(xr), nstep):
         # generate features
         f_chr = -collision_hr(xr[t], 0.5)
-        f_chr_dyn = -collision_hr_dynamic(xr[t], ur[t], 0.3, 0.5, dt=1.0)
+        f_chr_dyn = -collision_hr_dynamic(xr[t], ur[t], 0.3, 0.5, 0.5)
         f_obs = -collision_obs(obs_pos, 0.5)
         f_goal = -goal_reward_term(x_goal)
 
@@ -164,4 +164,4 @@ def visualize_features_with_data(path, trial, th):
 if __name__ == "__main__":
     # visualize_features_basic()
     visualize_features_with_data("/home/yuhang/Documents/irl_data/winter18/user0/processed/rp",
-                                 0, [7.0, 10.0, 8.0, 50.0/100.0])
+                                 0, [7.0, 0.0, 8.0, 50.0/100.0])

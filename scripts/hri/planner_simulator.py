@@ -17,7 +17,7 @@ from hri_planner.msg import PlannedTrajectories
 class PlannerSimulator(object):
     def __init__(self):
         # dimensions
-        self.T_ = rospy.get_param("~dimension/T", 10)
+        self.T_ = rospy.get_param("~dimension/T", 6)
         self.nXh_ = rospy.get_param("~dimension/nXh", 4)
         self.nUh_ = rospy.get_param("~dimension/nUh", 2)
         self.nXr_ = rospy.get_param("~dimension/nXr", 3)

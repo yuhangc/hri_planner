@@ -69,23 +69,45 @@ def collision_hr(radius):
     return f
 
 
-def collision_hr_dynamic(w, l, dt):
+# def collision_hr_dynamic(w, l, dt):
+#     @feature
+#     def f(xh, uh, xr, ur):
+#         # compute center
+#         th = xr[2]
+#         xc = xr[0] + ur[0] * dt * tt.cos(th)
+#         yc = xr[1] + ur[0] * dt * tt.sin(th)
+#
+#         # compute Gaussian length and width
+#         gw = w
+#         gl = l + ur[0] * 2.0 * l
+#
+#         # convert to robot reference frame
+#         d = (xh[0] - xc, xh[1] - yc)
+#
+#         x_hr = tt.cos(th) * d[0] + tt.sin(th) * d[1]
+#         y_hr = -tt.sin(th) * d[0] + tt.cos(th) * d[1]
+#
+#         # compute cost
+#         return tt.exp(-(x_hr**2/(gl**2) + y_hr**2/(gw**2)))
+#     return f
+
+def collision_hr_dynamic(w, l, d):
     @feature
     def f(xh, uh, xr, ur):
         # compute center
         th = xr[2]
-        xc = xr[0] + ur[0] * dt * tt.cos(th)
-        yc = xr[1] + ur[0] * dt * tt.sin(th)
+        xc = xr[0] + d * tt.cos(th)
+        yc = xr[1] + d * tt.sin(th)
 
         # compute Gaussian length and width
         gw = w
-        gl = l + ur[0] * 2.0 * l
+        gl = l
 
         # convert to robot reference frame
-        d = (xh[0] - xc, xh[1] - yc)
+        xdiff = (xh[0] - xc, xh[1] - yc)
 
-        x_hr = tt.cos(th) * d[0] + tt.sin(th) * d[1]
-        y_hr = -tt.sin(th) * d[0] + tt.cos(th) * d[1]
+        x_hr = tt.cos(th) * xdiff[0] + tt.sin(th) * xdiff[1]
+        y_hr = -tt.sin(th) * xdiff[0] + tt.cos(th) * xdiff[1]
 
         # compute cost
         return tt.exp(-(x_hr**2/(gl**2) + y_hr**2/(gw**2)))

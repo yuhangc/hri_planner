@@ -132,7 +132,7 @@ class IRLPredictor(IRLPredictorBase):
         # self.f_cumu.append(features_th.collision_hr_dynamic(0.25, 0.3, 0.5))
         # self.f_cumu.append(features_th.collision_obs(0.3, [2.055939, 3.406737]))
         self.f_cumu.append(features_th.collision_hr(0.5))
-        self.f_cumu.append(features_th.collision_hr_dynamic(0.3, 0.5, dt=1.0))
+        self.f_cumu.append(features_th.collision_hr_dynamic(0.3, 0.5, 0.5))
         self.f_cumu.append(features_th.collision_obs(0.5, [2.055939, 3.406737]))
 
         # define all the termination features
@@ -220,13 +220,22 @@ def predict_single_trajectory(predictor, path, user_id, cond, trial, weights):
     # set initial controls - randomly perturb uh
     u0 = uh + 0.1 * np.random.randn(uh.shape[0], uh.shape[1])
 
-    # plan the trajectory
+    # plan the first step
     x_opt, u_opt = predictor.predict(u0, x0, x_goal, xr, ur)
 
     # visualize
     # plot and save the trajectory
     fig, axes = plt.subplots()
     plot_prediction(xh[:10], xr[:10], x_opt, x_goal, obs_data, axes)
+
+    # plan the full trajectory
+    x_opt, u_opt = predictor.predict_full(u0, x0, x_goal, xr, ur)
+
+    # visualize
+    # plot and save the trajectory
+    fig, axes = plt.subplots()
+    plot_prediction(xh, xr, x_opt, x_goal, obs_data, axes)
+
     plt.show()
 
 
@@ -296,7 +305,7 @@ def predict_and_save_all(predictor, path, save_path, user_list, cond, n_trial, w
             fig, axes = plt.subplots()
             plot_prediction(xh, xr, x_opt, x_goal, obs_data, axes)
 
-            plt.show()
+            # plt.show()
             fig.savefig(save_path + "/figure/" + cond + "/user" + str(usr) + "_demo" + str(id) + ".png")
 
             # save the data
@@ -376,19 +385,19 @@ def cross_validation(d_divide, th, data_path):
 if __name__ == "__main__":
     dyn = dynamics_th.DynamicsConstAacc()
     # predictor = IRLPredictor(dyn, [0.5, 10])
-    predictor = IterativePredictor(dyn, [0.5, 10])
+    predictor = IterativePredictor(dyn, [0.5, 6])
 
     # single prediction
     # predict_single_trajectory(predictor, "/home/yuhang/Documents/irl_data/winter18",
-    #                           0, "hp", 0, [8.0, 20.0, 7.0, 0.0, 8.0, 40.0])
+    #                           0, "hp", 1, [8.0, 20.0, 7.0, 1.0, 8.0, 40.0])
 
     # predict and save all
     predict_and_save_all(predictor,
                          "/home/yuhang/Documents/irl_data/winter18",
                          "/home/yuhang/Documents/irl_data/winter18",
-                         [0, 1, 2, 3], "hp",
+                         [0, 1, 2, 3], "rp",
                          [40, 24, 30, 30],
-                         [8.0, 20.0, 7.0, 0.0, 8.0, 40.0])
+                         [8.0, 20.0, 7.0, 10.0, 10.0, 40.0])
 
     # test_param_robustness(np.array([7.0, 20.0, 10.0, 10.0, 8.0, 50.0]), predictor,
     #                       "/home/yuhang/Documents/irl_data/winter18/user1/processed/rp", 2)

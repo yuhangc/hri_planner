@@ -75,13 +75,16 @@ int main(int argc, char** argv)
 
     // get rate
     double planner_rate;
+    double state_machine_rate;
     ros::param::param<double>("~planner/planner_rate", planner_rate, 2.0);
+    ros::param::param<double>("~planner/state_machine_rate", state_machine_rate, 1000);
 
     // operating mode
     std::string mode;
     ros::param::param<std::string>("~planner/planner_mode", mode, "simulation");
 
-    ros::Rate rate(planner_rate);
+    ros::Rate rate_slow(planner_rate);
+    ros::Rate rate_fast(state_machine_rate);
 
     // loop and a simple state machine
     PlannerStates planner_state = Idle;
@@ -89,43 +92,53 @@ int main(int argc, char** argv)
     flag_pause_planning = true;
 
     while (!ros::isShuttingDown()) {
-        ros::spinOnce();
-
         switch (planner_state) {
             case Idle:
                 ROS_INFO("In state Idle");
-                if (flag_start_planning) {
-                    flag_start_planning = false;
-                    planner.reset_planner(xr_goal, xh_goal, intent);
-
-                    planner_state = Planning;
+                while (!flag_start_planning && !ros::isShuttingDown()) {
+                    ros::spinOnce();
+                    rate_fast.sleep();
                 }
+
+                flag_start_planning = false;
+                planner.reset_planner(xr_goal, xh_goal, intent);
+
+                planner_state = Planning;
+
                 break;
             case Waiting:
                 ROS_INFO("In state Waiting");
-                if (!flag_pause_planning) {
-                    flag_pause_planning = true;
-                    planner_state = Planning;
+                while (flag_pause_planning && !ros::isShuttingDown()) {
+                    ros::spinOnce();
+                    rate_fast.sleep();
                 }
+
+                flag_pause_planning = true;
+                planner_state = Planning;
+
                 break;
             case Planning:
                 ROS_INFO("In state Planning");
-                planner.compute_plan();
+                while (!ros::isShuttingDown()) {
+                    ros::spinOnce();
+                    planner.compute_plan();
+                    rate_slow.sleep();
 
-                if (mode == "simulation") {
-                    planner_state = Waiting;
+                    if (mode == "simulation") {
+                        planner_state = Waiting;
+                        break;
+                    }
+                    else {
+                        // check for exit flag or goal reached
+                        ROS_ERROR("To be implemented!");
+                    }
                 }
-                else {
-                    // check for exit flag or goal reached
-                    ROS_ERROR("To be implemented!");
-                }
+
                 break;
             case PlanningNoHuman:
                 ROS_ERROR("To be implemented!");
                 break;
         }
-
-        rate.sleep();
     }
 
     return 0;
