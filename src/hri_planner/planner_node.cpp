@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2017
-// Last revision: 3/28/2017
+// Last revision: 3/31/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -121,7 +121,12 @@ int main(int argc, char** argv)
                 ROS_INFO("In state Planning");
                 while (!ros::isShuttingDown()) {
                     ros::spinOnce();
+
+                    auto t_s = ros::Time::now();
                     planner.compute_plan();
+                    ros::Duration t_plan = ros::Time::now() - t_s;
+                    std::cout << "time spent for planning is: " << t_plan.toSec() << "s" << std::endl;
+
                     rate_slow.sleep();
 
                     if (mode == "simulation") {

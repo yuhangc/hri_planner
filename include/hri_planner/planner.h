@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2017
-// Last revision: 3/28/2017
+// Last revision: 3/31/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -58,7 +58,8 @@ private:
 
     // components
     std::shared_ptr<BeliefModelBase> belief_model_;
-    std::shared_ptr<NestedOptimizerBase> optimizer_;
+    std::shared_ptr<NestedOptimizerBase> optimizer_comm_;
+    std::shared_ptr<NestedOptimizerBase> optimizer_no_comm_;
 
     // map to retrieve features by name
     std::unordered_map<std::string, std::shared_ptr<FeatureBase> > features_human_;
@@ -134,10 +135,13 @@ private:
 
     // creation routines
     void create_belief_model(std::shared_ptr<BeliefModelBase>& belief_model);
-    void create_human_costs(std::shared_ptr<HumanCost>& human_cost_hp, std::shared_ptr<HumanCost>& human_cost_rp,
-                            std::shared_ptr<SingleTrajectoryCostHuman>& single_cost_hp,
-                            std::shared_ptr<SingleTrajectoryCostHuman>& single_cost_rp);
-    void create_robot_costs(std::shared_ptr<ProbabilisticCostBase>& robot_cost);
+//    void create_human_costs(std::shared_ptr<HumanCost>& human_cost_hp, std::shared_ptr<HumanCost>& human_cost_rp,
+//                            std::shared_ptr<SingleTrajectoryCostHuman>& single_cost_hp,
+//                            std::shared_ptr<SingleTrajectoryCostHuman>& single_cost_rp);
+    void create_human_costs(std::vector<std::shared_ptr<SingleTrajectoryCostHuman> >& single_cost_hp,
+                            std::vector<std::shared_ptr<SingleTrajectoryCostHuman> >& single_cost_rp,
+                            int n);
+    void create_robot_costs(std::vector<std::shared_ptr<ProbabilisticCostBase> >& robot_costs, int n);
     void create_optimizer();
 
     // subscriber functions

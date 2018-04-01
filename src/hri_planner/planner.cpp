@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2017
-// Last revision: 3/28/2017
+// Last revision: 3/31/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -36,7 +36,7 @@ Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     ros::param::param<double>("~steer_posq/k_phi", k_phi_, -1.0);
     ros::param::param<double>("~steer_posq/gamma", gamma_, 0.15);
 
-    // create the optimizer
+    // create two copies of optimizer for parallel computing
     create_optimizer();
 
     // assuming no communication at the beginning
@@ -98,10 +98,8 @@ void Planner::create_belief_model(std::shared_ptr<BeliefModelBase> &belief_model
 }
 
 //----------------------------------------------------------------------------------
-void Planner::create_human_costs(std::shared_ptr<HumanCost>& human_cost_hp,
-                                 std::shared_ptr<HumanCost>& human_cost_rp,
-                                 std::shared_ptr<SingleTrajectoryCostHuman>& single_cost_hp,
-                                 std::shared_ptr<SingleTrajectoryCostHuman>& single_cost_rp)
+void Planner::create_human_costs(std::vector<std::shared_ptr<SingleTrajectoryCostHuman> > &single_cost_hp,
+                                 std::vector<std::shared_ptr<SingleTrajectoryCostHuman> > &single_cost_rp, int n)
 {
     std::vector<std::shared_ptr<FeatureBase> > features_hp;
     std::vector<std::shared_ptr<FeatureBase> > features_rp;
@@ -150,14 +148,18 @@ void Planner::create_human_costs(std::shared_ptr<HumanCost>& human_cost_hp,
     }
 
     // create the cost functions
-    human_cost_hp = std::make_shared<HumanCost>(weights_hp, features_hp);
-    human_cost_rp = std::make_shared<HumanCost>(weights_rp, features_rp);
-    single_cost_hp = std::make_shared<SingleTrajectoryCostHuman>(weights_hp, features_hp);
-    single_cost_rp = std::make_shared<SingleTrajectoryCostHuman>(weights_rp, features_rp);
+//    human_cost_hp = std::make_shared<HumanCost>(weights_hp, features_hp);
+//    human_cost_rp = std::make_shared<HumanCost>(weights_rp, features_rp);
+//    single_cost_hp = std::make_shared<SingleTrajectoryCostHuman>(weights_hp, features_hp);
+//    single_cost_rp = std::make_shared<SingleTrajectoryCostHuman>(weights_rp, features_rp);
+    for (int i = 0; i < n; ++i) {
+        single_cost_hp.push_back(std::make_shared<SingleTrajectoryCostHuman>(weights_hp, features_hp));
+        single_cost_rp.push_back(std::make_shared<SingleTrajectoryCostHuman>(weights_rp, features_rp));
+    }
 }
 
 //----------------------------------------------------------------------------------
-void Planner::create_robot_costs(std::shared_ptr<ProbabilisticCostBase>& robot_cost)
+void Planner::create_robot_costs(std::vector<std::shared_ptr<ProbabilisticCostBase> >& robot_cost, int n)
 {
     std::vector<std::shared_ptr<FeatureBase> > f_non_int;
     std::vector<std::shared_ptr<FeatureVectorizedBase> > f_int;
@@ -224,28 +226,37 @@ void Planner::create_robot_costs(std::shared_ptr<ProbabilisticCostBase>& robot_c
     ROS_INFO("Belief model created...");
 
     // create the robot cost function and set cost features
-    robot_cost = std::make_shared<ProbabilisticCostSimplified>(belief_model_);
-
-    robot_cost->set_features_non_int(w_non_int, f_non_int);
-    robot_cost->set_features_int(w_int, f_int);
+    for (int i = 0; i < n; ++i) {
+        robot_cost.push_back(std::make_shared<ProbabilisticCostSimplified>(belief_model_));
+        robot_cost[i]->set_features_non_int(w_non_int, f_non_int);
+        robot_cost[i]->set_features_int(w_int, f_int);
+    }
+//    robot_cost = std::make_shared<ProbabilisticCostSimplified>(belief_model_);
+//
+//    robot_cost->set_features_non_int(w_non_int, f_non_int);
+//    robot_cost->set_features_int(w_int, f_int);
 }
 
 //----------------------------------------------------------------------------------
 void Planner::create_optimizer()
 {
     // create human cost functions
-    std::shared_ptr<HumanCost> human_cost_hp;
-    std::shared_ptr<HumanCost> human_cost_rp;
-    std::shared_ptr<SingleTrajectoryCostHuman> single_cost_hp;
-    std::shared_ptr<SingleTrajectoryCostHuman> single_cost_rp;
+//    std::shared_ptr<HumanCost> human_cost_hp;
+//    std::shared_ptr<HumanCost> human_cost_rp;
+//    std::shared_ptr<SingleTrajectoryCostHuman> single_cost_hp;
+//    std::shared_ptr<SingleTrajectoryCostHuman> single_cost_rp;
+//
+//    create_human_costs(human_cost_hp, human_cost_rp, single_cost_hp, single_cost_rp);
 
-    create_human_costs(human_cost_hp, human_cost_rp, single_cost_hp, single_cost_rp);
+    std::vector<std::shared_ptr<SingleTrajectoryCostHuman> > single_cost_hp;
+    std::vector<std::shared_ptr<SingleTrajectoryCostHuman> > single_cost_rp;
+    create_human_costs(single_cost_hp, single_cost_rp, 2);
 
     ROS_INFO("Human cost func created...");
 
     // create the robot cost functions
-    std::shared_ptr<ProbabilisticCostBase> robot_cost;
-    create_robot_costs(robot_cost);
+    std::vector<std::shared_ptr<ProbabilisticCostBase> > robot_cost;
+    create_robot_costs(robot_cost, 2);
 
     ROS_INFO("Robot cost func created...");
 
@@ -257,15 +268,20 @@ void Planner::create_optimizer()
     int dim_h = T_ * nUh_;
 
     // FIXME: only use the naive nested optimizer with SLSQP for now
-    optimizer_ = std::make_shared<NaiveNestedOptimizer>(static_cast<unsigned int>(dim_r),
-                                                        static_cast<unsigned int>(dim_r),
-                                                        nlopt::LD_SLSQP, nlopt::LD_SLSQP);
+    optimizer_comm_ = std::make_shared<NaiveNestedOptimizer>(static_cast<unsigned int>(dim_r),
+                                                             static_cast<unsigned int>(dim_r),
+                                                             nlopt::LD_SLSQP, nlopt::LD_SLSQP);
+    optimizer_no_comm_ = std::make_shared<NaiveNestedOptimizer>(static_cast<unsigned int>(dim_r),
+                                                                static_cast<unsigned int>(dim_r),
+                                                                nlopt::LD_SLSQP, nlopt::LD_SLSQP);
 
     ROS_INFO("Optimizer created...");
 
     // set costs
-    optimizer_->set_robot_cost(robot_cost);
-    optimizer_->set_human_cost(single_cost_hp, single_cost_rp);
+    optimizer_comm_->set_robot_cost(robot_cost[0]);
+    optimizer_no_comm_->set_robot_cost(robot_cost[1]);
+    optimizer_comm_->set_human_cost(single_cost_hp[0], single_cost_rp[0]);
+    optimizer_no_comm_->set_human_cost(single_cost_hp[1], single_cost_rp[1]);
 
     // load and set bounds
     Eigen::VectorXd lb_ur(dim_r);
@@ -290,7 +306,8 @@ void Planner::create_optimizer()
         }
     }
 
-    optimizer_->set_bounds(lb_ur, ub_ur, lb_uh, ub_uh);
+    optimizer_comm_->set_bounds(lb_ur, ub_ur, lb_uh, ub_uh);
+    optimizer_no_comm_->set_bounds(lb_ur, ub_ur, lb_uh, ub_uh);
 }
 
 //----------------------------------------------------------------------------------
@@ -329,10 +346,11 @@ void Planner::compute_plan()
     Trajectory human_traj_hp_opt_n(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt_n(CONST_ACC_MODEL, T_, dt_);
 
-    cost_no_comm = optimizer_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, acomm_, tcomm_,
-                                        robot_traj_opt_n, &human_traj_hp_opt_n, &human_traj_rp_opt_n);
-    optimizer_->get_partial_cost(cost_hp_no_comm, cost_rp_no_comm);
-    ROS_INFO("min cost no communication is: %f", cost_no_comm);
+//    cost_no_comm = optimizer_no_comm_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_,
+//                                                acomm_, tcomm_, robot_traj_opt_n, &human_traj_hp_opt_n,
+//                                                &human_traj_rp_opt_n);
+//    optimizer_no_comm_->get_partial_cost(cost_hp_no_comm, cost_rp_no_comm);
+//    ROS_INFO("min cost no communication is: %f", cost_no_comm);
 
     // optimize for communication
     double cost_comm, cost_hp_comm, cost_rp_comm;
@@ -340,9 +358,29 @@ void Planner::compute_plan()
     Trajectory human_traj_hp_opt(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt(CONST_ACC_MODEL, T_, dt_);
 
-    cost_comm = optimizer_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, intent_, 0.0,
-                                     robot_traj_opt, &human_traj_hp_opt, &human_traj_rp_opt);
-    optimizer_->get_partial_cost(cost_hp_comm, cost_rp_comm);
+//    cost_comm = optimizer_comm_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, intent_, 0.0,
+//                                          robot_traj_opt, &human_traj_hp_opt, &human_traj_rp_opt);
+//    optimizer_comm_->get_partial_cost(cost_hp_comm, cost_rp_comm);
+//    ROS_INFO("min cost with communication is: %f", cost_comm);
+//    cost_comm += comm_cost_;
+
+    // create two threads to perform optimization separately
+    std::thread th_no_comm(&NestedOptimizerBase::optimize_nr, optimizer_no_comm_.get(), std::ref(robot_traj_init_),
+                           std::ref(human_traj_hp_init_), std::ref(human_traj_rp_init_), acomm_, tcomm_,
+                           std::ref(cost_no_comm), std::ref(robot_traj_opt_n), &human_traj_hp_opt_n,
+                           &human_traj_rp_opt_n);
+
+    std::thread th_comm(&NestedOptimizerBase::optimize_nr, optimizer_comm_.get(), std::ref(robot_traj_init_),
+                        std::ref(human_traj_hp_init_), std::ref(human_traj_rp_init_), intent_, 0.0,
+                        std::ref(cost_comm), std::ref(robot_traj_opt), &human_traj_hp_opt, &human_traj_rp_opt);
+
+    th_no_comm.join();
+    th_comm.join();
+
+    // get some info
+    optimizer_no_comm_->get_partial_cost(cost_hp_no_comm, cost_rp_no_comm);
+    ROS_INFO("min cost no communication is: %f", cost_no_comm);
+    optimizer_comm_->get_partial_cost(cost_hp_comm, cost_rp_comm);
     ROS_INFO("min cost with communication is: %f", cost_comm);
     cost_comm += comm_cost_;
 

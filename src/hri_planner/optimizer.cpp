@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/28/2017
+// Last revision: 3/31/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -64,7 +64,7 @@ bool TrajectoryOptimizer::optimize(const Trajectory& traj_init, const Trajectory
     optimizer_.set_min_objective(cost_wrapper, this);
 
     // set tolerance
-    optimizer_.set_xtol_abs(1e-3);
+    optimizer_.set_xtol_abs(1e-2);
 
     // initial condition
     std::vector<double> u_opt;
@@ -482,8 +482,15 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
     Trajectory human_traj_hp_opt(CONST_ACC_MODEL, T, dt);
     Trajectory human_traj_rp_opt(CONST_ACC_MODEL, T, dt);
 
-    optimizer_hp_->optimize(*human_traj_hp_, *robot_traj_, human_traj_hp_opt);
-    optimizer_rp_->optimize(*human_traj_rp_, *robot_traj_, human_traj_rp_opt);
+    // use two parallel threads to run optimization
+    std::thread th1(&TrajectoryOptimizer::optimize, optimizer_hp_.get(), std::ref(*human_traj_hp_),
+                    std::ref(*robot_traj_), std::ref(human_traj_hp_opt));
+    std::thread th2(&TrajectoryOptimizer::optimize, optimizer_rp_.get(), std::ref(*human_traj_rp_),
+                    std::ref(*robot_traj_), std::ref(human_traj_rp_opt));
+//    optimizer_hp_->optimize(*human_traj_hp_, *robot_traj_, human_traj_hp_opt);
+//    optimizer_rp_->optimize(*human_traj_rp_, *robot_traj_, human_traj_rp_opt);
+    th1.join();
+    th2.join();
 
     *human_traj_hp_ = human_traj_hp_opt;
     *human_traj_rp_ = human_traj_rp_opt;
@@ -499,27 +506,41 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
     robot_cost_->get_partial_cost(cost_hp_, cost_rp_);
 
     // compute the hessians for human cost functions
-    int len_uh = human_traj_hp_->traj_control_size();
-    int len_ur = robot_traj_->traj_control_size();
-    Eigen::MatrixXd hess_uh_hp(len_uh, len_uh);
-    Eigen::MatrixXd hess_uh_ur_hp(len_uh, len_ur);
-    Eigen::MatrixXd hess_uh_rp(len_uh, len_uh);
-    Eigen::MatrixXd hess_uh_ur_rp(len_uh, len_ur);
-
+//    int len_uh = human_traj_hp_->traj_control_size();
+//    int len_ur = robot_traj_->traj_control_size();
+//    Eigen::MatrixXd hess_uh_hp(len_uh, len_uh);
+//    Eigen::MatrixXd hess_uh_ur_hp(len_uh, len_ur);
+//    Eigen::MatrixXd hess_uh_rp(len_uh, len_uh);
+//    Eigen::MatrixXd hess_uh_ur_rp(len_uh, len_ur);
+//
     auto cost_hp_cast = dynamic_cast<SingleTrajectoryCostHuman*>(human_cost_hp_.get());
     auto cost_rp_cast = dynamic_cast<SingleTrajectoryCostHuman*>(human_cost_rp_.get());
+//
+//    cost_hp_cast->hessian_uh(*robot_traj_, human_traj_hp_opt, hess_uh_hp);
+//    cost_hp_cast->hessian_uh_ur(*robot_traj_, human_traj_hp_opt, hess_uh_ur_hp);
+//    cost_rp_cast->hessian_uh(*robot_traj_, human_traj_rp_opt, hess_uh_rp);
+//    cost_rp_cast->hessian_uh_ur(*robot_traj_, human_traj_rp_opt, hess_uh_ur_rp);
+//
+//    // compute the full gradient of ur
+//    Eigen::VectorXd sol_hp = hess_uh_hp.colPivHouseholderQr().solve(grad_uh_hp);
+//    Eigen::VectorXd sol_rp = hess_uh_rp.colPivHouseholderQr().solve(grad_uh_rp);
+//
+//    Eigen::VectorXd grad_inc = hess_uh_ur_hp.transpose() * sol_hp + hess_uh_ur_rp.transpose() * sol_rp;
+//
+//    grad_ur -= grad_inc;
 
-    cost_hp_cast->hessian_uh(*robot_traj_, human_traj_hp_opt, hess_uh_hp);
-    cost_hp_cast->hessian_uh_ur(*robot_traj_, human_traj_hp_opt, hess_uh_ur_hp);
-    cost_rp_cast->hessian_uh(*robot_traj_, human_traj_rp_opt, hess_uh_rp);
-    cost_rp_cast->hessian_uh_ur(*robot_traj_, human_traj_rp_opt, hess_uh_ur_rp);
+    Eigen::VectorXd sub_grad_hp;
+    Eigen::VectorXd sub_grad_rp;
 
-    // compute the full gradient of ur
-    Eigen::VectorXd sol_hp = hess_uh_hp.colPivHouseholderQr().solve(grad_uh_hp);
-    Eigen::VectorXd sol_rp = hess_uh_rp.colPivHouseholderQr().solve(grad_uh_rp);
+    std::thread th_hp(&NaiveNestedOptimizer::cost_func_subroutine, this, std::ref(cost_hp_cast),
+                      std::ref(human_traj_hp_opt), std::ref(grad_uh_hp), std::ref(sub_grad_hp));
+    std::thread th_rp(&NaiveNestedOptimizer::cost_func_subroutine, this, std::ref(cost_rp_cast),
+                      std::ref(human_traj_rp_opt), std::ref(grad_uh_rp), std::ref(sub_grad_rp));
+    th_hp.join();
+    th_rp.join();
 
-    Eigen::VectorXd grad_inc = hess_uh_ur_hp.transpose() * sol_hp + hess_uh_ur_rp.transpose() * sol_rp;
-    grad_ur -= grad_inc;
+    grad_ur -= sub_grad_hp + sub_grad_rp;
+
 
 //    std::cout << "-------------" << std::endl;
 //    std::cout << grad_inc.transpose() << std::endl;
@@ -541,6 +562,22 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
 //    std::cout << std::endl;
 
     return cost;
+}
+
+//----------------------------------------------------------------------------------
+void NaiveNestedOptimizer::cost_func_subroutine(SingleTrajectoryCostHuman *&cost, const Trajectory& human_traj,
+                                                const Eigen::VectorXd &grad_uh, Eigen::VectorXd &sub_grad)
+{
+    int len_uh = human_traj_hp_->traj_control_size();
+    int len_ur = robot_traj_->traj_control_size();
+    Eigen::MatrixXd hess_uh(len_uh, len_uh);
+    Eigen::MatrixXd hess_uh_ur(len_uh, len_ur);
+
+    cost->hessian_uh(*robot_traj_, human_traj, hess_uh);
+    cost->hessian_uh_ur(*robot_traj_, human_traj, hess_uh_ur);
+
+    Eigen::VectorXd sol = hess_uh.colPivHouseholderQr().solve(grad_uh);
+    sub_grad = hess_uh_ur.transpose() * sol;
 }
 
 } // namespace

@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/25/2017
-// Last revision: 3/22/2017
+// Last revision: 3/31/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -65,6 +65,10 @@ protected:
     // history of implicit costs
     std::deque<double> cost_hist_hp_;
     std::deque<double> cost_hist_rp_;
+
+    // accumulated costs
+    double cost_hp_;
+    double cost_rp_;
 
     Eigen::VectorXd ur_last_;
     Eigen::VectorXd ur_nav_;

@@ -46,7 +46,7 @@ public:
         return belief_model_->get_belief();
     }
 
-    double get_partial_cost(double& cost_hp, double& cost_rp) const {
+    void get_partial_cost(double& cost_hp, double& cost_rp) const {
         cost_hp = cost_hp_;
         cost_rp = cost_rp_;
     }

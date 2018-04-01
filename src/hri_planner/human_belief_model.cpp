@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 2/25/2017
-// Last revision: 3/29/2017
+// Last revision: 3/31/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -19,14 +19,10 @@ namespace hri_planner {
 //----------------------------------------------------------------------------------
 double BeliefModelBase::update_belief(int acomm, double tcomm, double tcurr)
 {
-    // compute cost sum
-    double cost_hp = std::accumulate(cost_hist_hp_.begin(), cost_hist_hp_.end(), 0.0);
-    double cost_rp = std::accumulate(cost_hist_rp_.begin(), cost_hist_rp_.end(), 0.0);
-
     // update belief
-    double p_hp = std::exp(-cost_hp * fcorrection_[HumanPriority]) *
+    double p_hp = std::exp(-cost_hp_ * fcorrection_[HumanPriority]) *
                   belief_explicit(HumanPriority, tcurr, acomm, tcomm);
-    double p_rp = std::exp(-cost_rp * fcorrection_[RobotPriority]) *
+    double p_rp = std::exp(-cost_rp_ * fcorrection_[RobotPriority]) *
                   belief_explicit(RobotPriority, tcurr, acomm, tcomm);
 
     return p_hp / (p_hp + p_rp);
@@ -42,22 +38,25 @@ double BeliefModelBase::update_belief(const Eigen::VectorXd &xr, const Eigen::Ve
     cost_hist_hp_.push_back(new_cost_hp);
     cost_hist_rp_.push_back(new_cost_rp);
 
+    cost_hp_ += new_cost_hp;
+    cost_rp_ += new_cost_rp;
 //    std::cout << "new implicit costs: " << new_cost_hp << ", " << new_cost_rp << std::endl;
 
     // pop out old ones
-    if (cost_hist_hp_.size() > T_hist_)
+    if (cost_hist_hp_.size() > T_hist_) {
+        cost_hp_ -= cost_hist_hp_.front();
         cost_hist_hp_.pop_front();
-    if (cost_hist_rp_.size() > T_hist_)
-        cost_hist_rp_.pop_front();
+    }
 
-    // compute cost sum
-    double cost_hp = std::accumulate(cost_hist_hp_.begin(), cost_hist_hp_.end(), 0.0);
-    double cost_rp = std::accumulate(cost_hist_rp_.begin(), cost_hist_rp_.end(), 0.0);
+    if (cost_hist_rp_.size() > T_hist_) {
+        cost_rp_ -= cost_hist_rp_.front();
+        cost_hist_rp_.pop_front();
+    }
 
     // update belief
-    double p_hp = std::exp(-cost_hp * fcorrection_[HumanPriority]) *
+    double p_hp = std::exp(-cost_hp_ * fcorrection_[HumanPriority]) *
             belief_explicit(HumanPriority, t0, acomm, tcomm);
-    double p_rp = std::exp(-cost_rp * fcorrection_[RobotPriority]) *
+    double p_rp = std::exp(-cost_rp_ * fcorrection_[RobotPriority]) *
             belief_explicit(RobotPriority, t0, acomm, tcomm);
 
     prob_hp_ = p_hp / (p_hp + p_rp);

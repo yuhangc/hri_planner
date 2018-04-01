@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/7/2017
-// Last revision: 3/25/2017
+// Last revision: 3/31/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -39,6 +39,11 @@ public:
 
     // set additional data
     virtual void set_data(const void* data) = 0;
+
+    // compute with no return
+    void compute_nr(const Trajectory& robot_traj, const Trajectory& human_traj, double& cost) {
+        cost = compute(robot_traj, human_traj);
+    }
 };
 
 class FeatureTwiceDiff: public FeatureBase {

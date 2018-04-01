@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2017
-// Last revision: 3/28/2017
+// Last revision: 3/31/2017
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <memory>
+#include <thread>
 
 #include <Eigen/Dense>
 #include <nlopt.hpp>
@@ -79,6 +80,14 @@ public:
                             const Trajectory& human_traj_rp_init, int acomm, double tcomm,
                             Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt=nullptr,
                             Trajectory* human_traj_rp_opt=nullptr) = 0;
+
+    void optimize_nr(const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
+                     const Trajectory& human_traj_rp_init, int acomm, double tcomm, double& min_cost,
+                     Trajectory& robot_traj_opt, Trajectory* human_traj_hp_opt=nullptr,
+                     Trajectory* human_traj_rp_opt=nullptr) {
+        min_cost = optimize(robot_traj_init, human_traj_hp_init, human_traj_rp_init, acomm, tcomm,
+                            robot_traj_opt, human_traj_hp_opt, human_traj_rp_opt);
+    }
 
     // get partial costs
     void get_partial_cost(double& cost_hp, double& cost_rp) {
@@ -177,6 +186,8 @@ private:
     std::unique_ptr<TrajectoryOptimizer> optimizer_rp_;
 
     double cost_func(const std::vector<double>& u, std::vector<double>& grad) override;
+    void cost_func_subroutine(SingleTrajectoryCostHuman*& cost, const Trajectory& human_traj,
+                              const Eigen::VectorXd& grad_uh, Eigen::VectorXd& sub_grad);
 };
 
 } // namespace
