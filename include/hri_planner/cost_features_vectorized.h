@@ -32,6 +32,9 @@ public:
 
     static std::shared_ptr<FeatureVectorizedBase> create(const std::string &feature_type,
                                                          const std::vector<double> &args);
+
+    // set additional data
+    virtual void set_data(const void* data) = 0;
 };
 
 //! vectorized gaussian cost
@@ -52,15 +55,41 @@ public:
     void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Juh) override;
     void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Jur) override;
 
+    // set additional data
+    void set_data(const void* data) override {};
+
 private:
     double R_;
 };
 
 //! human effort feature
 class HumanAccCostVec: public FeatureVectorizedBase {
+public:
     void compute(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::VectorXd& costs) override;
     void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Juh) override;
     void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Jur) override;
+
+    // set additional data
+    void set_data(const void* data) override {};
+};
+
+//! human goal feature
+class HumanGoalCostVec: public FeatureVectorizedBase {
+public:
+    explicit HumanGoalCostVec(const Eigen::VectorXd& x_goal, double reg=1e-2): x_goal_(x_goal), reg_(reg) {};
+
+    void compute(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::VectorXd& costs) override;
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Juh) override;
+    void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Jur) override;
+
+    // set additional data
+    void set_data(const void* data) override {
+        x_goal_ = *static_cast<const Eigen::VectorXd*>(data);
+    };
+
+private:
+    Eigen::VectorXd x_goal_;
+    double reg_;
 };
 
 }

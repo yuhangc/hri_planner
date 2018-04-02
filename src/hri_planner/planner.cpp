@@ -217,7 +217,10 @@ void Planner::create_robot_costs(std::vector<std::shared_ptr<ProbabilisticCostBa
         ros::param::param<double>(feature_str + "/weight", w, 1.0);
 
         // add to feature and weight list
-        f_int.push_back(FeatureVectorizedBase::create(feature_name, args));
+        std::shared_ptr<FeatureVectorizedBase> feature = FeatureVectorizedBase::create(feature_name, args);
+        features_robot_int_.insert({feature_name, feature});
+
+        f_int.push_back(feature);
         w_int.push_back(w);
     }
 
@@ -449,6 +452,7 @@ void Planner::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorX
 {
     // update the goals for robot and human
     features_robot_["Goal"]->set_data(&xr_goal);
+    features_robot_int_["HumanGoal"]->set_data(&xh_goal);
     features_human_["Goal_hp"]->set_data(&xh_goal);
     features_human_["Goal_rp"]->set_data(&xh_goal);
 

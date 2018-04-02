@@ -30,7 +30,7 @@ class BeliefModelBase {
 public:
     // requires the history length
     explicit BeliefModelBase(int T_hist, const std::vector<double>& fcorrection):
-            T_hist_(T_hist), fcorrection_(fcorrection) {prob_hp_ = 0.5;};
+            T_hist_(T_hist), fcorrection_(fcorrection), cost_hp_(0.0), cost_rp_(0.0), prob_hp_(0.5) {};
 
     // virtual destructor
     virtual ~BeliefModelBase() = default;

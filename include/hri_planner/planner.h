@@ -64,6 +64,7 @@ private:
     // map to retrieve features by name
     std::unordered_map<std::string, std::shared_ptr<FeatureBase> > features_human_;
     std::unordered_map<std::string, std::shared_ptr<FeatureBase> > features_robot_;
+    std::unordered_map<std::string, std::shared_ptr<FeatureVectorizedBase> > features_robot_int_;
 
     // recent explicit communicative action
     int acomm_;

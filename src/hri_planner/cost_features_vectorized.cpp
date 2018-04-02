@@ -23,6 +23,11 @@ std::shared_ptr<FeatureVectorizedBase> FeatureVectorizedBase::create(const std::
     else if (feature_type == "Collision") {
         return std::make_shared<CollisionCostVec>(args[0]);
     }
+    else if (feature_type == "HumanGoal") {
+        Eigen::VectorXd x_goal(2);
+        x_goal << args[0], args[1];
+        return std::make_shared<HumanGoalCostVec>(x_goal);
+    }
     else {
         throw "Invalid feature type!";
     }
@@ -158,6 +163,41 @@ void HumanAccCostVec::grad_uh(const Trajectory &robot_traj, const Trajectory &hu
 
 //----------------------------------------------------------------------------------
 void HumanAccCostVec::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, Eigen::MatrixXd &Jur)
+{
+    // doesn't depend on ur
+    Jur.setZero(robot_traj.horizon(), robot_traj.traj_control_size());
+}
+
+//----------------------------------------------------------------------------------
+void HumanGoalCostVec::compute(const Trajectory &robot_traj, const Trajectory &human_traj, Eigen::VectorXd &costs)
+{
+    int xs = human_traj.traj_state_size() - human_traj.state_size();
+    double x_diff = x_goal_(0) - human_traj.x(xs);
+    double y_diff = x_goal_(1) - human_traj.x(xs+1);
+
+    costs.setZero(human_traj.horizon());
+    costs(human_traj.horizon()-1) = std::sqrt(x_diff * x_diff + y_diff * y_diff);
+}
+
+//----------------------------------------------------------------------------------
+void HumanGoalCostVec::grad_uh(const Trajectory &robot_traj, const Trajectory &human_traj, Eigen::MatrixXd &Juh)
+{
+    Eigen::Vector2d grad_x;
+    int xs = human_traj.traj_state_size() - human_traj.state_size();
+    double x_diff = human_traj.x(xs) - x_goal_(0);
+    double y_diff = human_traj.x(xs+1) - x_goal_(1);
+    double d = std::sqrt(x_diff * x_diff + y_diff * y_diff) + reg_;
+
+    grad_x(0) = x_diff / d;
+    grad_x(1) = y_diff / d;
+
+    // only the last row has non-zero elements
+    Juh.setZero(human_traj.horizon(), human_traj.traj_control_size());
+    Juh.row(human_traj.horizon()-1) = grad_x.transpose() * human_traj.Ju.middleRows(xs, 2);
+}
+
+//----------------------------------------------------------------------------------
+void HumanGoalCostVec::grad_ur(const Trajectory &robot_traj, const Trajectory &human_traj, Eigen::MatrixXd &Jur)
 {
     // doesn't depend on ur
     Jur.setZero(robot_traj.horizon(), robot_traj.traj_control_size());

@@ -105,6 +105,9 @@ void BeliefModelBase::reset_hist(const Eigen::VectorXd &ur0)
 
     cost_hist_hp_.clear();
     cost_hist_rp_.clear();
+
+    cost_hp_ = 0.0;
+    cost_rp_ = 0.0;
 }
 
 //----------------------------------------------------------------------------------
