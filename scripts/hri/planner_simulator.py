@@ -83,10 +83,15 @@ class PlannerSimulator(object):
         self.xh0 = init_data[test_id, 0:self.nXh_]
         self.xr0 = init_data[test_id, self.nXh_:(self.nXh_+self.nXr_)]
 
-        self.human_traj = traj_data[:, 0:self.nXh_]
+        self.human_traj = traj_data
 
         # FIXME: fix the intent for now
         self.robot_intent_ = 0  # human priority
+
+    def save_data(self, path, test_id):
+        traj_data = np.hstack((self.human_traj, self.robot_traj))
+
+        np.savetxt(path + "/block" + str(test_id) + ".txt", traj_data, delimiter=',')
 
     # main function to run
     def run_simulation(self):
@@ -143,10 +148,10 @@ class PlannerSimulator(object):
             self.xr_, self.ur_ = self.robot_dynamics(self.xr_, self.robot_ctrl_)
 
             # append to full trajectory
-            self.robot_traj.append(self.xr_.copy())
+            self.robot_traj.append(np.hstack((self.xr_.copy(), self.ur_.copy())))
 
             # update pose and vel of human
-            self.xh_ = self.human_traj[t]
+            self.xh_ = self.human_traj[t, 0:self.nXh_]
 
             # visualize the plan
             row = t / n_cols
@@ -187,8 +192,8 @@ class PlannerSimulator(object):
     # visualize the "frame"
     def visualize_frame(self, ax, t):
         # plot previous trajectories
-        robot_traj = np.asarray(self.robot_traj[:t]).reshape(t, self.nXr_)
-        human_traj = np.asarray(self.human_traj[:t]).reshape(t, self.nXh_)
+        robot_traj = np.asarray(self.robot_traj)[0:t, 0:self.nXr_].reshape(t, self.nXr_)
+        human_traj = np.asarray(self.human_traj)[0:t, 0:self.nXh_].reshape(t, self.nXh_)
 
         ax.plot(robot_traj[:, 0], robot_traj[:, 1], "-o",
                 color=(0.3, 0.3, 0.9), fillstyle="none", lw=1.5, label="robot_traj")
@@ -242,8 +247,8 @@ class PlannerSimulator(object):
     # robot dynamics
     def robot_dynamics(self, x, u):
         # get parameters
-        v_max = rospy.get_param("~robot_dynamics/v_max", [0.55, 3.0])
-        a_max = rospy.get_param("~robot_dynamics/a_max", [1.0, 3.0])
+        v_max = rospy.get_param("~robot_dynamics/v_max", [0.50, 3.0])
+        a_max = rospy.get_param("~robot_dynamics/a_max", [0.5, 2.0])
         v_std = rospy.get_param("~robot_dynamics/v_std", [0.0, 0.0])
 
         v_max = np.asarray(v_max)
@@ -311,3 +316,4 @@ if __name__ == "__main__":
     simulator = PlannerSimulator()
     simulator.load_data("/home/yuhang/Documents/hri_log/test_data", 0)
     simulator.run_simulation()
+    simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)

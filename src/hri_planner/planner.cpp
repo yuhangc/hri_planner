@@ -345,6 +345,7 @@ void Planner::compute_plan()
 
     // optimize for no communication
     double cost_no_comm, cost_hp_no_comm, cost_rp_no_comm;
+    std::vector<double> cost_ni_no_comm;
     Trajectory robot_traj_opt_n(DIFFERENTIAL_MODEL, T_, dt_);
     Trajectory human_traj_hp_opt_n(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt_n(CONST_ACC_MODEL, T_, dt_);
@@ -357,6 +358,7 @@ void Planner::compute_plan()
 
     // optimize for communication
     double cost_comm, cost_hp_comm, cost_rp_comm;
+    std::vector<double> cost_ni_comm;
     Trajectory robot_traj_opt(DIFFERENTIAL_MODEL, T_, dt_);
     Trajectory human_traj_hp_opt(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt(CONST_ACC_MODEL, T_, dt_);
@@ -381,10 +383,20 @@ void Planner::compute_plan()
     th_comm.join();
 
     // get some info
-    optimizer_no_comm_->get_partial_cost(cost_hp_no_comm, cost_rp_no_comm);
+    optimizer_no_comm_->get_partial_cost(cost_hp_no_comm, cost_rp_no_comm, cost_ni_no_comm);
     ROS_INFO("min cost no communication is: %f", cost_no_comm);
-    optimizer_comm_->get_partial_cost(cost_hp_comm, cost_rp_comm);
+    std::cout << ">>>>>>>> partial costs: " << cost_hp_no_comm << ", " << cost_rp_no_comm << " | ";
+    for (auto c: cost_ni_no_comm)
+        std::cout << c << ", ";
+    std::cout << std::endl;
+
+    optimizer_comm_->get_partial_cost(cost_hp_comm, cost_rp_comm, cost_ni_comm);
     ROS_INFO("min cost with communication is: %f", cost_comm);
+    std::cout << ">>>>>>>> partial costs: " << cost_hp_comm << ", " << cost_rp_comm << " | ";
+    for (auto c: cost_ni_comm)
+        std::cout << c << ", ";
+    std::cout << std::endl;
+
     cost_comm += comm_cost_;
 
     // compare the cost and choose optimal actions

@@ -112,22 +112,24 @@ def visualize_features_basic():
     plt.show()
 
 
-def visualize_features_with_data(path, trial, th):
+def visualize_features_with_data(path, trial, th, flag_no_obs=False):
     # load the data
     init_data = np.loadtxt(path + "/init.txt", delimiter=",")
     goal_data = np.loadtxt(path + "/goal.txt", delimiter=",")
-    obs_pos = np.loadtxt(path + "/obs.txt", delimiter=',')
+
+    if not flag_no_obs:
+        obs_pos = np.loadtxt(path + "/obs.txt", delimiter=',')
 
     traj = np.loadtxt(path + "/block" + str(trial) + ".txt", delimiter=",")
 
-    xh = traj[1:17, 0:4]
-    uh = traj[1:17, 4:6]
-    xr = traj[1:17, 6:9]
-    ur = traj[1:17, 9:11]
+    xh = traj[:, 0:4]
+    uh = traj[:, 4:6]
+    xr = traj[:, 6:9]
+    ur = traj[:, 9:11]
 
     # extract common info
     x0 = init_data[trial, 0:4]
-    x_goal = goal_data[trial]
+    x_goal = goal_data[trial, 0:2]
 
     # bound
     xbound = np.array([-1.0, 5.0])
@@ -139,12 +141,16 @@ def visualize_features_with_data(path, trial, th):
     nstep = 2
     for t in range(0, len(xr), nstep):
         # generate features
-        f_chr = -collision_hr(xr[t], 0.5)
-        f_chr_dyn = -collision_hr_dynamic(xr[t], ur[t], 0.3, 0.5, 0.5)
-        f_obs = -collision_obs(obs_pos, 0.5)
+        f_chr = -collision_hr(xr[t], 0.3)
+        f_chr_dyn = -collision_hr_dynamic(xr[t], ur[t], 0.3, 0.6, 0.6)
         f_goal = -goal_reward_term(x_goal)
 
-        f_all = th[0]*f_chr + th[1]*f_chr_dyn + th[2]*f_obs + th[3]*f_goal
+        if not flag_no_obs:
+            f_obs = -collision_obs(obs_pos, 0.5)
+            f_all = th[0]*f_chr + th[1]*f_chr_dyn + th[2]*f_obs + th[3]*f_goal
+        else:
+            f_all = th[0]*f_chr + th[1]*f_chr_dyn + th[2]*f_goal
+
         ax = axes[(t/2) / 4, (t/2) % 4]
         plot_cost_heat_map(f_all, xbound, ybound, fig, ax)
 
@@ -163,5 +169,8 @@ def visualize_features_with_data(path, trial, th):
 
 if __name__ == "__main__":
     # visualize_features_basic()
-    visualize_features_with_data("/home/yuhang/Documents/irl_data/winter18/user0/processed/rp",
-                                 0, [7.0, 0.0, 8.0, 50.0/100.0])
+    # visualize_features_with_data("/home/yuhang/Documents/irl_data/winter18/user0/processed/rp",
+    #                              0, [7.0, 0.0, 8.0, 50.0/100.0])
+
+    visualize_features_with_data("/home/yuhang/Documents/hri_log/test_data",
+                                 0, [5.0, 10.0, 50.0/50.0], flag_no_obs=True)

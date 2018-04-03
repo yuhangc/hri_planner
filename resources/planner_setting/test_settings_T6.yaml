@@ -17,7 +17,7 @@ planner:
   publish_full_plan: true
   publish_belief_cost: true
 
-  comm_cost: 3.0
+  comm_cost: 2.0
 
 # belief model settings
 explicit_comm:
@@ -50,13 +50,13 @@ human_cost_hp:
     name: Collision
     weight: 7.0
     nargs: 1
-    args: [0.5]
+    args: [0.3]
 
   feature4:
     name: CollisionDynamic
-    weight: 0.0
+    weight: 0.5
     nargs: 3
-    args: [0.5, 0.3, 0.5]
+    args: [0.6, 0.3, 0.6]
 
 human_cost_rp:
   feature0:
@@ -75,15 +75,15 @@ human_cost_rp:
 
   feature3:
     name: Collision
-    weight: 7.0
+    weight: 5.0
     nargs: 1
-    args: [0.5]
+    args: [0.3]
 
   feature4:
     name: CollisionDynamic
     weight: 10.0
     nargs: 3
-    args: [0.5, 0.3, 0.5]
+    args: [0.6, 0.3, 0.6]
 
 # robot costs
 robot_cost:
@@ -104,17 +104,17 @@ robot_cost_non_int:
 robot_cost_int:
   feature0:
     name: HumanEffort
-    weight: 30.0
+    weight: 20.0
 
   feature1:
     name: Collision
     weight: 5.0
     nargs: 1
-    args: [0.5]
+    args: [0.3]
 
   feature2:
     name: HumanGoal
-    weight: 10.0
+    weight: 20.0
     nargs: 2
     args: [0.732, 6.01]
 

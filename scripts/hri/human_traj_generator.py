@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+class HumanTrajGenerator:
+    def __init__(self, T, dt):
+        self.T = T
+        self.dt = dt
+
+        # set some parameters
+        self.v_max = 1.0
+        self.a_max = 0.6
+
+        self.k_v = 0.8
+        self.u_std = [0.1, 0.1]
+
+    def generate_path_ignore_robot(self, x_init, x_goal):
+        x = []
+        u = []
+        x_last = x_init
+
+        for t in range(self.T):
+            # compute the desired velocity first
+            x_diff = x_goal - x_last[0:2]
+            vd = self.k_v * x_diff
+
+            # clip the velocity
+            v_dir = np.abs(vd) / np.linalg.norm(vd)
+            vd = np.clip(vd, -self.v_max * v_dir, self.v_max * v_dir)
+
+            # compute desired acceleration and clip
+            ud = (vd - x_last[2:4]) / self.dt
+            u_dir = np.abs(ud) / np.linalg.norm(ud)
+            ud = np.clip(ud, -self.a_max * u_dir, self.a_max * u_dir)
+
+            # inject noise into control
+            dux = np.random.normal(0.0, self.u_std[0], 1)[0]
+            duy = np.random.normal(0.0, self.u_std[1], 1)[0]
+            ud += np.array([dux, duy])
+
+            # compute the actual velocity and displacement
+            x_new = np.zeros((4, ))
+            x_new[0:2] = x_last[0:2] + x_last[2:4] * self.dt + 0.5 * ud * self.dt**2
+            x_new[2:4] = x_last[2:4] + ud * self.dt
+
+            # append to list
+            x.append(x_new)
+            u.append(ud)
+
+            x_last = x_new
+
+        # visualize
+        x = np.asarray(x)
+        u = np.asarray(u)
+
+        fig, ax = plt.subplots()
+        ax.plot(x[:, 0], x[:, 1], "-o", color=(0.1, 0.1, 0.1), fillstyle="none", lw=1.5, label="human_traj")
+        ax.plot(x_goal[0], x_goal[1], 'ok')
+        ax.axis("equal")
+
+        plt.show()
+
+        return x, u
+
+
+def gen_and_save_trajectories(path):
+    # load init and goal data
+    init_data = np.loadtxt(path + "/init.txt", delimiter=",")
+    goal_data = np.loadtxt(path + "/goal.txt", delimiter=",")
+
+    # create a generator
+    generator = HumanTrajGenerator(16, 0.5)
+
+    # generate a single trajectory
+    i = 0
+    for x_init, x_goal in zip(init_data, goal_data):
+        x, u = generator.generate_path_ignore_robot(x_init[0:4], x_goal[0:2])
+
+        # save data to file
+        np.savetxt(path + "/test" + str(i) + ".txt", np.hstack((x, u)), delimiter=',')
+        i += 1
+
+
+if __name__ == "__main__":
+    gen_and_save_trajectories("/home/yuhang/Documents/hri_log/test_data")

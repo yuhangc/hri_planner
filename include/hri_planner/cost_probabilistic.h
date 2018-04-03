@@ -46,9 +46,10 @@ public:
         return belief_model_->get_belief();
     }
 
-    void get_partial_cost(double& cost_hp, double& cost_rp) const {
+    void get_partial_cost(double& cost_hp, double& cost_rp, std::vector<double>& cost_non_int) const {
         cost_hp = cost_hp_;
         cost_rp = cost_rp_;
+        cost_non_int = costs_non_int_;
     }
 
 protected:
@@ -66,6 +67,7 @@ protected:
     Trajectory human_traj_pred_;
 
     // record "partial costs" - cost for each scenario
+    std::vector<double> costs_non_int_;
     double cost_hp_;
     double cost_rp_;
 };

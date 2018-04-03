@@ -90,9 +90,10 @@ public:
     }
 
     // get partial costs
-    void get_partial_cost(double& cost_hp, double& cost_rp) {
+    void get_partial_cost(double& cost_hp, double& cost_rp, std::vector<double>& cost_non_int) {
         cost_hp = cost_hp_;
         cost_rp = cost_rp_;
+        cost_non_int = costs_non_int_;
     }
 
 protected:
@@ -122,6 +123,7 @@ protected:
     // keep track of the partial costs
     double cost_hp_;
     double cost_rp_;
+    std::vector<double> costs_non_int_;
 
     // wrapper cost function
     virtual double cost_func(const std::vector<double>& u, std::vector<double>& grad) = 0;

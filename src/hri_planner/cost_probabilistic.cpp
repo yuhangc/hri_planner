@@ -150,8 +150,12 @@ double ProbabilisticCostSimplified::compute(const Trajectory &robot_traj, const 
 
     //! first compute non-interactive costs
     // doesn't matter which human trajectory to use
-    for (int i = 0; i < w_non_int_.size(); ++i)
-        cost += w_non_int_[i] * f_non_int_[i]->compute(robot_traj, human_traj_hp);
+    costs_non_int_.clear();
+    for (int i = 0; i < w_non_int_.size(); ++i) {
+        double t_cost = f_non_int_[i]->compute(robot_traj, human_traj_hp);
+        costs_non_int_.push_back(t_cost);
+        cost += w_non_int_[i] * t_cost;
+    }
 
     //! compute the interactive costs
     Eigen::VectorXd costs_hp;
@@ -181,7 +185,19 @@ double ProbabilisticCostSimplified::compute(const Trajectory &robot_traj, const 
 
     cost_hp_ = ones.dot(costs_hp);
     cost_rp_ = ones.dot(costs_rp);
+
+//    std::cout << ">>>>>>>> costs are: " << cost << ", (";
+//
+//    for (auto c: costs_non_int_)
+//        std::cout << c << ", ";
+//
+//    std::cout << "), (" << prob_hp << ", " << cost_hp_ << "), ("
+//              << prob_rp << ", " << cost_rp_ << "), | ";
+
     cost += prob_hp * cost_hp_ + prob_rp * cost_rp_;
+
+//    std::cout << cost << std::endl;
+
 
     //! compute the gradient w.r.t. ur
     // non-interactive features

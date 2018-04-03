@@ -450,7 +450,7 @@ double NaiveNestedOptimizer::optimize(const Trajectory &robot_traj_init, const T
     // optimizer!
     double min_cost;
     nlopt::result result = optimizer_.optimize(u_opt, min_cost);
-    std::cout << "result is: " << result << std::endl;
+    std::cout << "result is: " << result << ", min cost is: " << min_cost << std::endl;
 
     // send result back
     robot_traj_opt.x0 = robot_traj_init.x0;
@@ -503,7 +503,7 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
     cost = robot_cost_->compute(*robot_traj_, human_traj_hp_opt, human_traj_rp_opt, acomm_, tcomm_,
                                 grad_ur, grad_uh_hp, grad_uh_rp);
 
-    robot_cost_->get_partial_cost(cost_hp_, cost_rp_);
+    robot_cost_->get_partial_cost(cost_hp_, cost_rp_, costs_non_int_);
 
     // compute the hessians for human cost functions
 //    int len_uh = human_traj_hp_->traj_control_size();
