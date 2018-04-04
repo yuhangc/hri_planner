@@ -77,13 +77,13 @@ human_cost_rp:
     name: Collision
     weight: 5.0
     nargs: 1
-    args: [0.3]
+    args: [0.5]
 
   feature4:
     name: CollisionDynamic
     weight: 10.0
     nargs: 3
-    args: [0.6, 0.3, 0.6]
+    args: [0.6, 0.5, 0.6]
 
 # robot costs
 robot_cost:
@@ -110,7 +110,7 @@ robot_cost_int:
     name: Collision
     weight: 5.0
     nargs: 1
-    args: [0.3]
+    args: [0.5]
 
   feature2:
     name: HumanGoal

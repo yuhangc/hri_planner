@@ -85,16 +85,13 @@ class PlannerSimulator(object):
 
         self.human_traj = traj_data
 
-        # FIXME: fix the intent for now
-        self.robot_intent_ = 0  # human priority
-
     def save_data(self, path, test_id):
         traj_data = np.hstack((self.human_traj, self.robot_traj))
 
         np.savetxt(path + "/block" + str(test_id) + ".txt", traj_data, delimiter=',')
 
     # main function to run
-    def run_simulation(self):
+    def run_simulation(self, robot_intent):
         # total "simulation" time is length of pre-defined human trajectory
         Tsim = len(self.human_traj)
 
@@ -124,7 +121,7 @@ class PlannerSimulator(object):
                     goal_data.data.append(xh)
 
                 # set intent data
-                goal_data.data.append(self.robot_intent_)
+                goal_data.data.append(robot_intent)
 
                 self.goal_pub.publish(goal_data)
             else:
@@ -314,6 +311,6 @@ if __name__ == "__main__":
     rospy.init_node("planner_simulator")
 
     simulator = PlannerSimulator()
-    simulator.load_data("/home/yuhang/Documents/hri_log/test_data", 0)
-    simulator.run_simulation()
-    simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
+    simulator.load_data("/home/yuhang/Documents/hri_log/test_data", 3)
+    simulator.run_simulation(0)
+    simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 3)

@@ -141,8 +141,8 @@ def visualize_features_with_data(path, trial, th, flag_no_obs=False):
     nstep = 2
     for t in range(0, len(xr), nstep):
         # generate features
-        f_chr = -collision_hr(xr[t], 0.3)
-        f_chr_dyn = -collision_hr_dynamic(xr[t], ur[t], 0.3, 0.6, 0.6)
+        f_chr = -collision_hr(xr[t], 0.5)
+        f_chr_dyn = -collision_hr_dynamic(xr[t], ur[t], 0.5, 0.6, 0.6)
         f_goal = -goal_reward_term(x_goal)
 
         if not flag_no_obs:
