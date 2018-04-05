@@ -36,16 +36,64 @@
 
 namespace hri_planner {
 
-class Planner {
+class PlannerBase {
+public:
+    PlannerBase(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh) {};
+    virtual ~PlannerBase() = default;
+
+    // main update function
+    virtual void compute_plan() = 0;
+
+    // publish the plan
+    virtual void publish_plan() = 0;
+
+    // reset the planner with new goals
+    virtual void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal, const int intent) {
+        xr_goal_ = xr_goal;
+        xh_goal_ = xh_goal;
+        intent_ = intent;
+    }
+
+    // methods to send robot & human data in
+    void set_robot_state(const Eigen::VectorXd& xr_meas, const Eigen::VectorXd& ur_meas) {
+        xr_meas_ = xr_meas;
+        ur_meas_ = ur_meas;
+    }
+
+    void set_human_state(const Eigen::VectorXd& xh_meas) {
+        xh_meas_ = xh_meas;
+    }
+
+protected:
+    // subscribers & publishers
+    ros::NodeHandle nh_;
+
+    // measurements
+    Eigen::VectorXd xr_meas_;
+    Eigen::VectorXd ur_meas_;
+    Eigen::VectorXd xh_meas_;
+
+    // goals for robot and human
+    Eigen::VectorXd xr_goal_;
+    Eigen::VectorXd xh_goal_;
+
+    // true intent of the robot
+    int intent_;
+};
+
+
+class Planner: public PlannerBase {
 public:
     // constructor
     Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh);
 
     // main update function
-    void compute_plan();
+    void compute_plan() override;
+
+    void publish_plan() override;
 
     // reset the planner with new goals
-    void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal, const int intent);
+    void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal, const int intent) override;
 
 private:
     // dimensions
@@ -73,9 +121,6 @@ private:
     // cost of communication
     double comm_cost_;
 
-    // true intent of the robot
-    int intent_;
-
     // parameters for initializing trajectory
     double k_rho_;
     double k_v_;
@@ -89,15 +134,6 @@ private:
 
     // human state
     Eigen::VectorXd xh_;
-
-    // measurements
-    Eigen::VectorXd xr_meas_;
-    Eigen::VectorXd ur_meas_;
-    Eigen::VectorXd xh_meas_;
-
-    // goals for robot and human
-    Eigen::VectorXd xr_goal_;
-    Eigen::VectorXd xh_goal_;
 
     // the optimal plan
     Trajectory robot_traj_opt_;
@@ -115,6 +151,14 @@ private:
     std::vector<double> lb_uh_vec_;
     std::vector<double> ub_uh_vec_;
 
+    // costs
+    double cost_no_comm_;
+    double cost_comm_;
+    double cost_hp_no_comm_;
+    double cost_rp_no_comm_;
+    double cost_hp_comm_;
+    double cost_rp_comm_;
+
     // whether to publish the full plan and belief/costs
     bool flag_publish_full_plan_;
     bool flag_publish_belief_cost_;
@@ -123,12 +167,6 @@ private:
     bool flag_gen_init_guesses_;
 
     // subscribers & publishers
-    ros::NodeHandle nh_;
-
-    ros::Subscriber robot_state_sub_;
-    ros::Subscriber robot_odom_sub_;
-    ros::Subscriber human_state_sub_;
-
     ros::Publisher robot_ctrl_pub_;
     ros::Publisher comm_pub_;
     ros::Publisher plan_pub_;
@@ -144,11 +182,6 @@ private:
                             int n);
     void create_robot_costs(std::vector<std::shared_ptr<ProbabilisticCostBase> >& robot_costs, int n);
     void create_optimizer();
-
-    // subscriber functions
-    void robot_state_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose_msg);
-    void robot_odom_callback(const nav_msgs::OdometryConstPtr& odom_msg);
-    void human_state_callback(const std_msgs::Float64MultiArrayConstPtr& state_msg);
 
     // other helper functions
     void generate_init_guesses(Trajectory& robot_traj, Trajectory& human_traj_hp, Trajectory& human_traj_rp);

@@ -16,7 +16,7 @@
 namespace hri_planner {
 
 //----------------------------------------------------------------------------------
-Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
+Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): PlannerBase(nh, pnh)
 {
     // load the dimensions
     ros::param::param<int>("~dimension/T", T_, 10);
@@ -63,14 +63,6 @@ Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     xh_meas_.setZero(nXh_);
 
     // create subscribers and publishers
-    robot_state_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 1,
-                                                                               &Planner::robot_state_callback, this);
-
-    robot_odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &Planner::robot_odom_callback, this);
-
-    human_state_sub_ = nh_.subscribe<std_msgs::Float64MultiArray>("/tracked_human", 1,
-                                                                  &Planner::human_state_callback, this);
-
     robot_ctrl_pub_ = nh_.advertise<geometry_msgs::Twist>("/planner/cmd_vel", 1);
     comm_pub_ = nh_.advertise<std_msgs::Int32>("/planner/communication", 1);
     plan_pub_ = nh_.advertise<hri_planner::PlannedTrajectories>("/planner/full_plan", 1);
@@ -344,7 +336,6 @@ void Planner::compute_plan()
     update_init_guesses();
 
     // optimize for no communication
-    double cost_no_comm, cost_hp_no_comm, cost_rp_no_comm;
     std::vector<double> cost_ni_no_comm;
     Trajectory robot_traj_opt_n(DIFFERENTIAL_MODEL, T_, dt_);
     Trajectory human_traj_hp_opt_n(CONST_ACC_MODEL, T_, dt_);
@@ -357,7 +348,6 @@ void Planner::compute_plan()
 //    ROS_INFO("min cost no communication is: %f", cost_no_comm);
 
     // optimize for communication
-    double cost_comm, cost_hp_comm, cost_rp_comm;
     std::vector<double> cost_ni_comm;
     Trajectory robot_traj_opt(DIFFERENTIAL_MODEL, T_, dt_);
     Trajectory human_traj_hp_opt(CONST_ACC_MODEL, T_, dt_);
@@ -372,35 +362,35 @@ void Planner::compute_plan()
     // create two threads to perform optimization separately
     std::thread th_no_comm(&NestedOptimizerBase::optimize_nr, optimizer_no_comm_.get(), std::ref(robot_traj_init_),
                            std::ref(human_traj_hp_init_), std::ref(human_traj_rp_init_), acomm_, tcomm_,
-                           std::ref(cost_no_comm), std::ref(robot_traj_opt_n), &human_traj_hp_opt_n,
+                           std::ref(cost_no_comm_), std::ref(robot_traj_opt_n), &human_traj_hp_opt_n,
                            &human_traj_rp_opt_n);
 
     std::thread th_comm(&NestedOptimizerBase::optimize_nr, optimizer_comm_.get(), std::ref(robot_traj_init_),
                         std::ref(human_traj_hp_init_), std::ref(human_traj_rp_init_), intent_, 0.0,
-                        std::ref(cost_comm), std::ref(robot_traj_opt), &human_traj_hp_opt, &human_traj_rp_opt);
+                        std::ref(cost_comm_), std::ref(robot_traj_opt), &human_traj_hp_opt, &human_traj_rp_opt);
 
     th_no_comm.join();
     th_comm.join();
 
     // get some info
-    optimizer_no_comm_->get_partial_cost(cost_hp_no_comm, cost_rp_no_comm, cost_ni_no_comm);
-    ROS_INFO("min cost no communication is: %f", cost_no_comm);
-    std::cout << ">>>>>>>> partial costs: " << cost_hp_no_comm << ", " << cost_rp_no_comm << " | ";
+    optimizer_no_comm_->get_partial_cost(cost_hp_no_comm_, cost_rp_no_comm_, cost_ni_no_comm);
+    ROS_INFO("min cost no communication is: %f", cost_no_comm_);
+    std::cout << ">>>>>>>> partial costs: " << cost_hp_no_comm_ << ", " << cost_rp_no_comm_ << " | ";
     for (auto c: cost_ni_no_comm)
         std::cout << c << ", ";
     std::cout << std::endl;
 
-    optimizer_comm_->get_partial_cost(cost_hp_comm, cost_rp_comm, cost_ni_comm);
-    ROS_INFO("min cost with communication is: %f", cost_comm);
-    std::cout << ">>>>>>>> partial costs: " << cost_hp_comm << ", " << cost_rp_comm << " | ";
+    optimizer_comm_->get_partial_cost(cost_hp_comm_, cost_rp_comm_, cost_ni_comm);
+    ROS_INFO("min cost with communication is: %f", cost_comm_);
+    std::cout << ">>>>>>>> partial costs: " << cost_hp_comm_ << ", " << cost_rp_comm_ << " | ";
     for (auto c: cost_ni_comm)
         std::cout << c << ", ";
     std::cout << std::endl;
 
-    cost_comm += comm_cost_;
+    cost_comm_ += comm_cost_;
 
     // compare the cost and choose optimal actions
-    if (cost_comm < cost_no_comm) {
+    if (cost_comm_ < cost_no_comm_) {
         robot_traj_opt_ = robot_traj_opt;
         human_traj_hp_opt_ = human_traj_hp_opt;
         human_traj_rp_opt_ = human_traj_rp_opt;
@@ -415,7 +405,11 @@ void Planner::compute_plan()
     }
 
     ROS_INFO("Got plan!");
+}
 
+//----------------------------------------------------------------------------------
+void Planner::publish_plan()
+{
     // publish communicative action if any
     if (tcomm_ == 0.0) {
         std_msgs::Int32 comm;
@@ -428,8 +422,6 @@ void Planner::compute_plan()
     cmd_vel.linear.x = robot_traj_opt_.u(0);
     cmd_vel.angular.z = robot_traj_opt_.u(1);
     robot_ctrl_pub_.publish(cmd_vel);
-
-//    std::cout << "---------------" << std::endl;
 
     // publish full plan if specified
     if (flag_publish_full_plan_) {
@@ -448,12 +440,12 @@ void Planner::compute_plan()
     if (flag_publish_belief_cost_) {
         std_msgs::Float64MultiArray data;
         data.data.push_back(belief_model_->get_belief());
-        data.data.push_back(cost_no_comm);
-        data.data.push_back(cost_comm);
-        data.data.push_back(cost_hp_no_comm);
-        data.data.push_back(cost_rp_no_comm);
-        data.data.push_back(cost_hp_comm);
-        data.data.push_back(cost_rp_comm);
+        data.data.push_back(cost_no_comm_);
+        data.data.push_back(cost_comm_);
+        data.data.push_back(cost_hp_no_comm_);
+        data.data.push_back(cost_rp_no_comm_);
+        data.data.push_back(cost_hp_comm_);
+        data.data.push_back(cost_rp_comm_);
 
         belief_cost_pub_.publish(data);
     }
@@ -606,36 +598,6 @@ void Planner::generate_steer_acc(const Eigen::VectorXd &x0, const Eigen::VectorX
         dyn.forward_dyn(x_last, ad, xh.segment(t*nXh_, nXh_));
         x_last = xh.segment(t*nXh_, nXh_);
     }
-}
-
-//----------------------------------------------------------------------------------
-void Planner::robot_state_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &pose_msg)
-{
-    xr_meas_(0) = pose_msg->pose.pose.position.x;
-    xr_meas_(1) = pose_msg->pose.pose.position.y;
-
-    // find rotation
-    auto &q = pose_msg->pose.pose.orientation;
-    double siny = 2.0 * (q.w * q.z + q.x * q.y);
-    double cosy = 1.0 - 2.0 * (q.y * q.y + q.z * q.z);
-
-    xr_meas_(2) = std::atan2(siny, cosy);
-}
-
-//----------------------------------------------------------------------------------
-void Planner::robot_odom_callback(const nav_msgs::OdometryConstPtr &odom_msg)
-{
-    ur_meas_(0) = odom_msg->twist.twist.linear.x;
-    ur_meas_(1) = odom_msg->twist.twist.angular.z;
-}
-
-//----------------------------------------------------------------------------------
-void Planner::human_state_callback(const std_msgs::Float64MultiArrayConstPtr& state_msg)
-{
-    xh_meas_(0) = state_msg->data[0];
-    xh_meas_(1) = state_msg->data[1];
-    xh_meas_(2) = state_msg->data[2];
-    xh_meas_(3) = state_msg->data[3];
 }
 
 } // namespace

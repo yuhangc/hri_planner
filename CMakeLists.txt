@@ -167,6 +167,7 @@ target_link_libraries(hri_planner_tester ${catkin_LIBRARIES} hri_planner)
 
 # the planner itself
 add_executable(planner_node
+        include/hri_planner/planner_node.h
         src/hri_planner/planner_node.cpp)
 target_link_libraries(planner_node ${catkin_LIBRARIES} hri_planner)
 
