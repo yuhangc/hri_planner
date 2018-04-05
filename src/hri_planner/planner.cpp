@@ -2,8 +2,8 @@
 //
 // Human Robot Interaction Planning Framework
 //
-// Created on   : 3/24/2017
-// Last revision: 3/31/2017
+// Created on   : 3/24/2018
+// Last revision: 4/4/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -401,17 +401,17 @@ void Planner::compute_plan()
 
     // compare the cost and choose optimal actions
     if (cost_comm < cost_no_comm) {
-        robot_traj_opt_ = robot_traj_opt_n;
-        human_traj_hp_opt_ = human_traj_hp_opt_n;
-        human_traj_rp_opt_ = human_traj_rp_opt_n;
+        robot_traj_opt_ = robot_traj_opt;
+        human_traj_hp_opt_ = human_traj_hp_opt;
+        human_traj_rp_opt_ = human_traj_rp_opt;
 
         acomm_ = intent_;
         tcomm_ = 0.0;
     }
     else {
-        robot_traj_opt_ = robot_traj_opt;
-        human_traj_hp_opt_ = human_traj_hp_opt;
-        human_traj_rp_opt_ = human_traj_rp_opt;
+        robot_traj_opt_ = robot_traj_opt_n;
+        human_traj_hp_opt_ = human_traj_hp_opt_n;
+        human_traj_rp_opt_ = human_traj_rp_opt_n;
     }
 
     ROS_INFO("Got plan!");

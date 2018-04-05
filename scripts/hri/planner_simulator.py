@@ -311,6 +311,6 @@ if __name__ == "__main__":
     rospy.init_node("planner_simulator")
 
     simulator = PlannerSimulator()
-    simulator.load_data("/home/yuhang/Documents/hri_log/test_data", 3)
-    simulator.run_simulation(0)
-    simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 3)
+    simulator.load_data("/home/yuhang/Documents/hri_log/test_data", 4)
+    simulator.run_simulation(1)
+    simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 4)
