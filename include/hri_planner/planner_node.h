@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 4/4/2018
-// Last revision: 4/4/2018
+// Last revision: 4/5/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -19,17 +19,17 @@
 
 #include <ros/ros.h>
 #include <std_msgs/Float64MultiArray.h>
+#include <std_msgs/String.h>
 #include <std_msgs/Bool.h>
 
 #include "people_msgs/People.h"
 
-#include <hri_planner/planner.h>
+#include "hri_planner/planner.h"
 
 // enum for state machine
 enum PlannerStates {
     Idle,
     Planning,
-    PlanningNoHuman,
     Pausing
 };
 
@@ -52,11 +52,13 @@ private:
     // control flags
     bool flag_start_planning_;
     bool flag_pause_planning_;
+    bool flag_stop_planning_;
     bool flag_human_detected_;
 
     // goals
     Eigen::VectorXd xr_goal_;
     Eigen::VectorXd xh_goal_;
+    Eigen::VectorXd xh_init_;
     int intent_;
 
     // measurements
@@ -67,6 +69,12 @@ private:
     // rates
     double planning_rate_;
     double state_machine_rate_;
+
+    // goal reaching threshold
+    double goal_reaching_th_;
+
+    // human filter parameters
+    double human_filter_dist_th_;
 
     // mode
     std::string mode_;
@@ -81,17 +89,21 @@ private:
     ros::Subscriber robot_state_sub_;
     ros::Subscriber robot_odom_sub_;
     ros::Subscriber human_state_sub_;
+    ros::Subscriber human_tracking_sub_;
 
     // helper functions
     void plan(const std::shared_ptr<hri_planner::PlannerBase>& planenr);
 
+    double point_line_dist(const Eigen::VectorXd& p, const Eigen::VectorXd& a, const Eigen::VectorXd& b);
+
     // callback functions
     void goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_msg);
-    void pause_planner_callback(const std_msgs::BoolConstPtr& msg);
+    void planner_ctrl_callback(const std_msgs::StringConstPtr& msg);
 
     void robot_state_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose_msg);
     void robot_odom_callback(const nav_msgs::OdometryConstPtr& odom_msg);
     void human_state_callback(const std_msgs::Float64MultiArrayConstPtr& state_msg);
+    void human_tracking_callback(const people_msgs::PeopleConstPtr& people_msg);
 };
 
 

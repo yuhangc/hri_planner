@@ -5,11 +5,14 @@ import matplotlib.pyplot as plt
 
 import rospy
 from std_msgs.msg import Int32
-from std_msgs.msg import Bool
+from std_msgs.msg import String
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
+
+from people_msgs.msg import People
+from people_msgs.msg import Person
 
 from hri_planner.msg import PlannedTrajectories
 
@@ -68,9 +71,10 @@ class PlannerSimulator(object):
 
         self.robot_state_pub = rospy.Publisher("/amcl_pose", PoseWithCovarianceStamped, queue_size=1)
         self.robot_vel_pub = rospy.Publisher("/odom", Odometry, queue_size=1)
-        self.human_state_pub = rospy.Publisher("/tracked_human", Float64MultiArray, queue_size=1)
+        # self.human_state_pub = rospy.Publisher("/tracked_human", Float64MultiArray, queue_size=1)
+        self.human_tracking_pub = rospy.Publisher("/people", People, queue_size=1)
         self.goal_pub = rospy.Publisher("/planner/set_goal", Float64MultiArray, queue_size=1)
-        self.planner_pause_pub = rospy.Publisher("/planner/pause", Bool, queue_size=1)
+        self.planner_ctrl_pub = rospy.Publisher("/planner/ctrl", String, queue_size=1)
 
     def load_data(self, path, test_id):
         # load initial states, human trajectory, goal states
@@ -119,16 +123,18 @@ class PlannerSimulator(object):
                     goal_data.data.append(xr)
                 for xh in self.xh_goal:
                     goal_data.data.append(xh)
+                for xh in self.xh0:
+                    goal_data.data.append(xh)
 
                 # set intent data
                 goal_data.data.append(robot_intent)
 
                 self.goal_pub.publish(goal_data)
             else:
-                pause_data = Bool()
-                pause_data.data = False
+                ctrl_data = String()
+                ctrl_data.data = "resume"
 
-                self.planner_pause_pub.publish(pause_data)
+                self.planner_ctrl_pub.publish(ctrl_data)
 
             # wait for the planner to finish
             while not (self.flag_plan_updated and self.flag_ctrl_updated):
@@ -155,6 +161,11 @@ class PlannerSimulator(object):
             col = t % n_cols
             self.visualize_frame(axes[row][col], t+1)
 
+        # tell the planner to stop
+        ctrl_data = String()
+        ctrl_data.data = "stop"
+        self.planner_ctrl_pub.publish(ctrl_data)
+
         # visualize beliefs and partial costs
         self.visualize_belief_and_costs()
 
@@ -180,11 +191,17 @@ class PlannerSimulator(object):
         self.robot_vel_pub.publish(odom_data)
 
         # human state
-        human_state = Float64MultiArray()
-        for xh in self.xh_:
-            human_state.data.append(xh)
+        people_states = People()
+        person_state = Person()
 
-        self.human_state_pub.publish(human_state)
+        person_state.position.x = self.xh_[0]
+        person_state.position.y = self.xh_[1]
+        person_state.velocity.x = self.xh_[2]
+        person_state.velocity.y = self.xh_[3]
+
+        people_states.people.append(person_state)
+
+        self.human_tracking_pub.publish(people_states)
 
     # visualize the "frame"
     def visualize_frame(self, ax, t):

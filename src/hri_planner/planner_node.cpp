@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 3/31/2018
+// Last revision: 4/5/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -18,6 +18,9 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     ros::param::param<double>("~planner/planner_rate", planning_rate_, 2.0);
     ros::param::param<double>("~planner/state_machine_rate", state_machine_rate_, 1000);
     ros::param::param<std::string>("~planner/planner_mode", mode_, "simulation");
+    ros::param::param<double>("~planner/goal_reaching_th", goal_reaching_th_, 0.5);
+
+    ros::param::param<double>("~human_filter/dist_threshold", human_filter_dist_th_, 1.0);
 
     int nXh, nUh, nXr, nUr;
     ros::param::param<int>("~dimension/nXh", nXh, 4);
@@ -37,8 +40,8 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     // create subscribers
     goal_sub_ = nh.subscribe<std_msgs::Float64MultiArray>("/planner/set_goal", 1,
                                                           &PlannerNode::goal_callback, this);
-    planner_ctrl_sub_ = nh.subscribe<std_msgs::Bool>("/planner/pause", 1,
-                                                     &PlannerNode::pause_planner_callback, this);
+    planner_ctrl_sub_ = nh.subscribe<std_msgs::String>("/planner/ctrl", 1,
+                                                       &PlannerNode::planner_ctrl_callback, this);
 
     robot_state_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 1,
                                                             &PlannerNode::robot_state_callback, this);
@@ -47,6 +50,9 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
 
     human_state_sub_ = nh_.subscribe<std_msgs::Float64MultiArray>("/tracked_human", 1,
                                                                   &PlannerNode::human_state_callback, this);
+
+    human_tracking_sub_ = nh_.subscribe<people_msgs::People>("/people", 1,
+                                                             &PlannerNode::human_tracking_callback, this);
 }
 
 //----------------------------------------------------------------------------------
@@ -56,6 +62,8 @@ void PlannerNode::run()
     PlannerStates planner_state = Idle;
     flag_start_planning_ = false;
     flag_pause_planning_ = true;
+    flag_stop_planning_ = false;
+    flag_human_detected_ = false;
 
     // two rates
     ros::Rate rate_fast(state_machine_rate_);
@@ -83,13 +91,19 @@ void PlannerNode::run()
                 ROS_INFO("In state Pausing");
 
                 rate_fast.sleep();
-                while (flag_pause_planning_ && !ros::isShuttingDown()) {
+                while (flag_pause_planning_ && !flag_stop_planning_ && !ros::isShuttingDown()) {
                     ros::spinOnce();
                     rate_fast.sleep();
                 }
 
-                flag_pause_planning_ = true;
-                planner_state = Planning;
+                if (flag_stop_planning_) {
+                    flag_stop_planning_ = false;
+                    planner_state = Idle;
+                }
+                else {
+                    flag_pause_planning_ = true;
+                    planner_state = Planning;
+                }
 
                 break;
             case Planning:
@@ -99,7 +113,20 @@ void PlannerNode::run()
                 while (!ros::isShuttingDown()) {
                     ros::spinOnce();
 
-                    plan(planner_interactive_);
+                    // check if human is detected
+                    if (flag_human_detected_) {
+                        ROS_INFO("Using interactive planner...");
+                        // FIXME: reset the simple planner?
+                        plan(planner_interactive_);
+                        flag_human_detected_ = false;
+                        planner_simple_->reset_planner(xr_goal_, xh_goal_, intent_);
+                    }
+                    else {
+                        ROS_INFO("Using simple planner since no human detected...");
+                        // FIXME: reset the interactive planner?
+                        plan(planner_simple_);
+                        planner_interactive_->reset_planner(xr_goal_, xh_goal_, intent_);
+                    }
 
                     rate_slow.sleep();
 
@@ -108,14 +135,18 @@ void PlannerNode::run()
                         break;
                     }
                     else {
-                        // check for exit flag or goal reached
-                        ROS_ERROR("To be implemented!");
+                        // check for stop flag and goal reached
+                        Eigen::VectorXd x_diff = xr_goal_ - xr_meas_.head(2);
+
+                        if (flag_stop_planning_ || x_diff.norm() < goal_reaching_th_) {
+                            flag_stop_planning_ = false;
+
+                            planner_state = Idle;
+                            break;
+                        }
                     }
                 }
 
-                break;
-            case PlanningNoHuman:
-                ROS_ERROR("To be implemented!");
                 break;
         }
     }
@@ -148,22 +179,34 @@ void PlannerNode::goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_
 
     xr_goal_.resize(dim);
     xh_goal_.resize(dim);
+    xh_init_.resize(dim);
 
     for (int i = 0; i < dim; ++i) {
         xr_goal_(i) = goal_msg->data[i];
         xh_goal_(i) = goal_msg->data[i+dim];
+        xh_init_(i) = goal_msg->data[i+dim*2];
     }
 
     // the last value of goal is intent
-    intent_ = static_cast<int>(goal_msg->data[dim << 1]);
+    intent_ = static_cast<int>(goal_msg->data[dim*3]);
 
     flag_start_planning_ = true;
 }
 
 //----------------------------------------------------------------------------------
-void PlannerNode::pause_planner_callback(const std_msgs::BoolConstPtr& msg)
+void PlannerNode::planner_ctrl_callback(const std_msgs::StringConstPtr& msg)
 {
-    flag_pause_planning_ = msg->data;
+    const std::string& ctrl = msg->data;
+
+    if (ctrl == "pause") {
+        flag_pause_planning_ = true;
+    }
+    else if (ctrl == "resume") {
+        flag_pause_planning_ = false;
+    }
+    else if (ctrl == "stop") {
+        flag_stop_planning_ = true;
+    }
 }
 
 //----------------------------------------------------------------------------------
@@ -194,8 +237,55 @@ void PlannerNode::human_state_callback(const std_msgs::Float64MultiArrayConstPtr
     xh_meas_(1) = state_msg->data[1];
     xh_meas_(2) = state_msg->data[2];
     xh_meas_(3) = state_msg->data[3];
+    flag_human_detected_ = true;
 }
 
+//----------------------------------------------------------------------------------
+void PlannerNode::human_tracking_callback(const people_msgs::PeopleConstPtr &people_msg)
+{
+    double min_dist = human_filter_dist_th_;
+    int person_id = -1;
+
+    // filter out detections that are too far away from "desired path"
+    for (int i = 0; i < people_msg->people.size(); ++i) {
+        Eigen::VectorXd pos(2);
+        pos << people_msg->people[i].position.x, people_msg->people[i].position.y;
+
+        std::cout << xh_init_.transpose() << ", " << xh_goal_ << std::endl;
+        double dist = point_line_dist(pos, xh_init_, xh_goal_);
+        std::cout << "------------dist: " << dist << std::endl;
+        if (dist < min_dist) {
+            min_dist = dist;
+            person_id = i;
+        }
+    }
+
+    if (person_id == -1) {
+        flag_human_detected_ = false;
+    }
+    else {
+        flag_human_detected_ = true;
+        xh_meas_(0) = people_msg->people[person_id].position.x;
+        xh_meas_(1) = people_msg->people[person_id].position.y;
+        xh_meas_(2) = people_msg->people[person_id].velocity.x;
+        xh_meas_(3) = people_msg->people[person_id].velocity.y;
+    }
+}
+
+//----------------------------------------------------------------------------------
+double PlannerNode::point_line_dist(const Eigen::VectorXd &p, const Eigen::VectorXd &a, const Eigen::VectorXd &b)
+{
+    Eigen::VectorXd n = (b - a).normalized();
+    Eigen::VectorXd ap = p - a;
+    Eigen::VectorXd pt = a + n.dot(ap) * n;
+
+    if ((a - pt).dot(b - pt) < 0) {
+        return (p - pt).norm();
+    }
+    else {
+        return std::min(ap.norm(), (p - b).norm());
+    }
+}
 
 int main(int argc, char** argv)
 {
