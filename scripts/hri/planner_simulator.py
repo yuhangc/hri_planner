@@ -17,6 +17,15 @@ from people_msgs.msg import Person
 from hri_planner.msg import PlannedTrajectories
 
 
+def wrap_to_pi(ang):
+    while ang >= np.pi:
+        ang -= 2.0 * np.pi
+    while ang < -np.pi:
+        ang += 2.0 * np.pi
+
+    return ang
+
+
 class PlannerSimulator(object):
     def __init__(self):
         # dimensions
@@ -26,6 +35,10 @@ class PlannerSimulator(object):
         self.nXr_ = rospy.get_param("~dimension/nXr", 3)
         self.nUr_ = rospy.get_param("~dimension/nUr", 2)
         self.dt_ = rospy.get_param("~dimension/dt", 0.5)
+
+        # thresholds to simulate detection range
+        self.dist_th_detection_ = rospy.get_param("~sensing/dist_th", 4.0)
+        self.ang_th_detection_ = rospy.get_param("~sensing/ang_th", 0.6*np.pi)
 
         # things to publish
         self.xr_ = np.zeros((self.nXr_, ))
@@ -109,6 +122,20 @@ class PlannerSimulator(object):
         self.xh_ = self.xh0
         self.xr_ = self.xr0
 
+        # publish goal first
+        goal_data = Float64MultiArray()
+        for xr in self.xr_goal:
+            goal_data.data.append(xr)
+        for xh in self.xh_goal:
+            goal_data.data.append(xh)
+        for xh in self.xh0:
+            goal_data.data.append(xh)
+
+        # set intent data
+        goal_data.data.append(robot_intent)
+
+        self.goal_pub.publish(goal_data)
+
         for t in range(Tsim):
             print "At time step t = ", t*self.dt_
 
@@ -118,22 +145,12 @@ class PlannerSimulator(object):
             # tell the planner to start if t = 0
             # otherwise tell the planner to stop pausing
             if t == 0:
-                goal_data = Float64MultiArray()
-                for xr in self.xr_goal:
-                    goal_data.data.append(xr)
-                for xh in self.xh_goal:
-                    goal_data.data.append(xh)
-                for xh in self.xh0:
-                    goal_data.data.append(xh)
-
-                # set intent data
-                goal_data.data.append(robot_intent)
-
-                self.goal_pub.publish(goal_data)
+                ctrl_data = String()
+                ctrl_data.data = "start"
+                self.planner_ctrl_pub.publish(ctrl_data)
             else:
                 ctrl_data = String()
                 ctrl_data.data = "resume"
-
                 self.planner_ctrl_pub.publish(ctrl_data)
 
             # wait for the planner to finish
@@ -191,6 +208,15 @@ class PlannerSimulator(object):
         self.robot_vel_pub.publish(odom_data)
 
         # human state
+        # check if human is within detection range
+        x_diff = self.xh_[0:2] - self.xr_[0:2]
+        if np.linalg.norm(x_diff) > self.dist_th_detection_:
+            return
+
+        th_rel = wrap_to_pi(np.arctan2(x_diff[1], x_diff[0]) - self.xr_[2])
+        if np.abs(th_rel) > self.ang_th_detection_:
+            return
+
         people_states = People()
         person_state = Person()
 

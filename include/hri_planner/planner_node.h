@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 4/4/2018
-// Last revision: 4/5/2018
+// Last revision: 4/6/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -30,6 +30,7 @@
 enum PlannerStates {
     Idle,
     Planning,
+    GoalReaching,
     Pausing
 };
 
@@ -56,6 +57,7 @@ private:
     bool flag_human_detected_;
 
     // goals
+    int goal_dim_;
     Eigen::VectorXd xr_goal_;
     Eigen::VectorXd xh_goal_;
     Eigen::VectorXd xh_init_;
@@ -68,10 +70,12 @@ private:
 
     // rates
     double planning_rate_;
+    double controller_rate_;
     double state_machine_rate_;
 
     // goal reaching threshold
-    double goal_reaching_th_;
+    double goal_reaching_th_planner_;
+    double goal_reaching_th_controller_;
 
     // human filter parameters
     double human_filter_dist_th_;
@@ -88,11 +92,14 @@ private:
 
     ros::Subscriber robot_state_sub_;
     ros::Subscriber robot_odom_sub_;
-    ros::Subscriber human_state_sub_;
     ros::Subscriber human_tracking_sub_;
+
+    ros::Publisher goal_reached_pub_;
+    ros::Publisher robot_ctrl_pub_;
 
     // helper functions
     void plan(const std::shared_ptr<hri_planner::PlannerBase>& planenr);
+    void compute_and_publish_control();
 
     double point_line_dist(const Eigen::VectorXd& p, const Eigen::VectorXd& a, const Eigen::VectorXd& b);
 
@@ -102,7 +109,6 @@ private:
 
     void robot_state_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose_msg);
     void robot_odom_callback(const nav_msgs::OdometryConstPtr& odom_msg);
-    void human_state_callback(const std_msgs::Float64MultiArrayConstPtr& state_msg);
     void human_tracking_callback(const people_msgs::PeopleConstPtr& people_msg);
 };
 

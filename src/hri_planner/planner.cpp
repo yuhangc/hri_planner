@@ -59,6 +59,18 @@ void PlannerBase::shift_control(const Eigen::VectorXd &u_in, Eigen::VectorXd &u_
 }
 
 //----------------------------------------------------------------------------------
+void PlannerBase::compute_steer_posq(const Eigen::VectorXd &xr, const Eigen::VectorXd &x_goal, Eigen::VectorXd &ur)
+{
+    double rho = (x_goal - xr.head(2)).norm();
+    double phi = 0.0;   //! don't care about orientation for now
+    double th_z = std::atan2(x_goal(1) - xr(1), x_goal(0) - xr(0));
+    double alpha = utils::wrap_to_pi(th_z - xr(2));
+
+    ur(0) = utils::clamp(k_rho_ * std::tanh(k_v_ * rho), lb_ur_vec_[0], ub_ur_vec_[0]);
+    ur(1) = utils::clamp(k_alp_ * alpha + k_phi_ * phi, lb_ur_vec_[1], ub_ur_vec_[1]);
+}
+
+//----------------------------------------------------------------------------------
 void PlannerBase::generate_steer_posq(const Eigen::VectorXd &x0, const Eigen::VectorXd &x_goal, Eigen::VectorXd &ur)
 {
     Eigen::VectorXd xr(T_ * nXr_);

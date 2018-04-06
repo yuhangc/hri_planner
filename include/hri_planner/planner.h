@@ -65,6 +65,9 @@ public:
         xh_meas_ = xh_meas;
     }
 
+    // compute the closed-loop control for one time step
+    void compute_steer_posq(const Eigen::VectorXd& xr, const Eigen::VectorXd& x_goal, Eigen::VectorXd& ur);
+
 protected:
     // dimensions
     int T_;
