@@ -11,7 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
         std_msgs
         geometry_msgs
         sensor_msgs
-        message_generation)
+        message_generation
+        people_msgs)
 
 ################################################
 ## Declare ROS messages, services and actions ##

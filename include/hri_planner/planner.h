@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 3/31/2018
+// Last revision: 4/5/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -38,7 +38,8 @@ namespace hri_planner {
 
 class PlannerBase {
 public:
-    PlannerBase(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh) {};
+    PlannerBase(ros::NodeHandle &nh, ros::NodeHandle &pnh);
+
     virtual ~PlannerBase() = default;
 
     // main update function
@@ -65,6 +66,25 @@ public:
     }
 
 protected:
+    // dimensions
+    int T_;
+    int nXh_;
+    int nUh_;
+    int nXr_;
+    int nUr_;
+    double dt_;
+
+    // parameters for initializing trajectory
+    double k_rho_;
+    double k_v_;
+    double k_alp_;
+    double k_phi_;
+    double gamma_;
+
+    // control bounds
+    std::vector<double> lb_ur_vec_;
+    std::vector<double> ub_ur_vec_;
+
     // subscribers & publishers
     ros::NodeHandle nh_;
 
@@ -79,6 +99,14 @@ protected:
 
     // true intent of the robot
     int intent_;
+
+    // helper functions that can be useful to all derived classes
+    virtual void update_init_guesses() = 0;
+
+    void shift_control(const Eigen::VectorXd& u_in, Eigen::VectorXd& u_out, int dim, bool pad_zero);
+
+    void generate_steer_posq(const Eigen::VectorXd& x0, const Eigen::VectorXd& x_goal, Eigen::VectorXd& ur);
+    void generate_steer_acc(const Eigen::VectorXd& x0, const Eigen::VectorXd& x_goal, Eigen::VectorXd& uh);
 };
 
 
@@ -96,14 +124,6 @@ public:
     void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal, const int intent) override;
 
 private:
-    // dimensions
-    int T_;
-    int nXh_;
-    int nUh_;
-    int nXr_;
-    int nUr_;
-    double dt_;
-
     // components
     std::shared_ptr<BeliefModelBase> belief_model_;
     std::shared_ptr<NestedOptimizerBase> optimizer_comm_;
@@ -120,13 +140,6 @@ private:
 
     // cost of communication
     double comm_cost_;
-
-    // parameters for initializing trajectory
-    double k_rho_;
-    double k_v_;
-    double k_alp_;
-    double k_phi_;
-    double gamma_;
 
     // robot state and control
     Eigen::VectorXd xr_;
@@ -146,8 +159,6 @@ private:
     Trajectory human_traj_rp_init_;
 
     // control bounds
-    std::vector<double> lb_ur_vec_;
-    std::vector<double> ub_ur_vec_;
     std::vector<double> lb_uh_vec_;
     std::vector<double> ub_uh_vec_;
 
@@ -185,12 +196,59 @@ private:
 
     // other helper functions
     void generate_init_guesses(Trajectory& robot_traj, Trajectory& human_traj_hp, Trajectory& human_traj_rp);
-    void update_init_guesses();
+    void update_init_guesses() override;
+};
 
-    void shift_control(const Eigen::VectorXd& u_in, Eigen::VectorXd& u_out, int dim, bool pad_zero);
 
-    void generate_steer_posq(const Eigen::VectorXd& x0, const Eigen::VectorXd& x_goal, Eigen::VectorXd& ur);
-    void generate_steer_acc(const Eigen::VectorXd& x0, const Eigen::VectorXd& x_goal, Eigen::VectorXd& uh);
+class PlannerSimple: public PlannerBase {
+public:
+    PlannerSimple(ros::NodeHandle &nh, ros::NodeHandle &pnh);
+
+    // main update function
+    void compute_plan() override;
+
+    // publish plans
+    void publish_plan() override;
+
+    // reset the planner with new goals
+    void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal, const int intent) override;
+
+private:
+    // the optimizer
+    std::shared_ptr<TrajectoryOptimizer> optimizer_;
+
+    // cost features
+    std::unordered_map<std::string, std::shared_ptr<FeatureBase> > features_robot_;
+
+    // robot state and control
+    Eigen::VectorXd xr_;
+    Eigen::VectorXd ur_;
+
+    // optimal cost
+    double cost_opt_;
+
+    // the optimal plan
+    Trajectory robot_traj_opt_;
+
+    // initial guesses
+    Trajectory robot_traj_init_;
+
+    // whether to generate initial guess from scratch
+    bool flag_gen_init_guesses_;
+
+    bool flag_publish_full_plan_;
+
+    // subscribers & publishers
+    ros::Publisher robot_ctrl_pub_;
+    ros::Publisher plan_pub_;
+
+    // creation routines
+    void create_robot_costs(std::shared_ptr<SingleTrajectoryCost>& robot_cost);
+    void create_optimizer();
+
+    // other helper functions
+    void generate_init_guesses(Trajectory& robot_traj);
+    void update_init_guesses() override;
 };
 
 } // namespace

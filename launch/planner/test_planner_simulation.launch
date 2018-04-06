@@ -1,5 +1,5 @@
 <launch>
-  <arg name="settings" default="$(find hri_planner)/resources/planner_setting/test_settings_rp.yaml" />
+  <arg name="settings" default="$(find hri_planner)/resources/planner_setting/test_settings_hp.yaml" />
 
   <node name="planner_node" pkg="hri_planner" type="planner_node" output="screen">
     <rosparam command="load" file="$(arg settings)" />

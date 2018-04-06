@@ -21,6 +21,8 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Bool.h>
 
+#include "people_msgs/People.h"
+
 #include <hri_planner/planner.h>
 
 // enum for state machine
@@ -50,6 +52,7 @@ private:
     // control flags
     bool flag_start_planning_;
     bool flag_pause_planning_;
+    bool flag_human_detected_;
 
     // goals
     Eigen::VectorXd xr_goal_;
@@ -78,6 +81,9 @@ private:
     ros::Subscriber robot_state_sub_;
     ros::Subscriber robot_odom_sub_;
     ros::Subscriber human_state_sub_;
+
+    // helper functions
+    void plan(const std::shared_ptr<hri_planner::PlannerBase>& planenr);
 
     // callback functions
     void goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_msg);

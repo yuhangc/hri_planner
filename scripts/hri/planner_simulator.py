@@ -199,14 +199,18 @@ class PlannerSimulator(object):
 
         # plot the plan
         robot_plan = self.robot_traj_opt_.reshape(self.T_, self.nXr_)
-        human_plan_hp = self.human_traj_hp_opt_.reshape(self.T_, self.nXh_)
-        human_plan_rp = self.human_traj_rp_opt_.reshape(self.T_, self.nXh_)
         ax.plot(robot_plan[:, 0], robot_plan[:, 1], "-",
                 color=(0.3, 0.3, 0.9, 0.5), lw=1.0, label="robot_plan")
-        ax.plot(human_plan_hp[:, 0], human_plan_hp[:, 1], "-",
-                color=(0.1, 0.1, 0.1, 0.5), lw=1.0, label="human_pred_hp")
-        ax.plot(human_plan_rp[:, 0], human_plan_rp[:, 1], "--",
-                color=(0.1, 0.1, 0.1, 0.5), lw=1.0, label="human_pred_rp")
+
+        if self.human_traj_hp_opt_.size > 0:
+            human_plan_hp = self.human_traj_hp_opt_.reshape(self.T_, self.nXh_)
+            ax.plot(human_plan_hp[:, 0], human_plan_hp[:, 1], "-",
+                    color=(0.1, 0.1, 0.1, 0.5), lw=1.0, label="human_pred_hp")
+
+        if self.human_traj_rp_opt_.size > 0:
+            human_plan_rp = self.human_traj_rp_opt_.reshape(self.T_, self.nXh_)
+            ax.plot(human_plan_rp[:, 0], human_plan_rp[:, 1], "--",
+                    color=(0.1, 0.1, 0.1, 0.5), lw=1.0, label="human_pred_rp")
 
         # plot the goals
         ax.plot(self.xr_goal[0], self.xr_goal[1], 'ob')
@@ -217,6 +221,9 @@ class PlannerSimulator(object):
 
     # visualize belief changes and partial costs
     def visualize_belief_and_costs(self):
+        if not self.belief_hist:
+            return
+
         beliefs = np.asarray(self.belief_hist)
         costs = np.asarray(self.cost_hist)
 
@@ -311,6 +318,6 @@ if __name__ == "__main__":
     rospy.init_node("planner_simulator")
 
     simulator = PlannerSimulator()
-    simulator.load_data("/home/yuhang/Documents/hri_log/test_data", 4)
-    simulator.run_simulation(1)
-    simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 4)
+    simulator.load_data("/home/yuhang/Documents/hri_log/test_data", 0)
+    simulator.run_simulation(0)
+    simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)

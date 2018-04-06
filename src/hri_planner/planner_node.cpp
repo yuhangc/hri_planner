@@ -27,6 +27,7 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
 
     // create planner
     planner_interactive_ = std::make_shared<hri_planner::Planner>(nh, pnh);
+    planner_simple_ = std::make_shared<hri_planner::PlannerSimple>(nh, pnh);
 
     // measurements
     xr_meas_.setZero(nXr);
@@ -73,6 +74,7 @@ void PlannerNode::run()
 
                 flag_start_planning_ = false;
                 planner_interactive_->reset_planner(xr_goal_, xh_goal_, intent_);
+                planner_simple_->reset_planner(xr_goal_, xh_goal_, intent_);
 
                 planner_state = Planning;
 
@@ -97,18 +99,7 @@ void PlannerNode::run()
                 while (!ros::isShuttingDown()) {
                     ros::spinOnce();
 
-                    // update planner measurements
-                    planner_interactive_->set_robot_state(xr_meas_, ur_meas_);
-                    planner_interactive_->set_human_state(xh_meas_);
-
-                    // compute plan
-                    auto t_s = ros::Time::now();
-                    planner_interactive_->compute_plan();
-                    ros::Duration t_plan = ros::Time::now() - t_s;
-                    std::cout << "time spent for planning is: " << t_plan.toSec() << "s" << std::endl;
-
-                    // publish plan
-                    planner_interactive_->publish_plan();
+                    plan(planner_interactive_);
 
                     rate_slow.sleep();
 
@@ -128,6 +119,23 @@ void PlannerNode::run()
                 break;
         }
     }
+}
+
+//----------------------------------------------------------------------------------
+void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
+{
+    // update planner measurements
+    planner->set_robot_state(xr_meas_, ur_meas_);
+    planner->set_human_state(xh_meas_);
+
+    // compute plan
+    auto t_s = ros::Time::now();
+    planner->compute_plan();
+    ros::Duration t_plan = ros::Time::now() - t_s;
+    std::cout << "time spent for planning is: " << t_plan.toSec() << "s" << std::endl;
+
+    // publish plan
+    planner->publish_plan();
 }
 
 //----------------------------------------------------------------------------------
