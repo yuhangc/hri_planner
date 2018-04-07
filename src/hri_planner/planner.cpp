@@ -162,7 +162,7 @@ Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): PlannerBase(nh, pnh
 
     // create subscribers and publishers
     robot_ctrl_pub_ = nh_.advertise<geometry_msgs::Twist>("/planner/cmd_vel", 1);
-    comm_pub_ = nh_.advertise<std_msgs::Int32>("/planner/communication", 1);
+    comm_pub_ = nh_.advertise<std_msgs::String>("/planner/communication", 1);
     plan_pub_ = nh_.advertise<hri_planner::PlannedTrajectories>("/planner/full_plan", 1);
     belief_cost_pub_ = nh_.advertise<std_msgs::Float64MultiArray>("/planner/belief_and_costs", 1);
 
@@ -508,9 +508,14 @@ void Planner::publish_plan()
 {
     // publish communicative action if any
     if (tcomm_ == 0.0) {
-        std_msgs::Int32 comm;
-        comm.data = acomm_;
-        comm_pub_.publish(comm);
+        std_msgs::String comm_msg;
+
+        if (acomm_ == HumanPriority)
+            comm_msg.data = "Attract";
+        else
+            comm_msg.data = "Repel";
+
+        comm_pub_.publish(comm_msg);
     }
 
     // publish robot control

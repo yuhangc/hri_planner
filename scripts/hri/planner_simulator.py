@@ -51,7 +51,7 @@ class PlannerSimulator(object):
         self.human_traj_hp_opt_ = None
         self.human_traj_rp_opt_ = None
 
-        self.acomm_ = -1
+        self.acomm_ = ""
         self.robot_intent_ = -1
 
         self.robot_ctrl_ = np.zeros((self.nUr_, ))
@@ -76,7 +76,7 @@ class PlannerSimulator(object):
         self.flag_comm_updated = False
 
         # subscribers and publishers
-        self.comm_sub = rospy.Subscriber("/planner/communication", Int32, self.comm_callback)
+        self.comm_sub = rospy.Subscriber("/planner/communication", String, self.comm_callback)
         self.ctrl_sub = rospy.Subscriber("/planner/cmd_vel", Twist, self.robot_ctrl_callback)
         self.plan_sub = rospy.Subscriber("/planner/full_plan", PlannedTrajectories, self.plan_callback)
         self.belief_cost_sub = rospy.Subscriber("/planner/belief_and_costs",
@@ -337,7 +337,11 @@ class PlannerSimulator(object):
 
     # callbacks
     def comm_callback(self, comm_msg):
-        self.acomm_ = comm_msg.data
+        if comm_msg.data == "Attract":
+            self.acomm_ = "HumanPriority"
+        else:
+            self.acomm_ = "RobotPriority"
+
         self.flag_comm_updated = True
         print "received communication: ", self.acomm_
 
