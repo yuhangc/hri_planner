@@ -13,7 +13,8 @@ dimension:
 # general settings
 planner:
   planner_rate: 2.0
-  planner_mode: simulation
+  # planner_mode: simulation
+  planner_mode: experiment
   publish_full_plan: true
   publish_belief_cost: true
 

@@ -44,6 +44,7 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     ROS_INFO("Received new goal, reset planner...");
 
     xr_goal_.resize(goal_dim_);
+    xr_goal_ << 0.0, 3.0;
     xh_goal_.resize(goal_dim_);
     xh_init_.resize(goal_dim_);
 
@@ -95,6 +96,8 @@ void PlannerNode::run()
                 flag_start_planning_ = false;
                 planner_interactive_->reset_planner(xr_goal_, xh_goal_, intent_);
                 planner_simple_->reset_planner(xr_goal_, xh_goal_, intent_);
+
+                std::cout << "Robot goal is: " << xr_goal_.transpose() << std::endl;
 
                 planner_state = Planning;
 
