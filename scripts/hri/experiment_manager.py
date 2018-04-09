@@ -49,7 +49,6 @@ class ExperimentManager(object):
 
     def load_goals(self, protocol_file):
         proto_data = np.loadtxt(protocol_file, delimiter=',')
-        print proto_data
 
         # parse the protocol file
         self.xr_goal = proto_data[:, 1:3]
@@ -60,6 +59,9 @@ class ExperimentManager(object):
     def run(self, trial_start=0):
         rate = rospy.Rate(20)
 
+        print "Please press any key to start:"
+        getchar()
+
         trial = trial_start
         while not rospy.is_shutdown():
             rate.sleep()
@@ -67,16 +69,19 @@ class ExperimentManager(object):
             # publish new goal if goal reached
             if self.flag_goal_reached:
                 if trial >= len(self.xr_goal):
-                    print "trials ended!"
+                    rospy.loginfo("trials ended!")
                     break
 
                 self.flag_goal_reached = False
                 self.publish_goal(trial)
                 trial += 1
 
+                rate.sleep()
+
                 print "Please press 's' to start:"
                 while getchar() != 's':
                     rate.sleep()
+                    print "Please press 's' to start:"
 
                 # tell planner to start
                 ctrl_data = String()
@@ -98,8 +103,11 @@ class ExperimentManager(object):
         goal_data.data.append(self.intent[trial])
         print goal_data.data
 
-        self.goal_pub.publish(goal_data)
-        print "goal data sent!"
+        if self.goal_pub.get_num_connections() > 0:
+            self.goal_pub.publish(goal_data)
+            print "goal data sent!"
+        else:
+            raise RuntimeError("no subscriber!!!!!!!!!!!!!")
 
     def comm_callback(self, comm_msg):
         if comm_msg.data == "Attract":
@@ -118,5 +126,8 @@ class ExperimentManager(object):
 if __name__ == "__main__":
     rospy.init_node("human_aware_navigation_goal_publisher")
 
+    # sleep after object creation to ensure that publishers and subscribers get connected
     exp_manager = ExperimentManager()
+    rospy.sleep(0.5)
+
     exp_manager.run(0)
