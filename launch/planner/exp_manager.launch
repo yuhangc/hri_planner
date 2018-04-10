@@ -1,10 +1,14 @@
-<!--
-  Used for visualising the turtlebot while building a map or navigating with the ros navistack.
- -->
 <launch>
+  <arg name="settings_hp" default="$(find hri_planner)/resources/planner_setting/exp_settings_hp.yaml" />
+  <arg name="settings_rp" default="$(find hri_planner)/resources/planner_setting/exp_settings_rp.yaml" />
+
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_rviz_launchers)/rviz/navigation.rviz">
     <remap from="/move_base_simple/goal" to="/rviz_navigation_goal"/>
   </node>
+
+  <rosparam command="load" file="$(arg settings_hp)" ns="hp"/>
+  <rosparam command="load" file="$(arg settings_rp)" ns="rp"/>
+
   <node name="experiment_manager" pkg="hri_planner" type="experiment_manager.py" output="screen">
     <param name="protocol_file" value="$(find hri_planner)/resources/exp_protocols/protocol.txt"/>
   </node>

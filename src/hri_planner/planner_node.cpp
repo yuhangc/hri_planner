@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/6/2018
+// Last revision: 4/9/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -40,8 +40,6 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     xh_meas_.setZero(nXh);
 
     ros::param::param<int>("~dimension/dim_goal", goal_dim_, 2);
-
-    ROS_INFO("Received new goal, reset planner...");
 
     xr_goal_.resize(goal_dim_);
     xr_goal_ << 0.0, 3.0;
@@ -94,8 +92,6 @@ void PlannerNode::run()
                 }
 
                 flag_start_planning_ = false;
-                planner_interactive_->reset_planner(xr_goal_, xh_goal_, intent_);
-                planner_simple_->reset_planner(xr_goal_, xh_goal_, intent_);
 
                 std::cout << "Robot goal is: " << xr_goal_.transpose() << std::endl;
 
@@ -138,13 +134,13 @@ void PlannerNode::run()
                         // FIXME: reset the simple planner?
                         plan(planner_interactive_);
                         flag_human_detected_ = false;
-                        planner_simple_->reset_planner(xr_goal_, xh_goal_, intent_);
+                        planner_simple_->reset_planner();
                     }
                     else {
                         ROS_INFO("Using simple planner since no human detected...");
                         // FIXME: reset the interactive planner?
                         plan(planner_simple_);
-                        planner_interactive_->reset_planner(xr_goal_, xh_goal_, intent_);
+                        planner_interactive_->reset_planner();
                     }
 
                     rate_slow.sleep();
@@ -252,6 +248,22 @@ void PlannerNode::goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_
 
     // the last value of goal is intent
     intent_ = static_cast<int>(goal_msg->data[goal_dim_*3]);
+
+    ROS_INFO("Received new goal, reset planner...");
+
+    // reset the planners
+    std::string ns;
+    if (mode_ == "simulation")
+        ns = "~";
+    else {
+        if (intent_ == hri_planner::HumanPriority)
+            ns = "hp/";
+        else
+            ns = "rp/";
+    }
+
+    planner_interactive_->reset_planner(xr_goal_, xh_goal_, intent_, ns);
+    planner_simple_->reset_planner(xr_goal_, xh_goal_, intent_, ns);
 }
 
 //----------------------------------------------------------------------------------

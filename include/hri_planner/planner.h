@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/5/2018
+// Last revision: 4/9/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -50,11 +50,15 @@ public:
     virtual void publish_plan() = 0;
 
     // reset the planner with new goals
-    virtual void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal, const int intent) {
+    virtual void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal,
+                               const int intent, const std::string& ns="~") {
         xr_goal_ = xr_goal;
         xh_goal_ = xh_goal;
         intent_ = intent;
     }
+
+    // simply clear any histories and reset flags
+    virtual void reset_planner() {};
 
     // methods to send robot & human data in
     void set_robot_state(const Eigen::VectorXd& xr_meas, const Eigen::VectorXd& ur_meas) {
@@ -125,7 +129,11 @@ public:
     void publish_plan() override;
 
     // reset the planner with new goals
-    void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal, const int intent) override;
+    void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal,
+                       const int intent, const std::string& ns="~") override;
+
+    // simple reset
+    void reset_planner() override;
 
 private:
     // components
@@ -195,7 +203,8 @@ private:
     void create_human_costs(std::vector<std::shared_ptr<SingleTrajectoryCostHuman> >& single_cost_hp,
                             std::vector<std::shared_ptr<SingleTrajectoryCostHuman> >& single_cost_rp,
                             int n);
-    void create_robot_costs(std::vector<std::shared_ptr<ProbabilisticCostBase> >& robot_costs, int n);
+    void create_robot_costs(std::vector<std::shared_ptr<ProbabilisticCostBase> >& robot_costs,
+                            int n, const std::string& ns="~");
     void create_optimizer();
 
     // other helper functions
@@ -215,7 +224,11 @@ public:
     void publish_plan() override;
 
     // reset the planner with new goals
-    void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal, const int intent) override;
+    void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal,
+                       const int intent, const std::string& ns="~") override;
+
+    // simple reset
+    void reset_planner() override;
 
 private:
     // the optimizer
@@ -247,7 +260,7 @@ private:
     ros::Publisher plan_pub_;
 
     // creation routines
-    void create_robot_costs(std::shared_ptr<SingleTrajectoryCost>& robot_cost);
+    void create_robot_costs(std::shared_ptr<SingleTrajectoryCost>& robot_cost, const std::string& ns="~");
     void create_optimizer();
 
     // other helper functions

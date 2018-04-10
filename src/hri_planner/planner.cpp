@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/5/2018
+// Last revision: 4/9/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -249,19 +249,24 @@ void Planner::create_human_costs(std::vector<std::shared_ptr<SingleTrajectoryCos
 }
 
 //----------------------------------------------------------------------------------
-void Planner::create_robot_costs(std::vector<std::shared_ptr<ProbabilisticCostBase> >& robot_cost, int n)
+void Planner::create_robot_costs(std::vector<std::shared_ptr<ProbabilisticCostBase> >& robot_cost,
+                                 int n, const std::string& ns)
 {
     std::vector<std::shared_ptr<FeatureBase> > f_non_int;
     std::vector<std::shared_ptr<FeatureVectorizedBase> > f_int;
     std::vector<double> w_non_int;
     std::vector<double> w_int;
 
+    // clear the features map first
+    features_robot_.clear();
+    features_robot_int_.clear();
+
     // non interactive features
     int n_non_int;
-    ros::param::param<int>("~robot_cost/n_features_non_int", n_non_int, 2);
+    ros::param::param<int>(ns + "robot_cost/n_features_non_int", n_non_int, 0);
 
     for (int i = 0; i < n_non_int; ++i) {
-        std::string feature_str = "~robot_cost_non_int/feature" + std::to_string(i);
+        std::string feature_str = ns + "robot_cost_non_int/feature" + std::to_string(i);
         ROS_INFO("now loading feature %s ...", feature_str.c_str());
 
         std::string feature_name;
@@ -287,10 +292,10 @@ void Planner::create_robot_costs(std::vector<std::shared_ptr<ProbabilisticCostBa
 
     // interactive features
     int n_int;
-    ros::param::param<int>("~robot_cost/n_features_int", n_int, 2);
+    ros::param::param<int>(ns + "robot_cost/n_features_int", n_int, 0);
 
     for (int i = 0; i < n_int; ++i) {
-        std::string feature_str = "~robot_cost_int/feature" + std::to_string(i);
+        std::string feature_str = ns + "robot_cost_int/feature" + std::to_string(i);
         ROS_INFO("now loading feature %s ...", feature_str.c_str());
 
         std::string feature_name;
@@ -553,8 +558,18 @@ void Planner::publish_plan()
 }
 
 //----------------------------------------------------------------------------------
-void Planner::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorXd &xh_goal, const int intent)
+void Planner::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorXd &xh_goal,
+                            const int intent, const std::string& ns)
 {
+    // recreate the robot cost functions and reset optimizer
+    std::vector<std::shared_ptr<ProbabilisticCostBase> > robot_cost;
+    create_robot_costs(robot_cost, 2, ns);
+
+    optimizer_comm_->set_robot_cost(robot_cost[0]);
+    optimizer_no_comm_->set_robot_cost(robot_cost[1]);
+
+    ROS_INFO("Robot cost function reset!");
+
     // update the goals for robot and human
     features_robot_["Goal"]->set_data(&xr_goal);
     features_robot_int_["HumanGoal"]->set_data(&xh_goal);
@@ -572,6 +587,17 @@ void Planner::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorX
     tcomm_ = -20;
     acomm_ = 0;
 
+    // flags
+    flag_gen_init_guesses_ = true;
+
+    // reset belief model
+    belief_model_->reset_hist(Eigen::Vector2d::Zero());
+}
+
+//----------------------------------------------------------------------------------
+void Planner::reset_planner()
+{
+    // reset other things
     // flags
     flag_gen_init_guesses_ = true;
 
@@ -684,8 +710,15 @@ void PlannerSimple::publish_plan()
 }
 
 //----------------------------------------------------------------------------------
-void PlannerSimple::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorXd &xh_goal, const int intent)
+void PlannerSimple::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::VectorXd &xh_goal,
+                                  const int intent, const std::string& ns)
 {
+    // recreate the cost function and reset optimizer
+    std::shared_ptr<SingleTrajectoryCost> robot_cost;
+    create_robot_costs(robot_cost, ns);
+
+    optimizer_->set_cost_function(robot_cost);
+
     // update the goals for robot and human
     features_robot_["Goal"]->set_data(&xr_goal);
 
@@ -701,17 +734,28 @@ void PlannerSimple::reset_planner(const Eigen::VectorXd &xr_goal, const Eigen::V
 }
 
 //----------------------------------------------------------------------------------
-void PlannerSimple::create_robot_costs(std::shared_ptr<SingleTrajectoryCost>& robot_cost)
+void PlannerSimple::reset_planner()
+{
+    // reset other things
+    // flags
+    flag_gen_init_guesses_ = true;
+}
+
+//----------------------------------------------------------------------------------
+void PlannerSimple::create_robot_costs(std::shared_ptr<SingleTrajectoryCost>& robot_cost, const std::string& ns)
 {
     std::vector<std::shared_ptr<FeatureBase> > f_non_int;
     std::vector<double> w_non_int;
 
+    // clear the features map first
+    features_robot_.clear();
+
     // only non interactive features
     int n_non_int;
-    ros::param::param<int>("~robot_cost/n_features_non_int", n_non_int, 2);
+    ros::param::param<int>(ns + "robot_cost/n_features_non_int", n_non_int, 0);
 
     for (int i = 0; i < n_non_int; ++i) {
-        std::string feature_str = "~robot_cost_non_int/feature" + std::to_string(i);
+        std::string feature_str = ns + "robot_cost_non_int/feature" + std::to_string(i);
         ROS_INFO("now loading feature %s ...", feature_str.c_str());
 
         std::string feature_name;

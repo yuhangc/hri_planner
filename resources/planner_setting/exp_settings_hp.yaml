@@ -1,0 +1,35 @@
+## planner settings specific to human-priority scenario
+
+# robot costs
+robot_cost:
+  n_features_int: 3
+  n_features_non_int: 2
+
+robot_cost_non_int:
+  feature0:
+    name: Control
+    weight: 10.0
+
+  feature1:
+    name: Goal
+    weight: 20.0
+    nargs: 2
+    args: [4.0, 4.0]
+
+robot_cost_int:
+  feature0:
+    name: HumanEffort
+    weight: 20.0
+
+  feature1:
+    name: Collision
+    weight: 5.0
+    nargs: 1
+    args: [0.5]
+
+  feature2:
+    name: HumanGoal
+    weight: 20.0
+    nargs: 2
+    args: [0.732, 6.01]
+
