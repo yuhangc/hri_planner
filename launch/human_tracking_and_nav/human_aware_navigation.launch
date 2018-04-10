@@ -2,13 +2,13 @@
   <arg name="machine" default="localhost" />
   <arg name="user" default="" />
   <arg name="timeout" default="1.0" />
-  <arg name="max_dist" default="2.5" />
+  <arg name="max_dist" default="2.0" />
   <arg name="min_dist" default="1.0" />
-  <arg name="detection_angle" default="75.0" />
+  <arg name="detection_angle" default="120.0" />
   <arg name="gaze_type" default="0" />
   <arg name="with_site_movebase_params" default="false"/>
   <arg name="site_movebase_params" default=""/>
-  <arg name="people_positions" default="/people_tracker_filter/positions"/>
+  <arg name="people_positions" default="/people_tracker/positions"/>
 
   <machine name="$(arg machine)" address="$(arg machine)" env-loader="$(optenv ROS_ENV_LOADER)" user="$(arg user)" default="true"/>
   

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np
+from random import randint
 
 import rospy
 import actionlib
@@ -11,6 +12,7 @@ from geometry_msgs.msg import PoseStamped
 import tty, termios, sys
 
 flag_manual_goal = False
+seq = 0
 
 
 def rviz_goal_callback(goal_msg):
@@ -37,9 +39,11 @@ def load_navigation_goals(n_goals):
         goal.pose.position.y = rospy.get_param(param_name + "/y")
         goal.pose.position.z = 0.0
 
-        th = rospy.get_param(param_name + "/theta", 0.0)
+        th = rospy.get_param(param_name + "/th", 0.0)
         goal.pose.orientation.z = np.sin(th / 2.0)
         goal.pose.orientation.w = np.cos(th / 2.0)
+
+        goal.header.frame_id = "map"
 
         nav_goals.append(goal)
 
@@ -48,6 +52,17 @@ def load_navigation_goals(n_goals):
 
     return nav_goals
 
+
+def sample_goal(goal_prev):
+    if goal_prev >= n_goals / 2:
+        goal_new = 0
+    else:
+        goal_new = n_goals / 2
+    
+    goal_new += randint(0, n_goals/2-1)
+
+    return goal_new
+    
 
 def getchar():
     # Returns a single character from standard input
@@ -98,6 +113,7 @@ if __name__ == "__main__":
         print "Please press 's' to start:"
         while getchar() != 's':
             rate.sleep()
+
         rospy.loginfo("started!")
 
         # start looping through all goals
@@ -108,6 +124,11 @@ if __name__ == "__main__":
             # send a navigation goal
             goal = move_base_msgs.msg.MoveBaseGoal()
             goal.target_pose = nav_goals[id]
+
+            seq += 1
+            goal.target_pose.header.seq = seq
+            goal.target_pose.header.stamp = rospy.get_rostime()
+
             hri_nav_client.send_goal(goal)
 
             # wait for result
@@ -115,12 +136,14 @@ if __name__ == "__main__":
 
             # get result
             res = hri_nav_client.get_result()
+            state = hri_nav_client.get_state()
 
-            if res == GoalStatus.SUCCEEDED:
-                # increase id and reset flag
-                id += 1
-                if id == n_goals:
-                    id = 0
+            if state == GoalStatus.SUCCEEDED:
+                rospy.loginfo("Goal reached! Start next goal...")
+
+                # randomly choose a new goal
+                id = sample_goal(id)
+                rospy.loginfo("New goal is #%d", id)
 
                 flag_goal_reached = False
             else:

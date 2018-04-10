@@ -24,7 +24,7 @@
     <arg name="log" default="false" />
     <arg name="manager_topic" default="" />
     <arg name="with_laser_filter" default="true"/>
-    <arg name="with_tracker_filter_map" default="true" />
+    <arg name="with_tracker_filter_map" default="false" />
     <arg name="tracker_filter_positions" default="/people_tracker_filter/positions" />
     <arg name="tracker_filter_people" default="/people_tracker_filter/people" />
     <arg name="tracker_filter_pose" default="/people_tracker_filter/pose" />
@@ -89,7 +89,9 @@
         <node pkg="map_laser" type="filter.py" name="map_laser_filter" respawn="true" output="screen"/>
         <node pkg="leg_detector" type="leg_detector" name="leg_detector" args="scan:=/base_scan_filter $(find leg_detector)/config/trained_leg_detector.yaml" respawn="true" output="screen">
             <param name="fixed_frame" type="string" value="odom" />
-            <param name="leg_reliability_limit" value="0.6" />
+            <param name="leg_reliability_limit" value="0.32" />
+            <param name="leg_pair_separation" value="0.8" />
+            <param name="min_points_per_group" value="7" />
         </node>
     </group>
     <group unless="$(arg with_laser_filter)">

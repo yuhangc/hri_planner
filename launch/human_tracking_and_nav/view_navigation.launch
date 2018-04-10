@@ -2,11 +2,13 @@
   Used for visualising the turtlebot while building a map or navigating with the ros navistack.
  -->
 <launch>
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_rviz_launchers)/rviz/navigation.rviz">
+  <arg name="manual_mode" default="false" />
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hri_planner)/resources/rviz/view_exp.rviz">
     <remap from="/move_base_simple/goal" to="/rviz_navigation_goal"/>
   </node>
   <node name="hri_nav_goal_publisher" pkg="hri_planner" type="hri_nav_goal.py" output="screen">
-    <param name="manual_mode" value="false"/>
+    <param name="manual_mode" value="$(arg manual_mode)"/>
     <rosparam command="load" file="$(find hri_planner)/resources/nav_param/nav_goals.yaml" />
   </node>
 </launch>
