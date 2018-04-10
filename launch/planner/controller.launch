@@ -1,0 +1,22 @@
+<launch>
+    <arg name="settings_common" default="$(find hri_planner)/resources/planner_setting/exp_settings_common.yaml" />
+
+    <node name="controller_node" pkg="hri_planner" type="controller_node" output="screen">
+        <param name="k_rho" value="0.5" />
+        <param name="k_v" value="2.0" />
+        <param name="k_alp" value="3.0" />
+        <param name="k_phi" value="-0.5" />
+
+        <param name="controller_rate" value="20" />
+        <param name="goal_reaching_th_controller" value="0.15" />
+
+        <param name="lb_ur" value="[-0.5, -2.0]" />
+        <param name="ub_ur" value="[0.5, 2.0]" />
+
+        <!--<remap from="/planner/set_goal" to="/controller/set_goal" />-->
+        <!--<remap from="/planner/goal_reached" to="/controller/start_controller" />-->
+        <remap from="/controller/set_goal" to="/planner/set_goal" />
+        <remap from="/controller/start_controller" to="/planner/goal_reached" />
+        <remap from="/controller/cmd_vel" to="/cmd_vel_mux/input/navi" />
+    </node>
+</launch>

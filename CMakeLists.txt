@@ -172,6 +172,12 @@ add_executable(planner_node
         src/hri_planner/planner_node.cpp)
 target_link_libraries(planner_node ${catkin_LIBRARIES} hri_planner)
 
+# a closed-loop controller node
+add_executable(controller_node
+        include/hri_planner/controller_node.h
+        src/hri_planner/controller_node.cpp)
+target_link_libraries(controller_node ${catkin_LIBRARIES} utils)
+
 # video processor
 add_executable(video_processor
         include/top_view_tracker/hat_tracker.h

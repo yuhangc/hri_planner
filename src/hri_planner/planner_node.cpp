@@ -160,7 +160,16 @@ void PlannerNode::run()
 
                         Eigen::VectorXd x_diff = xr_goal_ - xr_meas_.head(2);
                         if (x_diff.norm() < goal_reaching_th_planner_) {
-                            planner_state = GoalReaching;
+//                            planner_state = GoalReaching;
+                            // publish goal reaching message
+                            ROS_INFO("Now switching to closed-loop controller...");
+                            std_msgs::Bool goal_reach_data;
+                            goal_reach_data.data = static_cast<uint8_t>(true);
+                            goal_reached_pub_.publish(goal_reach_data);
+
+                            // planner back to idle
+                            planner_state = Idle;
+
                             break;
                         }
                     }
