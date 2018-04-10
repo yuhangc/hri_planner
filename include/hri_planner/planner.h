@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/9/2018
+// Last revision: 4/10/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -44,7 +44,7 @@ public:
     virtual ~PlannerBase() = default;
 
     // main update function
-    virtual void compute_plan() = 0;
+    virtual void compute_plan(double t_max=-1) = 0;
 
     // publish the plan
     virtual void publish_plan() = 0;
@@ -124,7 +124,7 @@ public:
     Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh);
 
     // main update function
-    void compute_plan() override;
+    void compute_plan(double t_max=-1) override;
 
     void publish_plan() override;
 
@@ -218,7 +218,7 @@ public:
     PlannerSimple(ros::NodeHandle &nh, ros::NodeHandle &pnh);
 
     // main update function
-    void compute_plan() override;
+    void compute_plan(double t_max=-1) override;
 
     // publish plans
     void publish_plan() override;

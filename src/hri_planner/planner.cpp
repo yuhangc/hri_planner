@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/9/2018
+// Last revision: 4/10/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -407,7 +407,7 @@ void Planner::create_optimizer()
 }
 
 //----------------------------------------------------------------------------------
-void Planner::compute_plan()
+void Planner::compute_plan(double t_max)
 {
     ROS_INFO("Start to compute plan...");
     // copy the current state measurements
@@ -435,6 +435,12 @@ void Planner::compute_plan()
 
     // update initial guesses
     update_init_guesses();
+
+    // set optimizer time limit if specified
+    if (t_max > 0) {
+        optimizer_comm_->set_time_limit(t_max);
+        optimizer_no_comm_->set_time_limit(t_max);
+    }
 
     // optimize for no communication
     std::vector<double> cost_ni_no_comm;
@@ -669,7 +675,7 @@ PlannerSimple::PlannerSimple(ros::NodeHandle &nh, ros::NodeHandle &pnh): Planner
 }
 
 //----------------------------------------------------------------------------------
-void PlannerSimple::compute_plan()
+void PlannerSimple::compute_plan(double t_max)
 {
     ROS_INFO("Start to compute plan...");
     // copy the current state measurements
@@ -678,6 +684,10 @@ void PlannerSimple::compute_plan()
 
     // update initial guesses
     update_init_guesses();
+
+    // set optimizer time limit if specified
+    if (t_max > 0)
+        optimizer_->set_time_limit(t_max);
 
     // optimize for communication
     std::vector<double> cost_ni_comm;

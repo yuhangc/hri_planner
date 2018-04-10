@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2018
-// Last revision: 3/31/2018
+// Last revision: 4/10/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -38,6 +38,12 @@ void TrajectoryOptimizer::set_bounds(const Eigen::VectorXd &lb, const Eigen::Vec
 {
     lb_ = lb;
     ub_ = ub;
+}
+
+//----------------------------------------------------------------------------------
+void TrajectoryOptimizer::set_time_limit(const double t_max)
+{
+    optimizer_.set_maxtime(t_max);
 }
 
 //----------------------------------------------------------------------------------

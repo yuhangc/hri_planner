@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/9/2018
+// Last revision: 4/10/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -222,9 +222,12 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
     planner->set_robot_state(xr_meas_, ur_meas_);
     planner->set_human_state(xh_meas_);
 
+    // set the time limit for the optimizer to be 90% of the desired planner rate
+    double t_max_planning = 0.9 * (1.0 / planning_rate_);
+
     // compute plan
     auto t_s = ros::Time::now();
-    planner->compute_plan();
+    planner->compute_plan(t_max_planning);
     ros::Duration t_plan = ros::Time::now() - t_s;
     std::cout << "time spent for planning is: " << t_plan.toSec() << "s" << std::endl;
 
