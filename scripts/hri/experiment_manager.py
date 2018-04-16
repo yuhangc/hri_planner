@@ -7,6 +7,8 @@ from std_msgs.msg import Bool
 from std_msgs.msg import String
 from std_msgs.msg import Float64MultiArray
 
+from hri_planner.msg import PlannedTrajectories
+
 import tty, termios, sys
 
 
@@ -20,6 +22,104 @@ def getchar():
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return ch
+
+
+class PlannerDataLogger(object):
+    def __init__(self, save_path):
+        # path to save data
+        self.save_path = save_path
+
+        # information to save
+        self.t_plan = []
+        self.xr_hist = []
+        self.xh_hist = []
+        self.robot_traj_opt = []
+        self.human_traj_hp_opt = []
+        self.human_traj_rp_opt = []
+
+        self.t_belief = []
+        self.belief_hist = []
+        self.cost_hist = []
+
+        # log the communication for the entire experiment
+        self.comm_logger = open(self.save_path + "/communication.txt", "w")
+        self.comm_hist = []
+
+        # set an initial trial number
+        self.trial = 0
+
+        # time start
+        self.t_start = rospy.get_time()
+
+    def reset(self, trial=-1):
+        self.t_plan = []
+        self.xr_hist = []
+        self.xh_hist = []
+        self.robot_traj_opt = []
+        self.human_traj_hp_opt = []
+        self.human_traj_rp_opt = []
+
+        self.t_belief = []
+        self.belief_hist = []
+        self.cost_hist = []
+
+        self.comm_hist = []
+
+        if trial > 0:
+            self.trial = trial
+        else:
+            self.trial += 1
+
+        self.t_start = rospy.get_time()
+
+    def save_data(self):
+        # time stamps
+        t_data = np.vstack((np.asarray(self.t_plan), np.asarray(self.t_belief)))
+        np.savetxt(self.save_path + "/tstamp" + str(self.trial) + ".txt", t_data.transpose(), delimiter=',')
+
+        # "actual" trajectories
+        np.savetxt(self.save_path + "/robot_traj" + str(self.trial) + ".txt",
+                   np.asarray(self.xr_hist), delimiter=',')
+        np.savetxt(self.save_path + "/human_traj" + str(self.trial) + ".txt",
+                   np.asarray(self.xh_hist), delimiter=',')
+
+        # planned trajectories
+        np.savetxt(self.save_path + "/robot_plan" + str(self.trial) + ".txt",
+                   np.asarray(self.robot_traj_opt), delimiter=',')
+        np.savetxt(self.save_path + "/human_pred_hp" + str(self.trial) + ".txt",
+                   np.asarray(self.human_traj_hp_opt), delimiter=',')
+        np.savetxt(self.save_path + "/human_pred_rp" + str(self.trial) + ".txt",
+                   np.asarray(self.human_traj_rp_opt), delimiter=',')
+
+        # belief/costs
+        np.savetxt(self.save_path + "/belief_hist" + str(self.trial) + ".txt",
+                   np.asarray(self.belief_hist), delimiter=',')
+        np.savetxt(self.save_path + "/cost_hist" + str(self.trial) + ".txt",
+                   np.asarray(self.cost_hist), delimiter=',')
+
+        # communication
+        if self.comm_hist:
+            self.comm_logger.write(", ".join(self.comm_hist))
+        else:
+            self.comm_logger.write("No communication")
+
+    def log_comm(self, acomm):
+        self.comm_hist.append(acomm)
+
+    def plan_callback(self, plan_msg):
+        self.t_plan.append(rospy.get_time() - self.t_start)
+
+        self.xr_hist.append(np.asarray(plan_msg.xr_init))
+        self.xh_hist.append(np.asarray(plan_msg.xh_init))
+        self.robot_traj_opt.append(np.asarray(plan_msg.robot_traj_opt))
+        self.human_traj_hp_opt.append(np.asarray(plan_msg.human_traj_hp_opt))
+        self.human_traj_rp_opt.append(np.asarray(plan_msg.human_traj_rp_opt))
+
+    def belief_cost_callback(self, msg):
+        self.t_belief.append(rospy.get_time() - self.t_start)
+
+        self.belief_hist.append(msg.data[0])
+        self.cost_hist.append(msg.data[1:7])
 
 
 class ExperimentManager(object):
@@ -40,6 +140,10 @@ class ExperimentManager(object):
         self.flag_comm_updated = False
 
         self.flag_goal_reached = True
+
+        # create a planner data logger
+        self.save_path = rospy.get_param("~save_path", "exp_data")
+        self.logger = PlannerDataLogger(self.save_path)
 
         # subscribers and publishers
         self.goal_reach_sub = rospy.Subscriber("controller/goal_reached", Bool, self.goal_reached_callback)
@@ -68,6 +172,13 @@ class ExperimentManager(object):
 
             # publish new goal if goal reached
             if self.flag_goal_reached:
+                # save data if applicable
+                if trial > trial_start:
+                    self.logger.save_data()
+
+                # reset logger
+                self.logger.reset(trial)
+
                 if trial >= len(self.xr_goal):
                     rospy.loginfo("trials ended!")
                     break
@@ -117,6 +228,8 @@ class ExperimentManager(object):
 
         self.flag_comm_updated = True
         print "received communication: ", self.acomm
+
+        self.logger.log_comm(self.acomm)
 
     def goal_reached_callback(self, msg):
         self.flag_goal_reached = msg.data

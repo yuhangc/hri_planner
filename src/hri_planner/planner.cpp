@@ -541,6 +541,8 @@ void Planner::publish_plan()
         trajectories.T = T_;
         trajectories.nXr = nXr_;
         trajectories.nXh = nXh_;
+        utils::EigenToVector(robot_traj_opt_.x0, trajectories.xr_init);
+        utils::EigenToVector(human_traj_hp_opt_.x0, trajectories.xh_init);
         utils::EigenToVector(robot_traj_opt_.x, trajectories.robot_traj_opt);
         utils::EigenToVector(human_traj_hp_opt_.x, trajectories.human_traj_hp_opt);
         utils::EigenToVector(human_traj_rp_opt_.x, trajectories.human_traj_rp_opt);
@@ -713,6 +715,7 @@ void PlannerSimple::publish_plan()
         trajectories.T = T_;
         trajectories.nXr = nXr_;
         trajectories.nXh = nXh_;
+        utils::EigenToVector(robot_traj_opt_.x0, trajectories.xr_init);
         utils::EigenToVector(robot_traj_opt_.x, trajectories.robot_traj_opt);
 
         plan_pub_.publish(trajectories);

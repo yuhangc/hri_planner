@@ -4,12 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import rospy
-from std_msgs.msg import Int32
 from std_msgs.msg import String
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import Quaternion
 from nav_msgs.msg import Odometry
+
+import tf
 
 from people_msgs.msg import People
 from people_msgs.msg import Person
@@ -75,6 +77,9 @@ class PlannerSimulator(object):
         self.flag_ctrl_updated = False
         self.flag_comm_updated = False
 
+        # tf broadcaster for robot state
+        self.robot_state_br = tf.TransformBroadcaster()
+
         # subscribers and publishers
         self.comm_sub = rospy.Subscriber("/planner/communication", String, self.comm_callback)
         self.ctrl_sub = rospy.Subscriber("/planner/cmd_vel", Twist, self.robot_ctrl_callback)
@@ -96,7 +101,7 @@ class PlannerSimulator(object):
         traj_data = np.loadtxt(path + "/test" + str(test_id) + ".txt", delimiter=",")
 
         self.xh_goal = goal_data[test_id, 0:2]
-        self.xr_goal = goal_data[test_id, 2:4]
+        self.xr_goal = goal_data[test_id, 2:5]
         self.xh0 = init_data[test_id, 0:self.nXh_]
         self.xr0 = init_data[test_id, self.nXh_:(self.nXh_+self.nXr_)]
 
@@ -192,13 +197,19 @@ class PlannerSimulator(object):
     # helper functions
     def publish_states(self):
         # robot state
-        robot_state = PoseWithCovarianceStamped()
-        robot_state.pose.pose.position.x = self.xr_[0]
-        robot_state.pose.pose.position.y = self.xr_[1]
-        robot_state.pose.pose.orientation.w = np.cos(self.xr_[2] * 0.5)
-        robot_state.pose.pose.orientation.z = np.sin(self.xr_[2] * 0.5)
+        # robot_state = PoseWithCovarianceStamped()
+        # robot_state.pose.pose.position.x = self.xr_[0]
+        # robot_state.pose.pose.position.y = self.xr_[1]
+        # robot_state.pose.pose.orientation.w = np.cos(self.xr_[2] * 0.5)
+        # robot_state.pose.pose.orientation.z = np.sin(self.xr_[2] * 0.5)
+        #
+        # self.robot_state_pub.publish(robot_state)
 
-        self.robot_state_pub.publish(robot_state)
+        self.robot_state_br.sendTransform((self.xr_[0], self.xr_[1], 0.0),
+                                          tf.transformations.quaternion_from_euler(0, 0, self.xr_[2]),
+                                          rospy.Time.now(),
+                                          "/base_footprint",
+                                          "/map")
 
         # robot vel
         odom_data = Odometry()
