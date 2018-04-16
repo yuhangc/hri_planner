@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 4/4/2018
-// Last revision: 4/6/2018
+// Last revision: 4/15/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -21,6 +21,8 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Bool.h>
+
+#include <tf/transform_listener.h>
 
 #include "people_msgs/People.h"
 
@@ -85,6 +87,9 @@ private:
 
     // node handler
     ros::NodeHandle nh_;
+
+    // tf listener to update robot pose
+    tf::TransformListener tf_listener_;
 
     // publishers and subscribers
     ros::Subscriber goal_sub_;

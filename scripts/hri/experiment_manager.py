@@ -42,7 +42,7 @@ class ExperimentManager(object):
         self.flag_goal_reached = True
 
         # subscribers and publishers
-        self.goal_reach_sub = rospy.Subscriber("planner/goal_reached", Bool, self.goal_reached_callback)
+        self.goal_reach_sub = rospy.Subscriber("controller/goal_reached", Bool, self.goal_reached_callback)
 
         self.goal_pub = rospy.Publisher("/planner/set_goal", Float64MultiArray, queue_size=1)
         self.planner_ctrl_pub = rospy.Publisher("/planner/ctrl", String, queue_size=1)
@@ -51,10 +51,10 @@ class ExperimentManager(object):
         proto_data = np.loadtxt(protocol_file, delimiter=',')
 
         # parse the protocol file
-        self.xr_goal = proto_data[:, 1:3]
-        self.xh_goal = proto_data[:, 3:5]
-        self.xh_init = proto_data[:, 5:7]
-        self.intent = proto_data[:, 7]
+        self.xr_goal = proto_data[:, 1:4]
+        self.xh_goal = proto_data[:, 4:6]
+        self.xh_init = proto_data[:, 6:8]
+        self.intent = proto_data[:, 8]
 
     def run(self, trial_start=0):
         rate = rospy.Rate(20)

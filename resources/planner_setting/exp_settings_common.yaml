@@ -19,6 +19,9 @@ planner:
 
   comm_cost: 2.0
 
+  goal_reaching_th_planner: 0.6
+  goal_reaching_th_controller: 0.1
+
 # belief model settings
 explicit_comm:
   history_length: 10

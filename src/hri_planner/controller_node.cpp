@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 4/9/2018
-// Last revision: 4/10/2018
+// Last revision: 4/15/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -37,8 +37,8 @@ ControllerNode::ControllerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(n
     // subscribers and publishers
     goal_sub_ = nh.subscribe<std_msgs::Float64MultiArray>("/controller/set_goal", 1,
                                                           &ControllerNode::goal_callback, this);
-    robot_state_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 1,
-                                                                 &ControllerNode::robot_state_callback, this);
+//    robot_state_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 1,
+//                                                                 &ControllerNode::robot_state_callback, this);
     start_controller_sub_ = nh_.subscribe<std_msgs::Bool>("controller/start_controller", 1,
                                                           &ControllerNode::start_controller_callback, this);
 
@@ -68,12 +68,42 @@ void ControllerNode::run()
 
                 break;
             case Running:
+                // update pose
+                tf::StampedTransform transform;
+                try {
+                    tf_listener_.lookupTransform("/map", "/base_footprint", ros::Time(0), transform);
+                }
+                catch (tf::TransformException &ex) {
+                    ROS_ERROR("%s", ex.what());
+                    ros::Duration(0.01).sleep();
+                    continue;
+                }
+
+                auto pos = transform.getOrigin();
+                xr_(0) = pos.x();
+                xr_(1) = pos.y();
+
+                auto q = transform.getRotation();
+                double siny = 2.0 * (q.w() * q.z() + q.x() * q.y());
+                double cosy = 1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z());
+                xr_(2) = std::atan2(siny, cosy);
+
                 // compute control
                 compute_and_publish_control();
 
                 // check for goal reaching
                 Eigen::VectorXd x_diff = x_goal_ - xr_;
+                x_diff(2) = utils::wrap_to_pi(x_diff(2));
                 if (x_diff.norm() < goal_reaching_th_controller_) {
+                    // send a zero velocity command
+                    geometry_msgs::Twist ur;
+                    robot_ctrl_pub_.publish(ur);
+
+                    // publish to tell that goal is reached
+                    std_msgs::Bool goal_reach_data;
+                    goal_reach_data.data = static_cast<uint8_t>(true);
+                    goal_reached_pub_.publish(goal_reach_data);
+
                     state = Idle;
                     ROS_INFO("Goal reached! Now switching back to Idle...");
                 }
@@ -92,10 +122,16 @@ void ControllerNode::compute_and_publish_control()
     double phi = utils::wrap_to_pi(x_goal_(2) - xr_(2));
     double th_z = std::atan2(x_goal_(1) - xr_(1), x_goal_(0) - xr_(0));
     double alpha = utils::wrap_to_pi(th_z - xr_(2));
+    double k_phi_rho = std::min(1.0, rho * 5.0);
+
+    std::cout << "robot pose is: " << xr_.transpose() << std::endl;
+    std::cout << "rho: " << rho << ", phi: " << phi << ", th: " << th_z << ", alpha: " << alpha << std::endl;
 
     geometry_msgs::Twist ur;
     ur.linear.x = utils::clamp(k_rho_ * std::tanh(k_v_ * rho), -v_max_, v_max_);
-    ur.angular.z = utils::clamp(k_alp_ * alpha + k_phi_ * phi, -om_max_, om_max_);
+    ur.angular.z = utils::clamp(k_alp_ * alpha + k_phi_ * k_phi_rho * phi, -om_max_, om_max_);
+
+    std::cout << "control is: " << ur.linear.x << ", " << ur.angular.z << std::endl;
 
     // publish
     robot_ctrl_pub_.publish(ur);

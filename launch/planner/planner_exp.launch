@@ -4,5 +4,6 @@
   <node name="planner_node" pkg="hri_planner" type="planner_node" output="screen">
     <rosparam command="load" file="$(arg settings_common)" />
 	<remap from="/planner/cmd_vel" to="/cmd_vel_mux/input/navi" />
+    <remap from="/planner/communication" to="/haptic_control" />
   </node>
 </launch>

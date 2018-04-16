@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 4/9/2018
-// Last revision: 4/9/2018
+// Last revision: 4/15/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -20,6 +20,8 @@
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/Twist.h>
+
+#include <tf/transform_listener.h>
 
 enum ControllerState {
     Idle,
@@ -53,6 +55,9 @@ private:
 
     // control flags
     bool flag_start_controller_;
+
+    // tf listener to update robot pose
+    tf::TransformListener tf_listener_;
 
     // node handler
     ros::NodeHandle nh_;

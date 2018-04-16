@@ -52,8 +52,8 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     planner_ctrl_sub_ = nh.subscribe<std_msgs::String>("/planner/ctrl", 1,
                                                        &PlannerNode::planner_ctrl_callback, this);
 
-    robot_state_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 1,
-                                                            &PlannerNode::robot_state_callback, this);
+//    robot_state_sub_ = nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>("/amcl_pose", 1,
+//                                                            &PlannerNode::robot_state_callback, this);
 
     robot_odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &PlannerNode::robot_odom_callback, this);
 
@@ -218,6 +218,24 @@ void PlannerNode::run()
 //----------------------------------------------------------------------------------
 void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
 {
+    // update robot pose using tf listener
+    tf::StampedTransform transform;
+    try {
+        tf_listener_.lookupTransform("/map", "/base_footprint", ros::Time(0), transform);
+    }
+    catch (tf::TransformException &ex) {
+        ROS_ERROR("%s", ex.what());
+    }
+
+    auto pos = transform.getOrigin();
+    xr_meas_(0) = pos.x();
+    xr_meas_(1) = pos.y();
+
+    auto q = transform.getRotation();
+    double siny = 2.0 * (q.w() * q.z() + q.x() * q.y());
+    double cosy = 1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z());
+    xr_meas_(2) = std::atan2(siny, cosy);
+
     // update planner measurements
     planner->set_robot_state(xr_meas_, ur_meas_);
     planner->set_human_state(xh_meas_);
@@ -252,14 +270,22 @@ void PlannerNode::compute_and_publish_control()
 //----------------------------------------------------------------------------------
 void PlannerNode::goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_msg)
 {
-    for (int i = 0; i < goal_dim_; ++i) {
-        xr_goal_(i) = goal_msg->data[i];
-        xh_goal_(i) = goal_msg->data[i+goal_dim_];
-        xh_init_(i) = goal_msg->data[i+goal_dim_*2];
-    }
+//    for (int i = 0; i < goal_dim_; ++i) {
+//        xr_goal_(i) = goal_msg->data[i];
+//        xh_goal_(i) = goal_msg->data[i+goal_dim_];
+//        xh_init_(i) = goal_msg->data[i+goal_dim_*2];
+//    }
+
+    xr_goal_(0) = goal_msg->data[0];
+    xr_goal_(1) = goal_msg->data[1];
+    xh_goal_(0) = goal_msg->data[3];
+    xh_goal_(1) = goal_msg->data[4];
+    xh_init_(0) = goal_msg->data[5];
+    xh_init_(1) = goal_msg->data[6];
+
 
     // the last value of goal is intent
-    intent_ = static_cast<int>(goal_msg->data[goal_dim_*3]);
+    intent_ = static_cast<int>(goal_msg->data[7]);
 
     ROS_INFO("Received new goal, reset planner...");
 
@@ -330,11 +356,13 @@ void PlannerNode::human_tracking_callback(const people_msgs::PeopleConstPtr &peo
         pos << people_msg->people[i].position.x, people_msg->people[i].position.y;
 
         double dist = point_line_dist(pos, xh_init_, xh_goal_);
+//        std::cout << dist << ", ";
         if (dist < min_dist) {
             min_dist = dist;
             person_id = i;
         }
     }
+//    std::cout << std::endl;
 
     if (person_id == -1) {
         flag_human_detected_ = false;
@@ -354,6 +382,8 @@ double PlannerNode::point_line_dist(const Eigen::VectorXd &p, const Eigen::Vecto
     Eigen::VectorXd n = (b - a).normalized();
     Eigen::VectorXd ap = p - a;
     Eigen::VectorXd pt = a + n.dot(ap) * n;
+
+//    std::cout << "p: " << p.transpose() << ", a: " << a.transpose() << ", b: " << b.transpose() << std::endl;
 
     if ((a - pt).dot(b - pt) < 0) {
         return (p - pt).norm();
