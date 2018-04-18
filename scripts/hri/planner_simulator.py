@@ -346,6 +346,13 @@ class PlannerSimulator(object):
 
         return x, u
 
+    # run multiple simulations
+    def run_tests(self, data_path, human_traj_id, test_id):
+        # load the human trajectory/goals
+        self.load_data(data_path, human_traj_id)
+
+        # load robot initial conditions and goals
+
     # callbacks
     def comm_callback(self, comm_msg):
         if comm_msg.data == "Attract":

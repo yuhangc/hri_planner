@@ -48,6 +48,11 @@ class PlannerDataLogger(object):
         # set an initial trial number
         self.trial = 0
 
+        # subscribers
+        self.plan_sub = rospy.Subscriber("/planner/full_plan", PlannedTrajectories, self.plan_callback)
+        self.belief_cost_sub = rospy.Subscriber("/planner/belief_and_costs",
+                                                Float64MultiArray, self.belief_cost_callback)
+
         # time start
         self.t_start = rospy.get_time()
 
@@ -65,7 +70,7 @@ class PlannerDataLogger(object):
 
         self.comm_hist = []
 
-        if trial > 0:
+        if trial >= 0:
             self.trial = trial
         else:
             self.trial += 1
@@ -73,9 +78,12 @@ class PlannerDataLogger(object):
         self.t_start = rospy.get_time()
 
     def save_data(self):
+        print "starting to save data for trial ", self.trial, "..."
         # time stamps
-        t_data = np.vstack((np.asarray(self.t_plan), np.asarray(self.t_belief)))
-        np.savetxt(self.save_path + "/tstamp" + str(self.trial) + ".txt", t_data.transpose(), delimiter=',')
+        np.savetxt(self.save_path + "/tstamp_plan" + str(self.trial) + ".txt",
+                   np.asarray(self.t_plan).transpose(), delimiter=',')
+        np.savetxt(self.save_path + "/tstamp_belief" + str(self.trial) + ".txt",
+                   np.asarray(self.t_belief).transpose(), delimiter=',')
 
         # "actual" trajectories
         np.savetxt(self.save_path + "/robot_traj" + str(self.trial) + ".txt",
@@ -110,10 +118,12 @@ class PlannerDataLogger(object):
         self.t_plan.append(rospy.get_time() - self.t_start)
 
         self.xr_hist.append(np.asarray(plan_msg.xr_init))
-        self.xh_hist.append(np.asarray(plan_msg.xh_init))
         self.robot_traj_opt.append(np.asarray(plan_msg.robot_traj_opt))
-        self.human_traj_hp_opt.append(np.asarray(plan_msg.human_traj_hp_opt))
-        self.human_traj_rp_opt.append(np.asarray(plan_msg.human_traj_rp_opt))
+
+        if plan_msg.xh_init:
+            self.xh_hist.append(np.asarray(plan_msg.xh_init))
+            self.human_traj_hp_opt.append(np.asarray(plan_msg.human_traj_hp_opt))
+            self.human_traj_rp_opt.append(np.asarray(plan_msg.human_traj_rp_opt))
 
     def belief_cost_callback(self, msg):
         self.t_belief.append(rospy.get_time() - self.t_start)

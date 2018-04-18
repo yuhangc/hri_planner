@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 4/9/2018
-// Last revision: 4/15/2018
+// Last revision: 4/17/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -122,14 +122,15 @@ void ControllerNode::compute_and_publish_control()
     double phi = utils::wrap_to_pi(x_goal_(2) - xr_(2));
     double th_z = std::atan2(x_goal_(1) - xr_(1), x_goal_(0) - xr_(0));
     double alpha = utils::wrap_to_pi(th_z - xr_(2));
-    double k_phi_rho = std::min(1.0, rho * 5.0);
+    double k_alp_rho = std::min(1.0, rho * 10.0);
 
     std::cout << "robot pose is: " << xr_.transpose() << std::endl;
-    std::cout << "rho: " << rho << ", phi: " << phi << ", th: " << th_z << ", alpha: " << alpha << std::endl;
+    std::cout << "rho: " << rho << ", k_alp_rho:" << k_alp_rho << ", phi: " << phi
+              << ", th: " << th_z << ", alpha: " << alpha << std::endl;
 
     geometry_msgs::Twist ur;
     ur.linear.x = utils::clamp(k_rho_ * std::tanh(k_v_ * rho), -v_max_, v_max_);
-    ur.angular.z = utils::clamp(k_alp_ * alpha + k_phi_ * k_phi_rho * phi, -om_max_, om_max_);
+    ur.angular.z = utils::clamp(k_alp_ * k_alp_rho * alpha + k_phi_ * phi, -om_max_, om_max_);
 
     std::cout << "control is: " << ur.linear.x << ", " << ur.angular.z << std::endl;
 

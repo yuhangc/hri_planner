@@ -132,7 +132,7 @@ class IRLPredictor(IRLPredictorBase):
         # self.f_cumu.append(features_th.collision_hr_dynamic(0.25, 0.3, 0.5))
         # self.f_cumu.append(features_th.collision_obs(0.3, [2.055939, 3.406737]))
         self.f_cumu.append(features_th.collision_hr(0.5))
-        self.f_cumu.append(features_th.collision_hr_dynamic(0.3, 0.5, 0.5))
+        self.f_cumu.append(features_th.collision_hr_dynamic(0.6, 0.8, 0.6))
         self.f_cumu.append(features_th.collision_obs(0.5, [2.055939, 3.406737]))
 
         # define all the termination features
@@ -270,7 +270,7 @@ def plot_prediction(xh, xr, x_opt, x_goal, obs_data, ax, flag_legend=True, flag_
         ax.legend()
 
 
-def predict_and_save_all(predictor, path, save_path, user_list, cond, n_trial, weights):
+def predict_and_save_all(predictor, path, save_path, user_list, cond, n_trial, weights, t_gap=-1):
     n_cumu = 5
     n_term = 1
     predictor.set_param(weights[0:n_cumu], weights[n_cumu:(n_cumu+n_term)])
@@ -296,7 +296,7 @@ def predict_and_save_all(predictor, path, save_path, user_list, cond, n_trial, w
             ur = traj[:, 9:11]
 
             # set initial controls - randomly perturb uh
-            u0 = uh + 0.1 * np.random.randn(uh.shape[0], uh.shape[1])
+            u0 = uh + 0.0 * np.random.randn(uh.shape[0], uh.shape[1])
 
             # plan the trajectory
             x_opt, u_opt = predictor.predict_full(u0, x0, x_goal, xr, ur)
@@ -311,6 +311,33 @@ def predict_and_save_all(predictor, path, save_path, user_list, cond, n_trial, w
             # save the data
             file_name = save_path + "/prediction/user" + str(usr) + "/" + cond + "/demo" + str(id) + ".txt"
             np.savetxt(file_name, np.hstack((x_opt, u_opt)), delimiter=',')
+
+            if t_gap > 0:
+                t_total = len(xr)
+
+                for t in range(t_gap, t_total-predictor.T, t_gap):
+                    xh = traj[t:, 0:4]
+                    uh = traj[t:, 4:6]
+                    xr = traj[t:, 6:9]
+                    ur = traj[t:, 9:11]
+
+                    # initial pose
+                    x0 = traj[t-1, 0:4]
+
+                    # set initial controls - randomly perturb uh
+                    u0 = uh + 0.0 * np.random.randn(uh.shape[0], uh.shape[1])
+
+                    # plan the trajectory
+                    x_opt, u_opt = predictor.predict_full(u0, x0, x_goal, xr, ur)
+
+                    # plot and save the trajectory
+                    fig, axes = plt.subplots()
+                    plot_prediction(xh, xr, x_opt, x_goal, obs_data, axes)
+
+                    # plt.show()
+                    file_name = save_path + "/prediction/user" + str(usr) + "/" + cond + \
+                                "/demo" + str(id) + "_t" + str(t) + ".txt"
+                    np.savetxt(file_name, np.hstack((x_opt, u_opt)), delimiter=',')
 
 
 def test_param_robustness(weights, predictor, path, trial):
@@ -395,9 +422,18 @@ if __name__ == "__main__":
     predict_and_save_all(predictor,
                          "/home/yuhang/Documents/irl_data/winter18",
                          "/home/yuhang/Documents/irl_data/winter18",
+                         [0, 1, 2, 3], "hp",
+                         [62, 27, 36, 62],
+                         [8.0, 20.0, 8.0, 1.0, 10.0, 40.0],
+                         t_gap=2)
+
+    predict_and_save_all(predictor,
+                         "/home/yuhang/Documents/irl_data/winter18",
+                         "/home/yuhang/Documents/irl_data/winter18",
                          [0, 1, 2, 3], "rp",
-                         [40, 24, 30, 30],
-                         [8.0, 20.0, 7.0, 10.0, 10.0, 40.0])
+                         [62, 27, 61, 62],
+                         [8.0, 20.0, 8.0, 10.0, 10.0, 40.0],
+                         t_gap=2)
 
     # test_param_robustness(np.array([7.0, 20.0, 10.0, 10.0, 8.0, 50.0]), predictor,
     #                       "/home/yuhang/Documents/irl_data/winter18/user1/processed/rp", 2)
