@@ -29,6 +29,11 @@ class PlannerDataLogger(object):
         # path to save data
         self.save_path = save_path
 
+        # dimensions
+        self.T = rospy.get_param("~dimension/T", 6)
+        self.nXr = rospy.get_param("~dimension/nXr", 3)
+        self.nXh = rospy.get_param("~dimension/nXh", 4)
+
         # information to save
         self.t_plan = []
         self.xr_hist = []
@@ -124,6 +129,11 @@ class PlannerDataLogger(object):
             self.xh_hist.append(np.asarray(plan_msg.xh_init))
             self.human_traj_hp_opt.append(np.asarray(plan_msg.human_traj_hp_opt))
             self.human_traj_rp_opt.append(np.asarray(plan_msg.human_traj_rp_opt))
+        else:
+            # set to zero if human tracking/prediction is missing
+            self.xh_hist.append(np.zeros((self.nXh, )))
+            self.human_traj_hp_opt.append(np.zeros((self.T * self.nXh, )))
+            self.human_traj_rp_opt.append(np.zeros((self.T * self.nXh, )))
 
     def belief_cost_callback(self, msg):
         self.t_belief.append(rospy.get_time() - self.t_start)
