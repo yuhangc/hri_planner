@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/10/2018
+// Last revision: 4/18/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -22,7 +22,9 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     ros::param::param<double>("~planner/goal_reaching_th_planner", goal_reaching_th_planner_, 0.5);
     ros::param::param<double>("~planner/goal_reaching_th_controller", goal_reaching_th_controller_, 0.1);
 
-    ros::param::param<double>("~human_filter/dist_threshold", human_filter_dist_th_, 1.0);
+    ros::param::param<double>("~planner/human_filter_dist_th", human_filter_dist_th_, 1.0);
+
+    ros::param::param<int >("~planner/human_tracking_lost_th", tracking_lost_th_, 2);
 
     int nXh, nUh, nXr, nUr;
     ros::param::param<int>("~dimension/nXh", nXh, 4);
@@ -74,6 +76,9 @@ void PlannerNode::run()
     flag_pause_planning_ = true;
     flag_stop_planning_ = false;
     flag_human_detected_ = false;
+
+    flag_human_tracking_lost_ = true;
+    human_tracking_lost_frames_ = 0;
 
     // two rates
     ros::Rate rate_fast(state_machine_rate_);
@@ -128,19 +133,42 @@ void PlannerNode::run()
                 while (!ros::isShuttingDown()) {
                     ros::spinOnce();
 
-                    // check if human is detected
+                    // if human is detected, then use interactive planner
                     if (flag_human_detected_) {
-                        ROS_INFO("Using interactive planner...");
-                        // FIXME: reset the simple planner?
-                        plan(planner_interactive_);
+                        if (flag_human_tracking_lost_) {
+                            flag_human_tracking_lost_ = false;
+                            human_tracking_lost_frames_ = 0;
+                            planner_interactive_->reset_planner();
+                        }
+
                         flag_human_detected_ = false;
-                        planner_simple_->reset_planner();
+
+                        ROS_INFO("Using interactive planner...");
+                        plan(planner_interactive_);
                     }
                     else {
-                        ROS_INFO("Using simple planner since no human detected...");
-                        // FIXME: reset the interactive planner?
-                        plan(planner_simple_);
-                        planner_interactive_->reset_planner();
+                        // if human not detected, increase count and check
+                        if (!flag_human_tracking_lost_) {
+                            ++human_tracking_lost_frames_;
+                            if (human_tracking_lost_frames_ > tracking_lost_th_) {
+                                flag_human_tracking_lost_ = true;
+                                planner_simple_->reset_planner();
+                            }
+                        }
+
+                        // if tracking not lost, use a prediction
+                        if (!flag_human_tracking_lost_) {
+                            dynamic_cast<hri_planner::Planner*>(planner_interactive_.get())->
+                                    get_human_pred(0, intent_, xh_meas_);
+
+                            ROS_INFO("Using interactive planner...");
+                            plan(planner_interactive_);
+                        }
+                        else {
+                            // otherwise use the simple planner
+                            ROS_INFO("Using simple planner since no human detected...");
+                            plan(planner_simple_);
+                        }
                     }
 
                     rate_slow.sleep();
@@ -270,12 +298,6 @@ void PlannerNode::compute_and_publish_control()
 //----------------------------------------------------------------------------------
 void PlannerNode::goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_msg)
 {
-//    for (int i = 0; i < goal_dim_; ++i) {
-//        xr_goal_(i) = goal_msg->data[i];
-//        xh_goal_(i) = goal_msg->data[i+goal_dim_];
-//        xh_init_(i) = goal_msg->data[i+goal_dim_*2];
-//    }
-
     xr_goal_(0) = goal_msg->data[0];
     xr_goal_(1) = goal_msg->data[1];
     xh_goal_(0) = goal_msg->data[3];

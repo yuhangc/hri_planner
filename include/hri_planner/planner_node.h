@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 4/4/2018
-// Last revision: 4/15/2018
+// Last revision: 4/18/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -57,6 +57,10 @@ private:
     bool flag_pause_planning_;
     bool flag_stop_planning_;
     bool flag_human_detected_;
+    bool flag_human_tracking_lost_;
+
+    int human_tracking_lost_frames_;
+    int tracking_lost_th_;
 
     // goals
     int goal_dim_;

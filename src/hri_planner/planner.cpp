@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/10/2018
+// Last revision: 4/18/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -611,6 +611,15 @@ void Planner::reset_planner()
 
     // reset belief model
     belief_model_->reset_hist(Eigen::Vector2d::Zero());
+}
+
+//----------------------------------------------------------------------------------
+void Planner::get_human_pred(const int t, const int intent, Eigen::VectorXd &human_state)
+{
+    if (intent == HumanPriority)
+        human_state = human_traj_hp_opt_.x.segment(nXh_ * t, nXh_);
+    else
+        human_state = human_traj_rp_init_.x.segment(nXh_ * t, nXh_);
 }
 
 //----------------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/10/2018
+// Last revision: 4/18/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -134,6 +134,9 @@ public:
 
     // simple reset
     void reset_planner() override;
+
+    // get human prediction
+    void get_human_pred(const int t, const int intent, Eigen::VectorXd& human_state);
 
 private:
     // components

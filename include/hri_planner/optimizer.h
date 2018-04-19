@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2018
-// Last revision: 4/10/2018
+// Last revision: 4/18/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -79,7 +79,7 @@ public:
                             const Eigen::VectorXd& lb_uh, const Eigen::VectorXd& ub_uh) = 0;
 
     // set optimization time limit
-    void set_time_limit(const double t_max) {
+    virtual void set_time_limit(const double t_max) {
         optimizer_.set_maxtime(t_max);
     }
 
@@ -183,6 +183,14 @@ public:
 
     void set_bounds(const Eigen::VectorXd& lb_ur, const Eigen::VectorXd& ub_ur,
                     const Eigen::VectorXd& lb_uh, const Eigen::VectorXd& ub_uh) override;
+
+    void set_time_limit(const double t_max) override {
+        optimizer_.set_maxtime(t_max);
+
+        // heuristically set the time limit for the follower optimizers
+        optimizer_hp_->set_time_limit(t_max * 0.08);
+        optimizer_rp_->set_time_limit(t_max * 0.08);
+    }
 
     // optimize!
     double optimize(const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,

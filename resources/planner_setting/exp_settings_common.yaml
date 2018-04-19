@@ -22,6 +22,9 @@ planner:
   goal_reaching_th_planner: 0.6
   goal_reaching_th_controller: 0.1
 
+  human_filter_dist_th: 1.0
+  human_tracking_lost_th: 2
+
 # belief model settings
 explicit_comm:
   history_length: 10
