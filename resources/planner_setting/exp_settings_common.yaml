@@ -87,7 +87,7 @@ human_cost_rp:
 
   feature4:
     name: CollisionDynamic
-    weight: 10.0
+    weight: 15.0
     nargs: 3
     args: [0.6, 0.8, 0.6]
 

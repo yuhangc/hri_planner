@@ -23,7 +23,7 @@ robot_cost_int:
 
   feature1:
     name: Collision
-    weight: 10.0
+    weight: 5.0
     nargs: 1
     args: [0.5]
 

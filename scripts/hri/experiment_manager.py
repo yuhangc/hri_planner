@@ -112,9 +112,9 @@ class PlannerDataLogger(object):
 
         # communication
         if self.comm_hist:
-            self.comm_logger.write(", ".join(self.comm_hist))
+            self.comm_logger.write(", ".join(self.comm_hist) + "\n")
         else:
-            self.comm_logger.write("No communication")
+            self.comm_logger.write("No communication\n")
 
     def log_comm(self, acomm):
         self.comm_hist.append(acomm)
@@ -167,6 +167,7 @@ class ExperimentManager(object):
 
         # subscribers and publishers
         self.goal_reach_sub = rospy.Subscriber("controller/goal_reached", Bool, self.goal_reached_callback)
+        self.comm_sub = rospy.Subscriber("/planner/communication", String, self.comm_callback)
 
         self.goal_pub = rospy.Publisher("/planner/set_goal", Float64MultiArray, queue_size=1)
         self.planner_ctrl_pub = rospy.Publisher("/planner/ctrl", String, queue_size=1)
