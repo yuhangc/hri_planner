@@ -185,6 +185,7 @@ class PlannerSimulator(object):
 
             # check for communication
             if self.flag_comm_updated:
+                print "received communication: ", self.acomm_
                 self.flag_comm_updated = False
                 self.tcomm_ = t * self.dt_
 
@@ -382,7 +383,10 @@ class PlannerSimulator(object):
         plt.show()
 
         # to save the communication
-        comm_actions = np.zeros((len(xr_inits), len(xr_goals)), dtype=int)
+        comm_actions_hp = np.zeros((len(xr_inits), len(xr_goals)), dtype=int)
+        tcomm_hp = np.zeros((len(xr_inits), len(xr_goals)), dtype=int)
+        comm_actions_rp = np.zeros((len(xr_inits), len(xr_goals)), dtype=int)
+        tcomm_rp = np.zeros((len(xr_inits), len(xr_goals)), dtype=int)
 
         # run simulation with all combinations of xr_init and xr_goal
         for (i, xr_init) in enumerate(xr_inits):
@@ -394,17 +398,27 @@ class PlannerSimulator(object):
                 fig1, fig2, fig3 = self.run_simulation(0, Tsim=15, show_plot=False)
                 self.save_test_data(test_path, [fig1, fig2, fig3], fig_names, i, j, 0)
 
+                tcomm_hp[i, j] = self.tcomm_
+                if self.tcomm_ >= 0:
+                    comm_actions_hp[i, j] = 0
+                else:
+                    comm_actions_hp[i, j] = -1
+
                 self.clear_hist(xr_init, xr_goal)
                 fig1, fig2, fig3 = self.run_simulation(1, Tsim=15, show_plot=False)
                 self.save_test_data(test_path, [fig1, fig2, fig3], fig_names, i, j, 1)
 
-                if self.tcomm_ > 0:
-                    comm_actions[i][j] = (self.acomm_ == "RobotPriority")
+                tcomm_rp[i, j] = self.tcomm_
+                if self.tcomm_ >= 0:
+                    comm_actions_rp[i, j] = 1
                 else:
-                    comm_actions[i][j] = -1
+                    comm_actions_rp[i, j] = -1
 
         # save the communication actions
-        np.savetxt(test_path + "/data/comm_actions.txt", comm_actions, delimiter=',')
+        np.savetxt(test_path + "/data/comm_actions_hp.txt", comm_actions_hp, delimiter=',')
+        np.savetxt(test_path + "/data/comm_actions_rp.txt", comm_actions_rp, delimiter=',')
+        np.savetxt(test_path + "/data/tcomm_hp.txt", tcomm_hp, delimiter=',')
+        np.savetxt(test_path + "/data/tcomm_rp.txt", tcomm_rp, delimiter=',')
 
     def clear_hist(self, x_init, x_goal):
         # trajectory
@@ -450,7 +464,7 @@ class PlannerSimulator(object):
             self.acomm_ = "RobotPriority"
 
         self.flag_comm_updated = True
-        print "received communication: ", self.acomm_
+        print "[callback] received communication: ", self.acomm_
 
     def robot_ctrl_callback(self, ctrl_msg):
         self.robot_ctrl_[0] = ctrl_msg.linear.x
@@ -481,4 +495,4 @@ if __name__ == "__main__":
     # simulator.run_simulation(0)
     # simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
 
-    simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 0)
+    simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 1)

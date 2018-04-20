@@ -6,13 +6,45 @@ import matplotlib.pyplot as plt
 
 def visualize_frame(ax, t, xh, xr, robot_plan, pred_hp, pred_rp, xr_goal, xh_goal):
     # plot previous trajectories
-    robot_traj = xr[0:t]
-    human_traj = xh[0:t]
+    robot_traj = xr[0:t+1]
+    human_traj = xh[0:t+1]
 
+    if xh[t, 0] == 0 and xh[t, 1] == 0:
+        ax.set_facecolor((1.0, 0.67, 0.62))
+
+    # don't plot human trajectory if no detection
+    if not np.all(human_traj == 0):
+        # ignore the leading zeros
+        human_traj = np.column_stack((np.trim_zeros(human_traj[:, 0]), np.trim_zeros(human_traj[:, 1])))
+
+        # segment the trajectory based on zeros
+        idx_last = 0
+        idx_curr = 0
+        pred_segs = []
+        while idx_curr < len(human_traj):
+            if human_traj[idx_curr, 0] == 0 and human_traj[idx_curr, 1] == 0:
+                ax.plot(human_traj[idx_last:(idx_curr-1), 0], human_traj[idx_last:(idx_curr-1), 1], "-o",
+                        color=(0.1, 0.1, 0.1), fillstyle="none", lw=1.5, label="human_traj")
+                pred_segs.append(human_traj[(idx_curr-2):idx_curr])
+
+                # find next non-zero element
+                while idx_curr < len(human_traj) and human_traj[idx_curr, 0] == 0 and human_traj[idx_curr, 1] == 0:
+                    idx_curr += 1
+                idx_last = idx_curr
+            else:
+                idx_curr += 1
+
+        if human_traj[idx_curr-1, 0] != 0 or human_traj[idx_curr-1, 1] != 0:
+            ax.plot(human_traj[idx_last:idx_curr, 0], human_traj[idx_last:idx_curr, 1], "-o",
+                    color=(0.1, 0.1, 0.1), fillstyle="none", lw=1.5, label="human_traj")
+
+        # plot the predicted segments
+        for seg in pred_segs:
+            ax.plot(seg[:, 0], seg[:, 1], '-o', color=(0.8, 0.8, 0.2), fillstyle="none", lw=1.5)
+
+    # plot the other trajectories
     ax.plot(robot_traj[:, 0], robot_traj[:, 1], "-o",
             color=(0.3, 0.3, 0.9), fillstyle="none", lw=1.5, label="robot_traj")
-    ax.plot(human_traj[:, 0], human_traj[:, 1], "-o",
-            color=(0.1, 0.1, 0.1), fillstyle="none", lw=1.5, label="human_traj")
     ax.plot(xr_goal[0], xr_goal[1], 'bo', fillstyle="none", markersize=8)
     ax.plot(xh_goal[0], xh_goal[1], 'ko', fillstyle="none", markersize=8)
 
