@@ -54,6 +54,7 @@ class PlannerSimulator(object):
         self.human_traj_rp_opt_ = None
 
         self.acomm_ = ""
+        self.tcomm_ = -1
         self.robot_intent_ = -1
 
         self.robot_ctrl_ = np.zeros((self.nUr_, ))
@@ -113,19 +114,20 @@ class PlannerSimulator(object):
         np.savetxt(path + "/block" + str(test_id) + ".txt", traj_data, delimiter=',')
 
     # main function to run
-    def run_simulation(self, robot_intent):
-        # total "simulation" time is length of pre-defined human trajectory
-        Tsim = len(self.human_traj)
+    def run_simulation(self, robot_intent, Tsim=-1, show_plot=True):
+        # if not specified, total "simulation" time is length of pre-defined human trajectory
+        if Tsim < 0:
+            Tsim = len(self.human_traj)
 
         # create subplots for each frame
         # 4 plots each row
-        n_cols = 4
+        n_cols = 5
         n_rows = (Tsim - 1) / n_cols + 1
 
-        fig, axes = plt.subplots(n_rows, n_cols)
+        fig1, axes = plt.subplots(n_rows, n_cols)
 
-        self.xh_ = self.xh0
-        self.xr_ = self.xr0
+        self.xh_ = self.xh0.copy()
+        self.xr_ = self.xr0.copy()
 
         # publish goal first
         goal_data = Float64MultiArray()
@@ -133,14 +135,17 @@ class PlannerSimulator(object):
             goal_data.data.append(xr)
         for xh in self.xh_goal:
             goal_data.data.append(xh)
-        for xh in self.xh0:
+        for xh in self.xh0[0:2]:
             goal_data.data.append(xh)
 
         # set intent data
         goal_data.data.append(robot_intent)
 
+        print goal_data.data
+
         self.goal_pub.publish(goal_data)
 
+        print "robot start position: ", self.xr_
         for t in range(Tsim):
             print "At time step t = ", t*self.dt_
 
@@ -178,6 +183,11 @@ class PlannerSimulator(object):
             # update pose and vel of human
             self.xh_ = self.human_traj[t, 0:self.nXh_]
 
+            # check for communication
+            if self.flag_comm_updated:
+                self.flag_comm_updated = False
+                self.tcomm_ = t * self.dt_
+
             # visualize the plan
             row = t / n_cols
             col = t % n_cols
@@ -189,10 +199,18 @@ class PlannerSimulator(object):
         self.planner_ctrl_pub.publish(ctrl_data)
 
         # visualize beliefs and partial costs
-        self.visualize_belief_and_costs()
+        fig2, fig3 = self.visualize_belief_and_costs()
+
+        # set tight plot layout
+        fig1.tight_layout()
+        fig2.tight_layout()
+        fig3.tight_layout()
 
         # show visualization
-        plt.show()
+        if show_plot:
+            plt.show()
+
+        return fig1, fig2, fig3
 
     # helper functions
     def publish_states(self):
@@ -281,17 +299,17 @@ class PlannerSimulator(object):
         beliefs = np.asarray(self.belief_hist)
         costs = np.asarray(self.cost_hist)
 
-        fig, ax = plt.subplots(2, 1)
+        fig1, ax = plt.subplots(2, 1)
         ax[0].plot(beliefs, '-ks', lw=1.5)
         ax[0].set_title("belief of human having priority")
 
         ax[1].plot(costs[:, 0], '-bs', lw=1.5, fillstyle="none", label="cost no communication")
         ax[1].plot(costs[:, 1], '--b^', lw=1.5, fillstyle="none", label="cost communication")
-        ax[1].set_title("robot intent is" + str(self.robot_intent_))
+        ax[1].set_title("robot intent is " + str(self.robot_intent_))
         ax[1].legend()
 
         # plot for partial costs
-        fig, ax = plt.subplots(2, 1)
+        fig2, ax = plt.subplots(2, 1)
         ax[0].plot(costs[:, 2], '-bs', lw=1.5, fillstyle="none", label="cost hp")
         ax[0].plot(costs[:, 3], '--b^', lw=1.5, fillstyle="none", label="cost rp")
         ax[0].legend()
@@ -301,6 +319,8 @@ class PlannerSimulator(object):
         ax[1].plot(costs[:, 5], '--b^', lw=1.5, fillstyle="none", label="cost rp")
         ax[1].legend()
         ax[1].set_title("with communication")
+
+        return fig1, fig2
 
     # robot dynamics
     def robot_dynamics(self, x, u):
@@ -352,6 +372,75 @@ class PlannerSimulator(object):
         self.load_data(data_path, human_traj_id)
 
         # load robot initial conditions and goals
+        test_path = data_path + "/test_config" + str(test_id)
+        xr_goals = np.loadtxt(test_path + "/goal.txt", delimiter=',')
+        xr_inits = np.loadtxt(test_path + "/init.txt", delimiter=',')
+
+        # show the initial positions and goals
+        plt.plot(xr_inits[:, 0], xr_inits[:, 1], 'bo')
+        plt.plot(xr_goals[:, 0], xr_goals[:, 1], 'ro')
+        plt.show()
+
+        # to save the communication
+        comm_actions = np.zeros((len(xr_inits), len(xr_goals)), dtype=int)
+
+        # run simulation with all combinations of xr_init and xr_goal
+        for (i, xr_init) in enumerate(xr_inits):
+            for (j, xr_goal) in enumerate(xr_goals):
+                # run simulation and save data
+                fig_names = ["traj_hist", "belief_cost", "partial_costs"]
+
+                self.clear_hist(xr_init, xr_goal)
+                fig1, fig2, fig3 = self.run_simulation(0, Tsim=15, show_plot=False)
+                self.save_test_data(test_path, [fig1, fig2, fig3], fig_names, i, j, 0)
+
+                self.clear_hist(xr_init, xr_goal)
+                fig1, fig2, fig3 = self.run_simulation(1, Tsim=15, show_plot=False)
+                self.save_test_data(test_path, [fig1, fig2, fig3], fig_names, i, j, 1)
+
+                if self.tcomm_ > 0:
+                    comm_actions[i][j] = (self.acomm_ == "RobotPriority")
+                else:
+                    comm_actions[i][j] = -1
+
+        # save the communication actions
+        np.savetxt(test_path + "/data/comm_actions.txt", comm_actions, delimiter=',')
+
+    def clear_hist(self, x_init, x_goal):
+        # trajectory
+        self.robot_traj = []
+
+        # stores the beliefs and cost history
+        self.belief_hist = []
+        self.cost_hist = []
+
+        # flags for data update
+        self.flag_plan_updated = False
+        self.flag_ctrl_updated = False
+        self.flag_comm_updated = False
+
+        self.acomm_ = ""
+        self.tcomm_ = -1
+
+        # set the initial conditions
+        self.xr0 = x_init.copy()
+        self.xr_goal = x_goal.copy()
+
+    def save_test_data(self, save_path, figs, fig_names, i, j, intent):
+        # save the figures
+        intent_str = ["hp", "rp"]
+        for test_fig, fig_name in zip(figs, fig_names):
+            test_fig.savefig(save_path + "/figs/" + fig_name + "_" + str(i) +
+                             "_" + str(j) + "_" + intent_str[intent] + ".pdf")
+
+        # save the trajectories
+        Tsim = len(self.robot_traj)
+        self.robot_traj = np.asarray(self.robot_traj)
+        self.belief_hist = np.asarray(self.belief_hist)[:, None]
+        self.cost_hist = np.asarray(self.cost_hist)
+        np.savetxt(save_path + "/data/traj_belief" + "_" + str(i) + "_" + str(j) + "_" + intent_str[intent],
+                   np.hstack((self.robot_traj, self.human_traj[0:Tsim], self.belief_hist, self.cost_hist)),
+                   delimiter=',')
 
     # callbacks
     def comm_callback(self, comm_msg):
@@ -374,6 +463,11 @@ class PlannerSimulator(object):
         self.human_traj_rp_opt_ = np.asarray(plan_msg.human_traj_rp_opt)
         self.flag_plan_updated = True
 
+        if not plan_msg.human_traj_hp_opt:
+            # add to belief and cost history
+            self.belief_hist.append(0)
+            self.cost_hist.append(np.zeros((6, )))
+
     def belief_cost_callback(self, msg):
         self.belief_hist.append(msg.data[0])
         self.cost_hist.append(msg.data[1:7])
@@ -383,6 +477,8 @@ if __name__ == "__main__":
     rospy.init_node("planner_simulator")
 
     simulator = PlannerSimulator()
-    simulator.load_data("/home/yuhang/Documents/hri_log/test_data", 0)
-    simulator.run_simulation(0)
-    simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
+    # simulator.load_data("/home/yuhang/Documents/hri_log/test_data", 0)
+    # simulator.run_simulation(0)
+    # simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
+
+    simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 0)

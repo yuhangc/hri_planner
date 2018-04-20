@@ -1,0 +1,113 @@
+## planner settings
+
+# dimensions
+dimension:
+  T: 6
+  nXh: 4
+  nUh: 2
+  nXr: 3
+  nUr: 2
+  dt: 0.5
+  dim_goal: 2
+
+# general settings
+planner:
+  planner_rate: 2.0
+  planner_mode: simulation
+  publish_full_plan: true
+  publish_belief_cost: true
+
+  comm_cost: 2.0
+
+  goal_reaching_th_planner: 0.6
+  goal_reaching_th_controller: 0.1
+
+  human_filter_dist_th: 1.0
+  human_tracking_lost_th: 2
+
+# belief model settings
+explicit_comm:
+  history_length: 10
+  ratio: 100.0
+  decay_rate: 2.5
+  fcorrection_hp: 2.0
+  fcorrection_rp: 20.0
+
+# human costs
+human_cost:
+  n_features: 5
+
+human_cost_hp:
+  feature0:
+    name: Velocity
+    weight: 8.0
+
+  feature1:
+    name: Acceleration
+    weight: 20.0
+
+  feature2:
+    name: Goal
+    weight: 40.0
+    nargs: 2
+    args: [0.732, 6.01]
+
+  feature3:
+    name: Collision
+    weight: 7.0
+    nargs: 1
+    args: [0.3]
+
+  feature4:
+    name: CollisionDynamic
+    weight: 0.5
+    nargs: 3
+    args: [0.6, 0.8, 0.6]
+
+human_cost_rp:
+  feature0:
+    name: Velocity
+    weight: 8.0
+
+  feature1:
+    name: Acceleration
+    weight: 20.0
+
+  feature2:
+    name: Goal
+    weight: 40.0
+    nargs: 2
+    args: [0.732, 6.01]
+
+  feature3:
+    name: Collision
+    weight: 5.0
+    nargs: 1
+    args: [0.5]
+
+  feature4:
+    name: CollisionDynamic
+    weight: 10.0
+    nargs: 3
+    args: [0.6, 0.8, 0.6]
+
+# optimizer settings
+optimizer:
+  bounds:
+    lb_ur: [-0.5, -3.0]
+    ub_ur: [0.5, 3.0]
+    lb_uh: [-10.0, -10.0]
+    ub_uh: [10.0, 10.0]
+
+# steer functions
+steer_posq:
+  k_rho: 1.0
+  k_v: 3.8
+  k_alp: 6.0
+  k_phi: -1.0
+  gamma: 0.15
+
+steer_acc:
+  v_max: 1.0
+  a_max: 0.5
+  k_v: 1.0

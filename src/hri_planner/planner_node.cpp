@@ -313,14 +313,10 @@ void PlannerNode::goal_callback(const std_msgs::Float64MultiArrayConstPtr& goal_
 
     // reset the planners
     std::string ns;
-    if (mode_ == "simulation")
-        ns = "~";
-    else {
-        if (intent_ == hri_planner::HumanPriority)
-            ns = "hp/";
-        else
-            ns = "rp/";
-    }
+    if (intent_ == hri_planner::HumanPriority)
+        ns = "hp/";
+    else
+        ns = "rp/";
 
     planner_interactive_->reset_planner(xr_goal_, xh_goal_, intent_, ns);
     planner_simple_->reset_planner(xr_goal_, xh_goal_, intent_, ns);
