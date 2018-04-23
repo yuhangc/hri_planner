@@ -2,7 +2,7 @@
     <arg name="settings_common" default="$(find hri_planner)/resources/planner_setting/exp_settings_common.yaml" />
 
     <node name="controller_node" pkg="hri_planner" type="controller_node" output="screen">
-        <param name="k_rho" value="0.5" />
+        <param name="k_rho" value="0.75" />
         <param name="k_v" value="2.0" />
         <param name="k_alp" value="3.0" />
         <param name="k_phi" value="-0.5" />

@@ -14,7 +14,7 @@
         </node>
         <node pkg="map_laser" type="filter.py" name="map_laser_filter" respawn="true" output="screen"/>
         <node pkg="leg_detector" type="leg_detector" name="leg_detector" args="scan:=/base_scan_filter $(find leg_detector)/config/trained_leg_detector.yaml" respawn="true" output="screen">
-            <param name="fixed_frame" type="string" value="odom" />
+            <param name="fixed_frame" type="string" value="map" />
             <param name="leg_reliability_limit" value="0.2" />
             <param name="leg_pair_separation" value="0.8" />
             <param name="min_points_per_group" value="7" />
@@ -22,7 +22,7 @@
     </group>
     <group unless="$(arg with_laser_filter)">
         <node pkg="leg_detector" type="leg_detector" name="leg_detector" args="scan:=$(arg scan) $(find leg_detector)/config/trained_leg_detector.yaml" respawn="true" output="screen">
-            <param name="fixed_frame" type="string" value="odom" />
+            <param name="fixed_frame" type="string" value="map" />
 			<param name="leg_reliability_limit" value="0.2" />
             <param name="leg_pair_separation" value="0.8" />
             <param name="min_points_per_group" value="7" />

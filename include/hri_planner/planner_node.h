@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 4/4/2018
-// Last revision: 4/18/2018
+// Last revision: 4/22/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -25,6 +25,7 @@
 #include <tf/transform_listener.h>
 
 #include "people_msgs/People.h"
+#include "people_msgs/PositionMeasurementArray.h"
 
 #include "hri_planner/planner.h"
 
@@ -62,6 +63,9 @@ private:
     int human_tracking_lost_frames_;
     int tracking_lost_th_;
 
+    // human tracking
+    double t_meas_last_;
+
     // goals
     int goal_dim_;
     Eigen::VectorXd xr_goal_;
@@ -78,6 +82,8 @@ private:
     double planning_rate_;
     double controller_rate_;
     double state_machine_rate_;
+
+    double dt_planning_;
 
     // goal reaching threshold
     double goal_reaching_th_planner_;
@@ -110,6 +116,8 @@ private:
     void plan(const std::shared_ptr<hri_planner::PlannerBase>& planenr);
     void compute_and_publish_control();
 
+    void reset_state_machine();
+
     double point_line_dist(const Eigen::VectorXd& p, const Eigen::VectorXd& a, const Eigen::VectorXd& b);
 
     // callback functions
@@ -119,6 +127,7 @@ private:
     void robot_state_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose_msg);
     void robot_odom_callback(const nav_msgs::OdometryConstPtr& odom_msg);
     void human_tracking_callback(const people_msgs::PeopleConstPtr& people_msg);
+    void human_detection_callback(const people_msgs::PositionMeasurementArrayConstPtr& pos_arr_msg);
 };
 
 

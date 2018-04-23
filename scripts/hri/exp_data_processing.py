@@ -90,7 +90,7 @@ def visualize_trial(test_dir, trial_id, T=15, n_cols=5):
     n_rows = (T - 1) / n_cols + 1
     fig, axes = plt.subplots(n_rows, n_cols)
 
-    for t in range(T):
+    for t in range(min(T, len(xr))):
         row = t / n_cols
         col = t % n_cols
         visualize_frame(axes[row][col], t, xh, xr, plan_data[t], pred_hp_data[t], pred_rp_data[t], xr_goal, xh_goal)
@@ -114,4 +114,4 @@ def visualize_trial(test_dir, trial_id, T=15, n_cols=5):
 
 
 if __name__ == "__main__":
-    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/test3", 1)
+    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/test4", 2)

@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/18/2018
+// Last revision: 4/22/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -16,6 +16,7 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
 {
     // get parameters
     ros::param::param<double>("~planner/planner_rate", planning_rate_, 2.0);
+    ros::param::param<double>("~planner/dt_planning", dt_planning_, 1.0 / planning_rate_);
     ros::param::param<double>("~planner/controller_rate", controller_rate_, 10);
     ros::param::param<double>("~planner/state_machine_rate", state_machine_rate_, 1000);
     ros::param::param<std::string>("~planner/planner_mode", mode_, "simulation");
@@ -61,6 +62,8 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
 
     human_tracking_sub_ = nh_.subscribe<people_msgs::People>("/people", 1,
                                                              &PlannerNode::human_tracking_callback, this);
+//    human_tracking_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements", 1,
+//                                                             &PlannerNode::human_detection_callback, this);
 
     // publishers
     goal_reached_pub_ = nh_.advertise<std_msgs::Bool>("/planner/goal_reached", 1);
@@ -72,13 +75,7 @@ void PlannerNode::run()
 {
     // loop and a simple state machine
     PlannerStates planner_state = Idle;
-    flag_start_planning_ = false;
-    flag_pause_planning_ = true;
-    flag_stop_planning_ = false;
-    flag_human_detected_ = false;
-
-    flag_human_tracking_lost_ = true;
-    human_tracking_lost_frames_ = 0;
+    reset_state_machine();
 
     // two rates
     ros::Rate rate_fast(state_machine_rate_);
@@ -113,6 +110,7 @@ void PlannerNode::run()
                     if (flag_stop_planning_) {
                         flag_stop_planning_ = false;
                         planner_state = Idle;
+                        reset_state_machine();
                         break;
                     }
 
@@ -182,6 +180,7 @@ void PlannerNode::run()
                         if (flag_stop_planning_) {
                             flag_stop_planning_ = false;
                             planner_state = Idle;
+                            reset_state_machine();
 
                             break;
                         }
@@ -197,6 +196,7 @@ void PlannerNode::run()
 
                             // planner back to idle
                             planner_state = Idle;
+                            reset_state_machine();
 
                             break;
                         }
@@ -264,12 +264,34 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
     double cosy = 1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z());
     xr_meas_(2) = std::atan2(siny, cosy);
 
-    // update planner measurements
-    planner->set_robot_state(xr_meas_, ur_meas_);
-    planner->set_human_state(xh_meas_);
+    // use simple prediction to take into account the planning time
+    if (mode_ != "simulation") {
+        // FIXME: this doesn't seem to be helpful?
+        Eigen::VectorXd xr_pred = xr_meas_;
+        Eigen::VectorXd xh_pred = xh_meas_;
 
-    // set the time limit for the optimizer to be 90% of the desired planner rate
-    double t_max_planning = 0.9 * (1.0 / planning_rate_);
+        // predict robot pose approximately with linear model
+        double th = xr_meas_(2);
+        xr_meas_(0) += ur_meas_(0) * std::cos(th) * dt_planning_;
+        xr_meas_(1) += ur_meas_(0) * std::sin(th) * dt_planning_;
+        xr_meas_(2) += ur_meas_(1) * dt_planning_;
+
+        // predict human pose with const velocity model
+        xh_pred(0) += xh_meas_(2) * dt_planning_;
+        xh_pred(1) += xh_meas_(3) * dt_planning_;
+
+        // set planning initial condition with the predicted states
+        planner->set_robot_state(xr_pred, ur_meas_);
+        planner->set_human_state(xh_pred);
+    }
+    else {
+        // update planner measurements
+        planner->set_robot_state(xr_meas_, ur_meas_);
+        planner->set_human_state(xh_meas_);
+    }
+
+    // set the time limit for the optimizer to be 85% of the desired planner rate
+    double t_max_planning = 0.85 * (1.0 / planning_rate_);
 
     // compute plan
     auto t_s = ros::Time::now();
@@ -293,6 +315,20 @@ void PlannerNode::compute_and_publish_control()
     cmd_vel.angular.z = ur(1);
 
     robot_ctrl_pub_.publish(cmd_vel);
+}
+
+//----------------------------------------------------------------------------------
+void PlannerNode::reset_state_machine()
+{
+    flag_start_planning_ = false;
+    flag_pause_planning_ = true;
+    flag_stop_planning_ = false;
+    flag_human_detected_ = false;
+
+    flag_human_tracking_lost_ = true;
+    human_tracking_lost_frames_ = 0;
+
+    t_meas_last_ = -1;
 }
 
 //----------------------------------------------------------------------------------
@@ -391,6 +427,47 @@ void PlannerNode::human_tracking_callback(const people_msgs::PeopleConstPtr &peo
         xh_meas_(1) = people_msg->people[person_id].position.y;
         xh_meas_(2) = people_msg->people[person_id].velocity.x;
         xh_meas_(3) = people_msg->people[person_id].velocity.y;
+    }
+}
+
+//----------------------------------------------------------------------------------
+void PlannerNode::human_detection_callback(const people_msgs::PositionMeasurementArrayConstPtr &pos_arr_msg)
+{
+    double min_dist = human_filter_dist_th_;
+    int person_id = -1;
+
+    // filter out detections that are too far away from "desired path"
+    for (int i = 0; i < pos_arr_msg->people.size(); ++i) {
+        Eigen::VectorXd pos(goal_dim_);
+        pos << pos_arr_msg->people[i].pos.x, pos_arr_msg->people[i].pos.y;
+
+        double dist = point_line_dist(pos, xh_init_, xh_goal_);
+        if (dist < min_dist) {
+            min_dist = dist;
+            person_id = i;
+        }
+    }
+
+    if (person_id == -1) {
+        flag_human_detected_ = false;
+    }
+    else {
+        flag_human_detected_ = true;
+
+        // if first detection
+        if (t_meas_last_ < 0) {
+            xh_meas_(2) = 0.0;
+            xh_meas_(3) = 0.0;
+        }
+        else {
+            double dt = pos_arr_msg->header.stamp.toSec() - t_meas_last_;
+            xh_meas_(2) = (pos_arr_msg->people[person_id].pos.x - xh_meas_(0)) / dt;
+            xh_meas_(3) = (pos_arr_msg->people[person_id].pos.y - xh_meas_(1)) / dt;
+        }
+        xh_meas_(0) = pos_arr_msg->people[person_id].pos.x;
+        xh_meas_(1) = pos_arr_msg->people[person_id].pos.y;
+
+        t_meas_last_ = pos_arr_msg->header.stamp.toSec();
     }
 }
 
