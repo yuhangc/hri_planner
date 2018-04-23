@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/18/2018
+// Last revision: 4/23/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -125,6 +125,7 @@ public:
 
     // main update function
     void compute_plan(double t_max=-1) override;
+    void compute_plan_no_comm(double t_max=-1);
 
     void publish_plan() override;
 
@@ -189,6 +190,8 @@ private:
     bool flag_publish_full_plan_;
     bool flag_publish_belief_cost_;
 
+    bool flag_publish_debug_info_;
+
     // whether to generate initial guess from scratch
     bool flag_gen_init_guesses_;
 
@@ -196,6 +199,7 @@ private:
     ros::Publisher robot_ctrl_pub_;
     ros::Publisher comm_pub_;
     ros::Publisher plan_pub_;
+    ros::Publisher plan_pub_debug_;
     ros::Publisher belief_cost_pub_;
 
     // creation routines

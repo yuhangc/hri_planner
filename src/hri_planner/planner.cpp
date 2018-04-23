@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/18/2018
+// Last revision: 4/23/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -158,12 +158,14 @@ Planner::Planner(ros::NodeHandle &nh, ros::NodeHandle &pnh): PlannerBase(nh, pnh
     // flags
     ros::param::param<bool>("~planner/publish_full_plan", flag_publish_full_plan_, false);
     ros::param::param<bool>("~planner/publish_belief_cost", flag_publish_belief_cost_, false);
+    ros::param::param<bool>("~planner/publish_debug_info", flag_publish_debug_info_, false);
     flag_gen_init_guesses_ = true;
 
     // create subscribers and publishers
     robot_ctrl_pub_ = nh_.advertise<geometry_msgs::Twist>("/planner/cmd_vel", 1);
     comm_pub_ = nh_.advertise<std_msgs::String>("/planner/communication", 1);
     plan_pub_ = nh_.advertise<hri_planner::PlannedTrajectories>("/planner/full_plan", 1);
+    plan_pub_debug_ = nh_.advertise<hri_planner::PlannedTrajectories>("/planner/full_plan_debugging", 1);
     belief_cost_pub_ = nh_.advertise<std_msgs::Float64MultiArray>("/planner/belief_and_costs", 1);
 
     ROS_INFO("All subscribers and publishers initialized!");
@@ -510,6 +512,81 @@ void Planner::compute_plan(double t_max)
         human_traj_hp_opt_ = human_traj_hp_opt_n;
         human_traj_rp_opt_ = human_traj_rp_opt_n;
     }
+
+    ROS_INFO("Got plan!");
+
+    if (flag_publish_debug_info_) {
+        // publish trajectories for both with/without communication
+        PlannedTrajectories planned_traj;
+        planned_traj.T = T_;
+        planned_traj.nXr = nXr_;
+        planned_traj.nXh = nXh_;
+
+        std::vector<double> traj;
+        utils::EigenToVector(robot_traj_opt_n.x, traj);
+        planned_traj.robot_traj_opt.assign(traj.begin(), traj.end());
+        utils::EigenToVector(robot_traj_opt.x, traj);
+        planned_traj.robot_traj_opt.insert(planned_traj.robot_traj_opt.end(), traj.begin(), traj.end());
+
+        utils::EigenToVector(human_traj_hp_opt.x, traj);
+        planned_traj.human_traj_hp_opt.assign(traj.begin(), traj.end());
+        utils::EigenToVector(human_traj_hp_opt_n.x, traj);
+        planned_traj.human_traj_hp_opt.insert(planned_traj.human_traj_hp_opt.end(), traj.begin(), traj.end());
+
+        utils::EigenToVector(human_traj_rp_opt.x, traj);
+        planned_traj.human_traj_rp_opt.assign(traj.begin(), traj.end());
+        utils::EigenToVector(human_traj_rp_opt_n.x, traj);
+        planned_traj.human_traj_rp_opt.insert(planned_traj.human_traj_rp_opt.end(), traj.begin(), traj.end());
+
+        plan_pub_debug_.publish(planned_traj);
+    }
+}
+
+//----------------------------------------------------------------------------------
+void Planner::compute_plan_no_comm(double t_max)
+{
+    ROS_INFO("Start to compute plan (no communication allowed)...");
+    // copy the current state measurements
+    xr_ = xr_meas_;
+    ur_ = ur_meas_;
+    xh_ = xh_meas_;
+
+    // first update current belief
+    // compute some parameters needed to update belief
+    // FIXME: compute desired control right here, should move to some function
+    Eigen::VectorXd ur_d(nUr_);
+    double rho = (xr_goal_ - xr_.head(2)).norm();
+    double phi = 0.0;   //! don't care about orientation for now
+    double th_z = std::atan2(xr_goal_(1) - xr_(1), xr_goal_(0) - xr_(0));
+    double alpha = utils::wrap_to_pi(th_z - xr_(2));
+
+    ur_d(0) = utils::clamp(k_rho_ * std::tanh(k_v_ * rho), lb_ur_vec_[0], ub_ur_vec_[0]);
+    ur_d(1) = utils::clamp(k_alp_ * alpha + k_phi_ * phi, lb_ur_vec_[1], ub_ur_vec_[1]);
+
+    belief_model_->set_ur_nav(ur_d);
+
+    // FIXME: decrease tcomm each time, t_curr is always 0
+    tcomm_ -= dt_;
+    belief_model_->update_belief(xr_, ur_, xh_, acomm_, tcomm_, 0.0);
+
+    // update initial guesses
+    update_init_guesses();
+
+    // set optimizer time limit if specified
+    if (t_max > 0) {
+        optimizer_no_comm_->set_time_limit(t_max);
+    }
+
+    // optimize for no communication
+    std::vector<double> cost_ni_no_comm;
+
+    cost_no_comm_ = optimizer_no_comm_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_,
+                                                 acomm_, tcomm_, robot_traj_opt_, &human_traj_hp_opt_,
+                                                 &human_traj_rp_opt_);
+
+    // get some info
+    optimizer_no_comm_->get_partial_cost(cost_hp_no_comm_, cost_rp_no_comm_, cost_ni_no_comm);
+    ROS_INFO("min cost no communication is: %f", cost_no_comm_);
 
     ROS_INFO("Got plan!");
 }

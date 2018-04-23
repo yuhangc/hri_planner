@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/22/2018
+// Last revision: 4/23/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -20,6 +20,7 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
     ros::param::param<double>("~planner/controller_rate", controller_rate_, 10);
     ros::param::param<double>("~planner/state_machine_rate", state_machine_rate_, 1000);
     ros::param::param<std::string>("~planner/planner_mode", mode_, "simulation");
+    ros::param::param<bool>("~planner/allow_explicit_comm", flag_allow_explicit_comm_, true);
     ros::param::param<double>("~planner/goal_reaching_th_planner", goal_reaching_th_planner_, 0.5);
     ros::param::param<double>("~planner/goal_reaching_th_controller", goal_reaching_th_controller_, 0.1);
 
@@ -295,7 +296,12 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
 
     // compute plan
     auto t_s = ros::Time::now();
-    planner->compute_plan(t_max_planning);
+    if (flag_allow_explicit_comm_) {
+        planner->compute_plan(t_max_planning);
+    }
+    else {
+        dynamic_cast<hri_planner::Planner*>(planner.get())->compute_plan_no_comm(t_max_planning);
+    }
     ros::Duration t_plan = ros::Time::now() - t_s;
     std::cout << "time spent for planning is: " << t_plan.toSec() << "s" << std::endl;
 

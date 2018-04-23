@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 4/4/2018
-// Last revision: 4/22/2018
+// Last revision: 4/23/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -94,6 +94,7 @@ private:
 
     // mode
     std::string mode_;
+    bool flag_allow_explicit_comm_;
 
     // node handler
     ros::NodeHandle nh_;
