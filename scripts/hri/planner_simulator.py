@@ -377,6 +377,13 @@ class PlannerSimulator(object):
         xr_goals = np.loadtxt(test_path + "/goal.txt", delimiter=',')
         xr_inits = np.loadtxt(test_path + "/init.txt", delimiter=',')
 
+        if xr_goals.ndim == 1:
+            xr_goals = xr_goals.reshape(1, xr_goals.shape[0])
+        print xr_goals
+
+        if xr_inits.ndim == 1:
+            xr_inits = xr_inits.reshape(1, xr_inits.shape[0])
+
         # show the initial positions and goals
         plt.plot(xr_inits[:, 0], xr_inits[:, 1], 'bo')
         plt.plot(xr_goals[:, 0], xr_goals[:, 1], 'ro')
@@ -415,10 +422,10 @@ class PlannerSimulator(object):
                     comm_actions_rp[i, j] = -1
 
         # save the communication actions
-        np.savetxt(test_path + "/data/comm_actions_hp.txt", comm_actions_hp, delimiter=',')
-        np.savetxt(test_path + "/data/comm_actions_rp.txt", comm_actions_rp, delimiter=',')
-        np.savetxt(test_path + "/data/tcomm_hp.txt", tcomm_hp, delimiter=',')
-        np.savetxt(test_path + "/data/tcomm_rp.txt", tcomm_rp, delimiter=',')
+        np.savetxt(test_path + "/data/comm_actions_hp.txt", comm_actions_hp, delimiter=',', fmt="%d")
+        np.savetxt(test_path + "/data/comm_actions_rp.txt", comm_actions_rp, delimiter=',', fmt="%d")
+        np.savetxt(test_path + "/data/tcomm_hp.txt", tcomm_hp, delimiter=',', fmt="%1.2f")
+        np.savetxt(test_path + "/data/tcomm_rp.txt", tcomm_rp, delimiter=',', fmt="%1.2f")
 
     def clear_hist(self, x_init, x_goal):
         # trajectory
@@ -498,4 +505,4 @@ if __name__ == "__main__":
     # simulator.run_simulation(0)
     # simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
 
-    simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 2)
+    simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 3)

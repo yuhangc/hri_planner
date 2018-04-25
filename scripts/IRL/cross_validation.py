@@ -32,7 +32,7 @@ def load_measurement(load_path, trial_id):
     return xh, uh, xr, ur
 
 
-def load_and_plot(load_path, usr_id, cond, trial_id, meta_data=(15, 6, 2)):
+def load_and_plot(load_path, usr_id, cond, trial_id, meta_data=(15, 6, 4)):
     t_total, t_plan, t_inc = meta_data
 
     # load the experiment data
@@ -47,7 +47,7 @@ def load_and_plot(load_path, usr_id, cond, trial_id, meta_data=(15, 6, 2)):
 
     # load and plot the figures
     n_plots = (t_total - t_plan) / t_inc + 1
-    fig, axes = plt.subplots(1, n_plots, figsize=(15, 4))
+    fig, axes = plt.subplots(1, n_plots, figsize=(9, 4))
 
     k = 0
     for t in range(0, t_total-t_plan, t_inc):
@@ -165,8 +165,36 @@ def cross_validation(load_path, save_path, user_list, cond, start_trial, meta_da
     plt.show()
 
 
+def gen_init_conditions(path, xrange, yrange, resolution, offset):
+    x = np.arange(xrange[0], xrange[1], resolution[0])
+    y = np.arange(yrange[0], yrange[1], resolution[1])
+
+    xx, yy = np.meshgrid(x, y)
+    xx = xx.flatten()
+    yy = yy.flatten()
+
+    th = offset[2]
+    R = np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
+    for i in range(len(xx)):
+        x_trans = R.dot(np.array([xx[i], yy[i]])) + np.array([offset[0], offset[1]])
+        xx[i] = x_trans[0]
+        yy[i] = x_trans[1]
+
+    plt.plot(xx, yy, '.')
+    plt.xlim(-1, 5)
+    plt.ylim(0.8, 6.2)
+    plt.show()
+
+    # save the data
+    x_init = np.column_stack((xx, yy, 0.3 * np.ones_like(xx)))
+    np.savetxt(path + "/init.txt", x_init, delimiter=',', fmt="%1.3f")
+
+
 if __name__ == "__main__":
-    # load_and_plot("/home/yuhang/Documents/irl_data/winter18", 1, "hp", 6)
+    # load_and_plot("/home/yuhang/Documents/irl_data/winter18", 0, "hp", 0)
+
+    gen_init_conditions("/home/yuhang/Documents/hri_log/test_data/test_config3",
+                        (-1, 1), (-1, 2), (0.2, 0.2), (0.5, 3.0, 0.4))
 
     # compute_prediction_err("/home/yuhang/Documents/irl_data/winter18",
     #                        "/home/yuhang/Documents/irl_data/winter18/cross_validation",
@@ -180,8 +208,8 @@ if __name__ == "__main__":
     #                        [62, 27, 61, 62],
     #                        traj2d_dist_naive)
 
-    cross_validation("/home/yuhang/Documents/irl_data/winter18/cross_validation",
-                     "/home/yuhang/Documents/irl_data/winter18/cross_validation",
-                     [0, 1, 2, 3], "hp",
-                     [0, 0, 0, 0])
-                     # [40, 17, 20, 40])
+    # cross_validation("/home/yuhang/Documents/irl_data/winter18/cross_validation",
+    #                  "/home/yuhang/Documents/irl_data/winter18/cross_validation",
+    #                  [0, 1, 2, 3], "hp",
+    #                  [0, 0, 0, 0])
+    #                  # [40, 17, 20, 40])

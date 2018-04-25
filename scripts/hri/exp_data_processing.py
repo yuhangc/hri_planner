@@ -97,6 +97,14 @@ def visualize_trial(test_dir, trial_id, T=15, n_cols=5):
 
     fig.tight_layout()
 
+    # plot the velocity profile of human for verification
+    fig, axes = plt.subplots(2, 1)
+    axes[0].plot(xh[:, 2], '-ks')
+    axes[0].plot(xh[:, 3], '--k^')
+
+    vel = np.linalg.norm(xh[:, 2:4], axis=1)
+    axes[1].plot(vel, '-ks')
+
     # plot the belief and costs
     belief_data = np.loadtxt(test_dir + "/belief_hist" + str(trial_id) + ".txt", delimiter=',')
     cost_data = np.loadtxt(test_dir + "/cost_hist" + str(trial_id) + ".txt", delimiter=',')
@@ -114,4 +122,4 @@ def visualize_trial(test_dir, trial_id, T=15, n_cols=5):
 
 
 if __name__ == "__main__":
-    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/test4", 2)
+    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/test4", 0)
