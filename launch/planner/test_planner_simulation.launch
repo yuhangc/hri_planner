@@ -9,6 +9,6 @@
 
   <node name="planner_node" pkg="hri_planner" type="planner_node" output="screen">
     <rosparam command="load" file="$(arg settings)" />
-    <param name="allow_explicit_comm" value="$(arg explicit_comm)" />
+    <param name="planner/allow_explicit_comm" value="$(arg explicit_comm)" />
   </node>
 </launch>

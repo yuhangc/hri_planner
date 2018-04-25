@@ -75,7 +75,7 @@ def plot_cost_heat_map(f, xbound, ybound, fig, ax):
     # norm = BoundaryNorm(levels, ncolors=cmap.N, clip=True)
 
     cf = ax.contourf(x, y, z, levels=levels, cmap=cmap)
-    fig.colorbar(cf, ax=ax)
+    # fig.colorbar(cf, ax=ax)
 
     # ax.axis("equal")
 
@@ -88,7 +88,7 @@ def visualize_features_basic():
     x_goal = np.array([0.5, 6.0])
 
     f_chr = -collision_hr(xr, 0.5)
-    f_chr_dyn = -collision_hr_dynamic(xr, ur, 0.5, 0.5, 0.3)
+    f_chr_dyn = -collision_hr_dynamic(xr, ur, 0.5, 0.3, 0.3)
     f_obs = -collision_obs(obs_pos, 0.5)
     f_goal = -goal_reward_term(x_goal)
 
@@ -136,9 +136,10 @@ def visualize_features_with_data(path, trial, th, flag_no_obs=False):
     ybound = np.array([0.0, 7.0])
 
     # loop though the time steps
-    fig, axes = plt.subplots(2, 4)
+    n_cols = 2
+    fig, axes = plt.subplots(2, n_cols)
 
-    nstep = 2
+    nstep = 4
     for t in range(0, len(xr), nstep):
         # generate features
         f_chr = -collision_hr(xr[t], 0.5)
@@ -151,8 +152,10 @@ def visualize_features_with_data(path, trial, th, flag_no_obs=False):
         else:
             f_all = th[0]*f_chr + th[1]*f_chr_dyn + th[2]*f_goal
 
-        ax = axes[(t/2) / 4, (t/2) % 4]
+        ax = axes[(t/nstep) / n_cols, (t/nstep) % n_cols]
         plot_cost_heat_map(f_all, xbound, ybound, fig, ax)
+
+        ax.set_title("t = " + str(t / 2))
 
         # overlay the partial trajectory
         if t > 1:
@@ -169,8 +172,8 @@ def visualize_features_with_data(path, trial, th, flag_no_obs=False):
 
 if __name__ == "__main__":
     # visualize_features_basic()
-    # visualize_features_with_data("/home/yuhang/Documents/irl_data/winter18/user0/processed/rp",
-    #                              0, [7.0, 0.0, 8.0, 50.0/100.0])
+    visualize_features_with_data("/home/yuhang/Documents/irl_data/winter18/user0/processed/rp",
+                                 0, [7.0, 8.0, 8.0, 50.0/100.0])
 
-    visualize_features_with_data("/home/yuhang/Documents/hri_log/test_data",
-                                 0, [5.0, 10.0, 50.0/50.0], flag_no_obs=True)
+    # visualize_features_with_data("/home/yuhang/Documents/hri_log/test_data",
+    #                              0, [5.0, 10.0, 50.0/50.0], flag_no_obs=True)

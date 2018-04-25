@@ -296,7 +296,7 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
 
     // compute plan
     auto t_s = ros::Time::now();
-    if (flag_allow_explicit_comm_) {
+    if (flag_allow_explicit_comm_ || flag_human_tracking_lost_) {
         planner->compute_plan(t_max_planning);
     }
     else {

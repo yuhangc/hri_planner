@@ -447,6 +447,9 @@ class PlannerSimulator(object):
             test_fig.savefig(save_path + "/figs/" + fig_name + "_" + str(i) +
                              "_" + str(j) + "_" + intent_str[intent] + ".pdf")
 
+            # close the figure afterwards
+            plt.close(test_fig)
+
         # save the trajectories
         Tsim = len(self.robot_traj)
         self.robot_traj = np.asarray(self.robot_traj)
@@ -495,4 +498,4 @@ if __name__ == "__main__":
     # simulator.run_simulation(0)
     # simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
 
-    simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 1)
+    simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 2)
