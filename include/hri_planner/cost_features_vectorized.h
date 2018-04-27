@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/18/2018
-// Last revision: 3/25/2018
+// Last revision: 4/26/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -60,6 +60,24 @@ public:
 
 private:
     double R_;
+};
+
+//! gaussian collision avoidance feature centered in front of the robot
+class DynCollisionCostVec: public FeatureVectorizedBase {
+public:
+    explicit DynCollisionCostVec(double Rx, double Ry, double d): Rx_(Rx), Ry_(Ry), d_(d) {};
+
+    void compute(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::VectorXd& costs) override;
+    void grad_uh(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Juh) override;
+    void grad_ur(const Trajectory& robot_traj, const Trajectory& human_traj, Eigen::MatrixXd& Jur) override;
+
+    // set additional data
+    void set_data(const void* data) override {};
+
+private:
+    double Rx_;
+    double Ry_;
+    double d_;
 };
 
 //! human effort feature
