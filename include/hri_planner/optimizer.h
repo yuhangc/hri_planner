@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2018
-// Last revision: 4/18/2018
+// Last revision: 4/26/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -40,12 +40,26 @@ public:
     // set optimization time limit
     void set_time_limit(const double t_max);
 
+    // set max iterations
+    void set_max_iter(const int max_iter) {
+        optimizer_.set_maxeval(max_iter);
+    }
+
     // optimize!
     bool optimize(const Trajectory& traj_init, const Trajectory& traj_const, Trajectory& traj_opt);
+
+    // get iteration
+    int get_niter() {
+        int neval = optimizer_.get_numevals() - neval_last_;
+        neval_last_ = optimizer_.get_numevals();
+        return neval;
+    }
 
 private:
     // non-linear optimizer
     nlopt::opt optimizer_;
+
+    int neval_last_;
 
     // pointer to cost function
     std::shared_ptr<SingleTrajectoryCost> cost_;
@@ -83,6 +97,11 @@ public:
         optimizer_.set_maxtime(t_max);
     }
 
+    // set iteration limit
+    virtual void set_max_iter(const int max_iter) {
+        optimizer_.set_maxeval(max_iter);
+    }
+
     // optimize!
     virtual double optimize(const Trajectory& robot_traj_init, const Trajectory& human_traj_hp_init,
                             const Trajectory& human_traj_rp_init, int acomm, double tcomm,
@@ -104,9 +123,24 @@ public:
         cost_non_int = costs_non_int_;
     }
 
+    int get_niter() {
+        int n_eval = optimizer_.get_numevals() - neval_last_;
+        neval_last_ = optimizer_.get_numevals();
+        return n_eval;
+    }
+
+    void get_niter_nested(int& neval_hp, int& neval_rp) const {
+        neval_hp = neval_nested_hp_;
+        neval_rp = neval_nested_rp_;
+    }
+
 protected:
     // non-linear optimizer
     nlopt::opt optimizer_;
+
+    int neval_last_;
+    int neval_nested_hp_;
+    int neval_nested_rp_;
 
     // pointer to cost function
     std::shared_ptr<ProbabilisticCostBase> robot_cost_;
@@ -190,6 +224,14 @@ public:
         // heuristically set the time limit for the follower optimizers
         optimizer_hp_->set_time_limit(t_max * 0.08);
         optimizer_rp_->set_time_limit(t_max * 0.08);
+    }
+
+    void set_max_iter(const int max_iter) override {
+        optimizer_.set_maxeval(max_iter);
+
+        // FIXME: hard-coded limit
+        optimizer_hp_->set_max_iter(20);
+        optimizer_rp_->set_max_iter(20);
     }
 
     // optimize!

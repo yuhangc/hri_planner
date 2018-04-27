@@ -9,6 +9,9 @@
 //
 //----------------------------------------------------------------------------------
 
+#include <ctime>
+#include <chrono>
+
 #include "hri_planner/planner_node.h"
 
 //----------------------------------------------------------------------------------
@@ -134,6 +137,8 @@ void PlannerNode::run()
 
                     // if human is detected, then use interactive planner
                     if (flag_human_detected_) {
+                        flag_human_detected_frame_ = true;
+
                         if (flag_human_tracking_lost_) {
                             flag_human_tracking_lost_ = false;
                             human_tracking_lost_frames_ = 0;
@@ -146,6 +151,8 @@ void PlannerNode::run()
                         plan(planner_interactive_);
                     }
                     else {
+                        flag_human_detected_frame_ = false;
+
                         // if human not detected, increase count and check
                         if (!flag_human_tracking_lost_) {
                             ++human_tracking_lost_frames_;
@@ -295,18 +302,25 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
     double t_max_planning = 0.85 * (1.0 / planning_rate_);
 
     // compute plan
-    auto t_s = ros::Time::now();
+//    auto t_s = ros::Time::now();
+    using namespace std::chrono;
+    steady_clock::time_point t1 = steady_clock::now();
+
     if (flag_allow_explicit_comm_ || flag_human_tracking_lost_) {
         planner->compute_plan(t_max_planning);
     }
     else {
         dynamic_cast<hri_planner::Planner*>(planner.get())->compute_plan_no_comm(t_max_planning);
     }
-    ros::Duration t_plan = ros::Time::now() - t_s;
-    std::cout << "time spent for planning is: " << t_plan.toSec() << "s" << std::endl;
+//    ros::Duration t_plan = ros::Time::now() - t_s;
+//    std::cout << "time spent for planning is: " << t_plan.toSec() << "s" << std::endl;
+
+    steady_clock::time_point t2 = steady_clock::now();
+    duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+    std::cout << "time spent for planning is: " << time_span.count() << "s" << std::endl;
 
     // publish plan
-    planner->publish_plan();
+    planner->publish_plan(flag_human_detected_frame_);
 }
 
 //----------------------------------------------------------------------------------

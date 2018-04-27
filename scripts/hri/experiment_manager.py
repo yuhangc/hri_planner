@@ -42,6 +42,8 @@ class PlannerDataLogger(object):
         self.human_traj_hp_opt = []
         self.human_traj_rp_opt = []
 
+        self.tracking_status_hist = []
+
         self.t_belief = []
         self.belief_hist = []
         self.cost_hist = []
@@ -69,6 +71,8 @@ class PlannerDataLogger(object):
         self.human_traj_hp_opt = []
         self.human_traj_rp_opt = []
 
+        self.tracking_status_hist = []
+
         self.t_belief = []
         self.belief_hist = []
         self.cost_hist = []
@@ -95,6 +99,10 @@ class PlannerDataLogger(object):
                    np.asarray(self.xr_hist), delimiter=',')
         np.savetxt(self.save_path + "/human_traj" + str(self.trial) + ".txt",
                    np.asarray(self.xh_hist), delimiter=',')
+
+        # tracking status
+        np.savetxt(self.save_path + "/tracking_state" + str(self.trial) + ".txt",
+                   np.asarray(self.tracking_status_hist), delimiter=',')
 
         # planned trajectories
         np.savetxt(self.save_path + "/robot_plan" + str(self.trial) + ".txt",
@@ -129,11 +137,15 @@ class PlannerDataLogger(object):
             self.xh_hist.append(np.asarray(plan_msg.xh_init))
             self.human_traj_hp_opt.append(np.asarray(plan_msg.human_traj_hp_opt))
             self.human_traj_rp_opt.append(np.asarray(plan_msg.human_traj_rp_opt))
+
+            self.tracking_status_hist.append(plan_msg.tracking_lost)
         else:
             # set to zero if human tracking/prediction is missing
             self.xh_hist.append(np.zeros((self.nXh, )))
             self.human_traj_hp_opt.append(np.zeros((self.T * self.nXh, )))
             self.human_traj_rp_opt.append(np.zeros((self.T * self.nXh, )))
+
+            self.tracking_status_hist.append(0)
 
     def belief_cost_callback(self, msg):
         self.t_belief.append(rospy.get_time() - self.t_start)

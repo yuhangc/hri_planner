@@ -58,6 +58,7 @@ private:
     bool flag_pause_planning_;
     bool flag_stop_planning_;
     bool flag_human_detected_;
+    bool flag_human_detected_frame_;
     bool flag_human_tracking_lost_;
 
     int human_tracking_lost_frames_;

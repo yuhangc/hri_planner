@@ -103,8 +103,8 @@ optimizer:
 steer_posq:
   k_rho: 1.0
   k_v: 3.8
-  k_alp: 6.0
-  k_phi: -1.0
+  k_alp: 3.0
+  k_phi: -0.5
   gamma: 0.15
 
 steer_acc:

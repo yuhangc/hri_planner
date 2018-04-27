@@ -2,6 +2,8 @@ int32 T
 int32 nXr
 int32 nXh
 
+bool tracking_lost
+
 float64[] xr_init
 float64[] xh_init
 float64[] robot_traj_opt

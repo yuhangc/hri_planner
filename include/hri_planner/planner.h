@@ -47,7 +47,7 @@ public:
     virtual void compute_plan(double t_max=-1) = 0;
 
     // publish the plan
-    virtual void publish_plan() = 0;
+    virtual void publish_plan(bool human_tracking_lost) = 0;
 
     // reset the planner with new goals
     virtual void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal,
@@ -89,6 +89,10 @@ protected:
     double k_phi_;
     double gamma_;
 
+    double v_max_;
+    double a_max_;
+    double kv_acc_;
+
     // control bounds
     std::vector<double> lb_ur_vec_;
     std::vector<double> ub_ur_vec_;
@@ -127,7 +131,7 @@ public:
     void compute_plan(double t_max=-1) override;
     void compute_plan_no_comm(double t_max=-1);
 
-    void publish_plan() override;
+    void publish_plan(bool human_tracking_lost) override;
 
     // reset the planner with new goals
     void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal,
@@ -228,7 +232,7 @@ public:
     void compute_plan(double t_max=-1) override;
 
     // publish plans
-    void publish_plan() override;
+    void publish_plan(bool human_tracking_lost) override;
 
     // reset the planner with new goals
     void reset_planner(const Eigen::VectorXd& xr_goal, const Eigen::VectorXd& xh_goal,

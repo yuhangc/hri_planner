@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/9/2018
-// Last revision: 4/10/2018
+// Last revision: 4/26/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -119,6 +119,7 @@ double TrajectoryOptimizer::cost_wrapper(const std::vector<double> &u, std::vect
 NestedOptimizerBase::NestedOptimizerBase(unsigned int dim, const nlopt::algorithm &alg)
 {
     optimizer_ = nlopt::opt(alg, dim);
+    neval_last_ = 0;
 }
 
 //----------------------------------------------------------------------------------
@@ -453,6 +454,9 @@ double NaiveNestedOptimizer::optimize(const Trajectory &robot_traj_init, const T
 //    *human_traj_hp_ = human_traj_hp_init;
 //    *human_traj_rp_ = human_traj_rp_init;
 
+    neval_nested_hp_ = 0;
+    neval_nested_rp_ = 0;
+
     // optimizer!
     double min_cost;
     nlopt::result result = optimizer_.optimize(u_opt, min_cost);
@@ -497,6 +501,9 @@ double NaiveNestedOptimizer::cost_func(const std::vector<double> &u, std::vector
 //    optimizer_rp_->optimize(*human_traj_rp_, *robot_traj_, human_traj_rp_opt);
     th1.join();
     th2.join();
+
+    neval_nested_hp_ += optimizer_hp_->get_niter();
+    neval_nested_rp_ += optimizer_rp_->get_niter();
 
     *human_traj_hp_ = human_traj_hp_opt;
     *human_traj_rp_ = human_traj_rp_opt;

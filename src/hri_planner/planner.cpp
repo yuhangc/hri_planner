@@ -10,6 +10,8 @@
 //----------------------------------------------------------------------------------
 
 #include <string>
+#include <ctime>
+#include <chrono>
 
 #include "hri_planner/planner.h"
 
@@ -31,6 +33,10 @@ PlannerBase::PlannerBase(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh) {
     ros::param::param<double>("~steer_posq/k_alp", k_alp_, 6.0);
     ros::param::param<double>("~steer_posq/k_phi", k_phi_, -1.0);
     ros::param::param<double>("~steer_posq/gamma", gamma_, 0.15);
+
+    ros::param::param<double>("~steer_acc/v_max", v_max_, 1.0);
+    ros::param::param<double>("~steer_acc/a_max", a_max_, 0.5);
+    ros::param::param<double>("~steer_acc/k_v", kv_acc_, 1.0);
 
     // control bounds
     ros::param::get("~optimizer/bounds/lb_ur", lb_ur_vec_);
@@ -98,12 +104,6 @@ void PlannerBase::generate_steer_posq(const Eigen::VectorXd &x0, const Eigen::Ve
 //----------------------------------------------------------------------------------
 void PlannerBase::generate_steer_acc(const Eigen::VectorXd &x0, const Eigen::VectorXd &x_goal, Eigen::VectorXd &uh)
 {
-    double v_max, a_max;
-    double k_v;
-    ros::param::param<double>("~steer_acc/v_max", v_max, 1.0);
-    ros::param::param<double>("~steer_acc/a_max", a_max, 0.5);
-    ros::param::param<double>("~steer_acc/k_v", k_v, 1.0);
-
     Eigen::VectorXd xh(T_ * nXh_);
     uh.resize(T_ * nUh_);
 
@@ -113,15 +113,15 @@ void PlannerBase::generate_steer_acc(const Eigen::VectorXd &x0, const Eigen::Vec
     for (int t = 0; t < T_; ++t) {
         // compute desired velocity
         Eigen::VectorXd x_diff = x_goal - x_last.head(2);
-        Eigen::VectorXd vd = k_v * x_diff;
-        double v_mag = utils::clamp(vd.norm(), 0.0, v_max);
+        Eigen::VectorXd vd = kv_acc_ * x_diff;
+        double v_mag = utils::clamp(vd.norm(), 0.0, v_max_);
 
         vd.normalize();
         vd *= v_mag;
 
         // compute the desired acceleration
         Eigen::VectorXd ad = (vd - x_last.tail(2)) / dt_;
-        double a_mag = utils::clamp(ad.norm(), 0.0, a_max);
+        double a_mag = utils::clamp(ad.norm(), 0.0, a_max_);
 
         ad.normalize();
         ad *= a_mag;
@@ -444,6 +444,10 @@ void Planner::compute_plan(double t_max)
         optimizer_no_comm_->set_time_limit(t_max);
     }
 
+//    // FIXME: hard-code the iteration limit
+//    optimizer_comm_->set_max_iter(25);
+//    optimizer_no_comm_->set_max_iter(25);
+
     // optimize for no communication
     std::vector<double> cost_ni_no_comm;
     Trajectory robot_traj_opt_n(DIFFERENTIAL_MODEL, T_, dt_);
@@ -468,6 +472,9 @@ void Planner::compute_plan(double t_max)
 //    ROS_INFO("min cost with communication is: %f", cost_comm);
 //    cost_comm += comm_cost_;
 
+//    using namespace std::chrono;
+//    steady_clock::time_point t1 = steady_clock::now();
+
     // create two threads to perform optimization separately
     std::thread th_no_comm(&NestedOptimizerBase::optimize_nr, optimizer_no_comm_.get(), std::ref(robot_traj_init_),
                            std::ref(human_traj_hp_init_), std::ref(human_traj_rp_init_), acomm_, tcomm_,
@@ -481,6 +488,10 @@ void Planner::compute_plan(double t_max)
     th_no_comm.join();
     th_comm.join();
 
+//    steady_clock::time_point t2 = steady_clock::now();
+//    duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+//    std::cout << "[Planner] time spent for planning is: " << time_span.count() << "s" << std::endl;
+
     // get some info
     optimizer_no_comm_->get_partial_cost(cost_hp_no_comm_, cost_rp_no_comm_, cost_ni_no_comm);
     ROS_INFO("min cost no communication is: %f", cost_no_comm_);
@@ -489,12 +500,21 @@ void Planner::compute_plan(double t_max)
         std::cout << c << ", ";
     std::cout << std::endl;
 
+//    int neval_hp, neval_rp;
+//    optimizer_no_comm_->get_niter_nested(neval_hp, neval_rp);
+//    std::cout << "number of iterations: " << optimizer_no_comm_->get_niter()
+//              << ", nested iterations: (" << neval_hp << ", " << neval_rp << ")" << std::endl;
+
     optimizer_comm_->get_partial_cost(cost_hp_comm_, cost_rp_comm_, cost_ni_comm);
     ROS_INFO("min cost with communication is: %f", cost_comm_);
     std::cout << ">>>>>>>> partial costs: " << cost_hp_comm_ << ", " << cost_rp_comm_ << " | ";
     for (auto c: cost_ni_comm)
         std::cout << c << ", ";
     std::cout << std::endl;
+
+//    optimizer_comm_->get_niter_nested(neval_hp, neval_rp);
+//    std::cout << "number of iterations: " << optimizer_comm_->get_niter()
+//              << ", nested iterations: (" << neval_hp << ", " << neval_rp << ")"  << std::endl;
 
     cost_comm_ += comm_cost_;
 
@@ -513,7 +533,7 @@ void Planner::compute_plan(double t_max)
         human_traj_rp_opt_ = human_traj_rp_opt_n;
     }
 
-    ROS_INFO("Got plan!");
+//    ROS_INFO("Got plan!");
 
     if (flag_publish_debug_info_) {
         // publish trajectories for both with/without communication
@@ -592,7 +612,7 @@ void Planner::compute_plan_no_comm(double t_max)
 }
 
 //----------------------------------------------------------------------------------
-void Planner::publish_plan()
+void Planner::publish_plan(bool human_tracking_lost)
 {
     // publish communicative action if any
     if (tcomm_ == 0.0) {
@@ -615,6 +635,7 @@ void Planner::publish_plan()
     // publish full plan if specified
     if (flag_publish_full_plan_) {
         PlannedTrajectories trajectories;
+        trajectories.tracking_lost = (unsigned char) human_tracking_lost;
         trajectories.T = T_;
         trajectories.nXr = nXr_;
         trajectories.nXh = nXh_;
@@ -696,7 +717,7 @@ void Planner::get_human_pred(const int t, const int intent, Eigen::VectorXd &hum
     if (intent == HumanPriority)
         human_state = human_traj_hp_opt_.x.segment(nXh_ * t, nXh_);
     else
-        human_state = human_traj_rp_init_.x.segment(nXh_ * t, nXh_);
+        human_state = human_traj_rp_opt_.x.segment(nXh_ * t, nXh_);
 }
 
 //----------------------------------------------------------------------------------
@@ -722,6 +743,7 @@ void Planner::update_init_guesses()
 {
     if (flag_gen_init_guesses_) {
         generate_init_guesses(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_);
+        flag_gen_init_guesses_ = false;
     }
     else {
         // use the optimal plan from previous time step as initial guess
@@ -787,7 +809,7 @@ void PlannerSimple::compute_plan(double t_max)
 }
 
 //----------------------------------------------------------------------------------
-void PlannerSimple::publish_plan()
+void PlannerSimple::publish_plan(bool human_tracking_lost)
 {
     // publish robot control
     geometry_msgs::Twist cmd_vel;

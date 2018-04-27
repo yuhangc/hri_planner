@@ -19,17 +19,17 @@ robot_cost_non_int:
 robot_cost_int:
   feature0:
     name: HumanEffort
-    weight: 20.0
+    weight: 30.0
 
   feature1:
-    name: Collision
-    weight: 5.0
+    name: DynCollision
+    weight: 16.0
     nargs: 1
-    args: [0.5]
+    args: [0.5, 0.5, 0.2]
 
   feature2:
     name: HumanGoal
-    weight: 20.0
+    weight: 40.0
     nargs: 2
     args: [0.732, 6.01]
 
