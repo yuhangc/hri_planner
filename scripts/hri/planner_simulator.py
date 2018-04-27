@@ -427,6 +427,27 @@ class PlannerSimulator(object):
         np.savetxt(test_path + "/data/tcomm_hp.txt", tcomm_hp, delimiter=',', fmt="%1.2f")
         np.savetxt(test_path + "/data/tcomm_rp.txt", tcomm_rp, delimiter=',', fmt="%1.2f")
 
+    # run multiple simulations
+    def run_single_test(self, data_path, human_traj_id, test_id, intent, test_init_id=0, test_goal_id=0):
+        # load the human trajectory/goals
+        self.load_data(data_path, human_traj_id)
+
+        # load robot initial conditions and goals
+        test_path = data_path + "/test_config" + str(test_id)
+        xr_goals = np.loadtxt(test_path + "/goal.txt", delimiter=',')
+        xr_inits = np.loadtxt(test_path + "/init.txt", delimiter=',')
+
+        if xr_goals.ndim == 1:
+            xr_goals = xr_goals.reshape(1, xr_goals.shape[0])
+        print xr_goals
+
+        if xr_inits.ndim == 1:
+            xr_inits = xr_inits.reshape(1, xr_inits.shape[0])
+
+        self.clear_hist(xr_inits[test_init_id], xr_goals[test_goal_id])
+        self.run_simulation(intent, Tsim=15, show_plot=False)
+        plt.show()
+
     def clear_hist(self, x_init, x_goal):
         # trajectory
         self.robot_traj = []
@@ -505,4 +526,5 @@ if __name__ == "__main__":
     # simulator.run_simulation(0)
     # simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
 
-    simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 3)
+    # simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 4)
+    simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 0, 4, 0, test_init_id=103)

@@ -186,15 +186,15 @@ def gen_init_conditions(path, xrange, yrange, resolution, offset):
     plt.show()
 
     # save the data
-    x_init = np.column_stack((xx, yy, 0.3 * np.ones_like(xx)))
+    x_init = np.column_stack((xx, yy, 0.4 * np.ones_like(xx)))
     np.savetxt(path + "/init.txt", x_init, delimiter=',', fmt="%1.3f")
 
 
 if __name__ == "__main__":
     # load_and_plot("/home/yuhang/Documents/irl_data/winter18", 0, "hp", 0)
 
-    gen_init_conditions("/home/yuhang/Documents/hri_log/test_data/test_config3",
-                        (-1, 1), (-1, 2), (0.2, 0.2), (0.5, 3.0, 0.4))
+    gen_init_conditions("/home/yuhang/Documents/hri_log/test_data/test_config4",
+                        (-1, 1), (-2, 2), (0.2, 0.2), (0.5, 3.0, 0.4))
 
     # compute_prediction_err("/home/yuhang/Documents/irl_data/winter18",
     #                        "/home/yuhang/Documents/irl_data/winter18/cross_validation",

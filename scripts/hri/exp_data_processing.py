@@ -121,5 +121,34 @@ def visualize_trial(test_dir, trial_id, T=15, n_cols=5):
     plt.show()
 
 
+def plot_comm_region(path, cond, human_traj_id):
+    # load data
+    file_name = path + "/data/comm_actions_" + cond + ".txt"
+    comm_data = np.loadtxt(file_name, delimiter=',')
+
+    init_data = np.loadtxt(path + "/init.txt", delimiter=',')
+    goal_data = np.loadtxt(path + "/goal.txt", delimiter=',')
+
+    # pre-defined human traj
+    traj_data = np.loadtxt(path + "/../test" + str(human_traj_id) + ".txt", delimiter=",")
+
+    if cond == "hp":
+        acomm = 0
+    else:
+        acomm = 1
+
+    pts_comm = init_data[np.where(comm_data == acomm)]
+    pts_no_comm = init_data[np.where(comm_data != acomm)]
+    
+    plt.plot(pts_comm[:, 0], pts_comm[:, 1], 'r.')
+    plt.plot(pts_no_comm[:, 0], pts_no_comm[:, 1], 'b.')
+    plt.plot(goal_data[0], goal_data[1], 'bo', fillstyle="none")
+    plt.plot(traj_data[:, 0], traj_data[:, 1], '-', color=(0.5, 0.5, 0.5))
+
+    plt.show()
+
+
 if __name__ == "__main__":
-    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/test4", 0)
+    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/test3", 11)
+
+    # plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config4", "rp", 0)
