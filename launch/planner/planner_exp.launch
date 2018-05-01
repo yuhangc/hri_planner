@@ -1,9 +1,11 @@
 <launch>
   <arg name="settings_common" default="$(find hri_planner)/resources/planner_setting/exp_settings_common.yaml" />
+  <arg name="explicit_comm" default="true" />
 
   <node name="planner_node" pkg="hri_planner" type="planner_node" output="screen">
     <rosparam command="load" file="$(arg settings_common)" />
-	<remap from="/planner/cmd_vel" to="/cmd_vel_mux/input/navi" />
+	<remap from="/planner/cmd_vel" to="/cmd_vel" />
     <remap from="/planner/communication" to="/haptic_control" />
+    <param name="planner/allow_explicit_comm" value="$(arg explicit_comm)" />
   </node>
 </launch>
