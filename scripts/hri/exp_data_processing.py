@@ -13,42 +13,47 @@ def visualize_frame(ax, t, xh, xr, robot_plan, pred_hp, pred_rp, xr_goal, xh_goa
         ax.set_facecolor((1.0, 0.67, 0.62))
 
     # don't plot human trajectory if no detection
-    if not np.all(human_traj == 0):
-        # ignore the leading zeros
-        human_traj = np.column_stack((np.trim_zeros(human_traj[:, 0]), np.trim_zeros(human_traj[:, 1])))
-
-        # segment the trajectory based on zeros
-        idx_last = 0
-        idx_curr = 0
-        pred_segs = []
-        while idx_curr < len(human_traj):
-            if human_traj[idx_curr, 0] == 0 and human_traj[idx_curr, 1] == 0:
-                ax.plot(human_traj[idx_last:(idx_curr-1), 0], human_traj[idx_last:(idx_curr-1), 1], "-o",
-                        color=(0.1, 0.1, 0.1), fillstyle="none", lw=1.5, label="human_traj")
-                pred_segs.append(human_traj[(idx_curr-2):idx_curr])
-
-                # find next non-zero element
-                while idx_curr < len(human_traj) and human_traj[idx_curr, 0] == 0 and human_traj[idx_curr, 1] == 0:
-                    idx_curr += 1
-                idx_last = idx_curr
-            else:
-                idx_curr += 1
-
-        if human_traj[idx_curr-1, 0] != 0 or human_traj[idx_curr-1, 1] != 0:
-            ax.plot(human_traj[idx_last:idx_curr, 0], human_traj[idx_last:idx_curr, 1], "-o",
-                    color=(0.1, 0.1, 0.1), fillstyle="none", lw=1.5, label="human_traj")
-
-        # plot the predicted segments
-        for seg in pred_segs:
-            ax.plot(seg[:, 0], seg[:, 1], '-o', color=(0.8, 0.8, 0.2), fillstyle="none", lw=1.5)
+    # if not np.all(human_traj == 0):
+    #     # ignore the leading zeros
+    #     human_traj = np.column_stack((np.trim_zeros(human_traj[:, 0]), np.trim_zeros(human_traj[:, 1])))
+    #
+    #     # segment the trajectory based on zeros
+    #     idx_last = 0
+    #     idx_curr = 0
+    #     pred_segs = []
+    #     while idx_curr < len(human_traj):
+    #         if human_traj[idx_curr, 0] == 0 and human_traj[idx_curr, 1] == 0:
+    #             ax.plot(human_traj[idx_last:(idx_curr-1), 0], human_traj[idx_last:(idx_curr-1), 1], "-o",
+    #                     color=(0.1, 0.1, 0.1), fillstyle="none", lw=1.5, label="human_traj")
+    #             pred_segs.append(human_traj[(idx_curr-2):idx_curr])
+    #
+    #             # find next non-zero element
+    #             while idx_curr < len(human_traj) and human_traj[idx_curr, 0] == 0 and human_traj[idx_curr, 1] == 0:
+    #                 idx_curr += 1
+    #             idx_last = idx_curr
+    #         else:
+    #             idx_curr += 1
+    #
+    #     if human_traj[idx_curr-1, 0] != 0 or human_traj[idx_curr-1, 1] != 0:
+    #         ax.plot(human_traj[idx_last:idx_curr, 0], human_traj[idx_last:idx_curr, 1], "-o",
+    #                 color=(0.1, 0.1, 0.1), fillstyle="none", lw=1.5, label="human_traj")
+    #
+    #     # plot the predicted segments
+    #     for seg in pred_segs:
+    #         ax.plot(seg[:, 0], seg[:, 1], '-o', color=(0.8, 0.8, 0.2), fillstyle="none", lw=1.5)
 
     # plot the other trajectories
+    ax.plot(human_traj[:, 0], human_traj[:, 1], "-o",
+            color=(0.1, 0.1, 0.1), fillstyle="none", lw=1.5, label="human_traj")
     ax.plot(robot_traj[:, 0], robot_traj[:, 1], "-o",
             color=(0.3, 0.3, 0.9), fillstyle="none", lw=1.5, label="robot_traj")
     ax.plot(xr_goal[0], xr_goal[1], 'bo', fillstyle="none", markersize=8)
     ax.plot(xh_goal[0], xh_goal[1], 'ko', fillstyle="none", markersize=8)
 
     # plot the plan
+    ax.plot(robot_traj[t, 0], robot_traj[t, 1], 'o', color=(0.6, 0.6, 1.0), fillstyle="none")
+    ax.plot(human_traj[t, 4], robot_traj[t, 5], 'o', color=(0.5, 0.5, 0.5), fillstyle="none")
+
     nxr = 3
     T = len(robot_plan) / nxr
     robot_plan = robot_plan.reshape(T, nxr)
@@ -99,11 +104,15 @@ def visualize_trial(test_dir, trial_id, T=15, n_cols=5):
 
     # plot the velocity profile of human for verification
     fig, axes = plt.subplots(2, 1)
-    axes[0].plot(xh[:, 2], '-ks')
+    axes[0].plot(xh[:, 2], '--ks')
     axes[0].plot(xh[:, 3], '--k^')
-
     vel = np.linalg.norm(xh[:, 2:4], axis=1)
-    axes[1].plot(vel, '-ks')
+    axes[0].plot(vel, '-k')
+
+    axes[1].plot(xh[:, 6], '--ks')
+    axes[1].plot(xh[:, 7], '--k^')
+    vel = np.linalg.norm(xh[:, 6:8], axis=1)
+    axes[1].plot(vel, '-k')
 
     # plot the belief and costs
     belief_data = np.loadtxt(test_dir + "/belief_hist" + str(trial_id) + ".txt", delimiter=',')
@@ -149,6 +158,6 @@ def plot_comm_region(path, cond, human_traj_id):
 
 
 if __name__ == "__main__":
-    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/test3", 11)
+    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/test5", 2)
 
     # plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config4", "rp", 0)

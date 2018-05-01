@@ -113,6 +113,7 @@ private:
 
     ros::Publisher goal_reached_pub_;
     ros::Publisher robot_ctrl_pub_;
+    ros::Publisher robot_human_state_pub_;
 
     // helper functions
     void plan(const std::shared_ptr<hri_planner::PlannerBase>& planenr);

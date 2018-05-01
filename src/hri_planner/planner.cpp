@@ -77,6 +77,33 @@ void PlannerBase::compute_steer_posq(const Eigen::VectorXd &xr, const Eigen::Vec
 }
 
 //----------------------------------------------------------------------------------
+void PlannerBase::propagate_steer_acc(const Eigen::VectorXd &xh, const Eigen::VectorXd &xh_goal,
+                                      Eigen::VectorXd &xh_next, double amax)
+{
+    // compute desired velocity
+    Eigen::VectorXd x_diff = xh_goal - xh.head(2);
+    Eigen::VectorXd vd = kv_acc_ * x_diff;
+    double v_mag = utils::clamp(vd.norm(), 0.0, v_max_);
+
+    vd.normalize();
+    vd *= v_mag;
+
+    // compute the desired acceleration
+    if (amax < 0)
+        amax = a_max_;
+
+    Eigen::VectorXd ad = (vd - xh.tail(2)) / dt_;
+    double a_mag = utils::clamp(ad.norm(), 0.0, amax);
+
+    ad.normalize();
+    ad *= a_mag;
+
+    // update
+    ConstAccDynamics dyn(dt_);
+    dyn.forward_dyn(xh, ad, xh_next);
+}
+
+//----------------------------------------------------------------------------------
 void PlannerBase::generate_steer_posq(const Eigen::VectorXd &x0, const Eigen::VectorXd &x_goal, Eigen::VectorXd &ur)
 {
     Eigen::VectorXd xr(T_ * nXr_);

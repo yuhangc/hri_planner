@@ -38,6 +38,8 @@ class PlannerDataLogger(object):
         self.t_plan = []
         self.xr_hist = []
         self.xh_hist = []
+        self.xr_hist_pred = []
+        self.xh_hist_pred = []
         self.robot_traj_opt = []
         self.human_traj_hp_opt = []
         self.human_traj_rp_opt = []
@@ -57,6 +59,8 @@ class PlannerDataLogger(object):
 
         # subscribers
         self.plan_sub = rospy.Subscriber("/planner/full_plan", PlannedTrajectories, self.plan_callback)
+        self.robot_human_state_sub = rospy.Subscriber("/planner/robot_human_state",
+                                                      Float64MultiArray, self.robot_human_state_callback)
         self.belief_cost_sub = rospy.Subscriber("/planner/belief_and_costs",
                                                 Float64MultiArray, self.belief_cost_callback)
 
@@ -67,6 +71,8 @@ class PlannerDataLogger(object):
         self.t_plan = []
         self.xr_hist = []
         self.xh_hist = []
+        self.xr_hist_pred = []
+        self.xh_hist_pred = []
         self.robot_traj_opt = []
         self.human_traj_hp_opt = []
         self.human_traj_rp_opt = []
@@ -94,11 +100,13 @@ class PlannerDataLogger(object):
         np.savetxt(self.save_path + "/tstamp_belief" + str(self.trial) + ".txt",
                    np.asarray(self.t_belief).transpose(), delimiter=',')
 
-        # "actual" trajectories
+        # actual and predicted trajectories
+        xr_hist = np.hstack((np.asarray(self.xr_hist), np.asarray(self.xr_hist_pred)))
+        xh_hist = np.hstack((np.asarray(self.xh_hist), np.asarray(self.xh_hist_pred)))
         np.savetxt(self.save_path + "/robot_traj" + str(self.trial) + ".txt",
-                   np.asarray(self.xr_hist), delimiter=',')
+                   xr_hist, delimiter=',')
         np.savetxt(self.save_path + "/human_traj" + str(self.trial) + ".txt",
-                   np.asarray(self.xh_hist), delimiter=',')
+                   xh_hist, delimiter=',')
 
         # tracking status
         np.savetxt(self.save_path + "/tracking_state" + str(self.trial) + ".txt",
@@ -130,22 +138,27 @@ class PlannerDataLogger(object):
     def plan_callback(self, plan_msg):
         self.t_plan.append(rospy.get_time() - self.t_start)
 
-        self.xr_hist.append(np.asarray(plan_msg.xr_init))
+        self.xr_hist_pred.append(np.asarray(plan_msg.xr_init))
         self.robot_traj_opt.append(np.asarray(plan_msg.robot_traj_opt))
 
         if plan_msg.xh_init:
-            self.xh_hist.append(np.asarray(plan_msg.xh_init))
+            self.xh_hist_pred.append(np.asarray(plan_msg.xh_init))
             self.human_traj_hp_opt.append(np.asarray(plan_msg.human_traj_hp_opt))
             self.human_traj_rp_opt.append(np.asarray(plan_msg.human_traj_rp_opt))
 
             self.tracking_status_hist.append(plan_msg.tracking_lost)
         else:
             # set to zero if human tracking/prediction is missing
-            self.xh_hist.append(np.zeros((self.nXh, )))
+            self.xh_hist_pred.append(np.zeros((self.nXh, )))
             self.human_traj_hp_opt.append(np.zeros((self.T * self.nXh, )))
             self.human_traj_rp_opt.append(np.zeros((self.T * self.nXh, )))
 
             self.tracking_status_hist.append(0)
+
+    def robot_human_state_callback(self, state_msg):
+        state_arr = np.asarray(state_msg.data)
+        self.xr_hist.append(state_arr[0:3])
+        self.xh_hist.append(state_arr[3:7])
 
     def belief_cost_callback(self, msg):
         self.t_belief.append(rospy.get_time() - self.t_start)
@@ -183,6 +196,7 @@ class ExperimentManager(object):
 
         self.goal_pub = rospy.Publisher("/planner/set_goal", Float64MultiArray, queue_size=1)
         self.planner_ctrl_pub = rospy.Publisher("/planner/ctrl", String, queue_size=1)
+        self.tracking_test_pub = rospy.Publisher("/test_human_tracking_start", Bool, queue_size=1)
 
     def load_goals(self, protocol_file):
         proto_data = np.loadtxt(protocol_file, delimiter=',')
@@ -231,6 +245,11 @@ class ExperimentManager(object):
                 ctrl_data = String()
                 ctrl_data.data = "start"
                 self.planner_ctrl_pub.publish(ctrl_data)
+
+                # tell tracking test to start
+                tracking_start = Bool()
+                tracking_start.data = True
+                self.tracking_test_pub.publish(tracking_start)
 
                 rospy.loginfo("started!")
 

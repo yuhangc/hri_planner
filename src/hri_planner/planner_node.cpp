@@ -64,14 +64,15 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
 
     robot_odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &PlannerNode::robot_odom_callback, this);
 
-    human_tracking_sub_ = nh_.subscribe<people_msgs::People>("/people", 1,
-                                                             &PlannerNode::human_tracking_callback, this);
-//    human_tracking_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements", 1,
-//                                                             &PlannerNode::human_detection_callback, this);
+//    human_tracking_sub_ = nh_.subscribe<people_msgs::People>("/people", 1,
+//                                                             &PlannerNode::human_tracking_callback, this);
+    human_tracking_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements", 1,
+                                                             &PlannerNode::human_detection_callback, this);
 
     // publishers
     goal_reached_pub_ = nh_.advertise<std_msgs::Bool>("/planner/goal_reached", 1);
     robot_ctrl_pub_ = nh_.advertise<geometry_msgs::Twist>("/planner/cmd_vel", 1);
+    robot_human_state_pub_ = nh_.advertise<std_msgs::Float64MultiArray>("/planner/robot_human_state", 1);
 }
 
 //----------------------------------------------------------------------------------
@@ -284,13 +285,21 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
         xr_meas_(1) += ur_meas_(0) * std::sin(th) * dt_planning_;
         xr_meas_(2) += ur_meas_(1) * dt_planning_;
 
-        // predict human pose with const velocity model
-        xh_pred(0) += xh_meas_(2) * dt_planning_;
-        xh_pred(1) += xh_meas_(3) * dt_planning_;
+        th = xr_meas_(2);
+        xr_meas_(0) += ur_meas_(0) * std::cos(th) * dt_planning_;
+        xr_meas_(1) += ur_meas_(0) * std::sin(th) * dt_planning_;
+        xr_meas_(2) += ur_meas_(1) * dt_planning_;
+
+        // predict human pose with steer model
+        Eigen::VectorXd xh_pred0(4);
+        planner->propagate_steer_acc(xh_meas_, xh_goal_, xh_pred0, 0.5);
+        planner->propagate_steer_acc(xh_pred0, xh_goal_, xh_pred, 0.3);
 
         // set planning initial condition with the predicted states
         planner->set_robot_state(xr_pred, ur_meas_);
         planner->set_human_state(xh_pred);
+//        planner->set_robot_state(xr_meas_, ur_meas_);
+//        planner->set_human_state(xh_meas_);
     }
     else {
         // update planner measurements
@@ -302,7 +311,6 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
     double t_max_planning = 0.85 * (1.0 / planning_rate_);
 
     // compute plan
-//    auto t_s = ros::Time::now();
     using namespace std::chrono;
     steady_clock::time_point t1 = steady_clock::now();
 
@@ -312,8 +320,6 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
     else {
         dynamic_cast<hri_planner::Planner*>(planner.get())->compute_plan_no_comm(t_max_planning);
     }
-//    ros::Duration t_plan = ros::Time::now() - t_s;
-//    std::cout << "time spent for planning is: " << t_plan.toSec() << "s" << std::endl;
 
     steady_clock::time_point t2 = steady_clock::now();
     duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
@@ -321,6 +327,13 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
 
     // publish plan
     planner->publish_plan(flag_human_detected_frame_);
+
+    // publish the real measurement
+    std_msgs::Float64MultiArray state_data;
+    utils::EigenToVector(xr_meas_, state_data.data);
+    state_data.data.insert(state_data.data.end(), xh_meas_.data(), xh_meas_.data() + xh_meas_.size());
+
+    robot_human_state_pub_.publish(state_data);
 }
 
 //----------------------------------------------------------------------------------

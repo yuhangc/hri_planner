@@ -72,6 +72,8 @@ public:
 
     // compute the closed-loop control for one time step
     void compute_steer_posq(const Eigen::VectorXd& xr, const Eigen::VectorXd& x_goal, Eigen::VectorXd& ur);
+    void propagate_steer_acc(const Eigen::VectorXd& xh, const Eigen::VectorXd& xh_goal,
+                             Eigen::VectorXd& xh_next, double amax=-1);
 
 protected:
     // dimensions
