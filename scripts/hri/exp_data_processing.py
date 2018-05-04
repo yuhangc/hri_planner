@@ -50,10 +50,10 @@ def visualize_frame(ax, t, xh, xr, robot_plan, pred_hp, pred_rp, xr_goal, xh_goa
     ax.plot(xr_goal[0], xr_goal[1], 'bo', fillstyle="none", markersize=8)
     ax.plot(xh_goal[0], xh_goal[1], 'ko', fillstyle="none", markersize=8)
 
-    # plot the plan
-    ax.plot(robot_traj[t, 0], robot_traj[t, 1], 'o', color=(0.6, 0.6, 1.0), fillstyle="none")
-    ax.plot(human_traj[t, 4], robot_traj[t, 5], 'o', color=(0.5, 0.5, 0.5), fillstyle="none")
+    ax.plot(robot_traj[t, 3], robot_traj[t, 4], 'o', color=(1.0, 0.6, 0.6), fillstyle="none")
+    ax.plot(human_traj[t, 4], human_traj[t, 5], 'o', color=(0.5, 0.5, 0.5), fillstyle="none")
 
+    # plot the plan
     nxr = 3
     T = len(robot_plan) / nxr
     robot_plan = robot_plan.reshape(T, nxr)
@@ -158,6 +158,6 @@ def plot_comm_region(path, cond, human_traj_id):
 
 
 if __name__ == "__main__":
-    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/test5", 2)
+    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/0428/test5", 0)
 
-    # plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config4", "rp", 0)
+    # plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config7", "hp", 0)

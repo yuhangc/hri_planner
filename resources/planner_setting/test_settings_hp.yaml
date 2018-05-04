@@ -25,7 +25,7 @@ robot_cost_int:
     name: DynCollision
     weight: 16.0
     nargs: 1
-    args: [0.5, 0.5, 0.2]
+    args: [0.5, 0.5, 0.10]
 
   feature2:
     name: HumanGoal

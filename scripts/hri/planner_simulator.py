@@ -526,5 +526,5 @@ if __name__ == "__main__":
     # simulator.run_simulation(0)
     # simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
 
-    # simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 4)
-    simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 0, 4, 0, test_init_id=103)
+    simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 8)
+    # simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 0, 4, 0, test_init_id=103)

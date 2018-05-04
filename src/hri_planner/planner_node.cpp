@@ -64,10 +64,14 @@ PlannerNode::PlannerNode(ros::NodeHandle &nh, ros::NodeHandle &pnh): nh_(nh)
 
     robot_odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &PlannerNode::robot_odom_callback, this);
 
-//    human_tracking_sub_ = nh_.subscribe<people_msgs::People>("/people", 1,
-//                                                             &PlannerNode::human_tracking_callback, this);
-    human_tracking_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements", 1,
-                                                             &PlannerNode::human_detection_callback, this);
+    if (mode_ == "simulation") {
+        human_tracking_sub_ = nh_.subscribe<people_msgs::People>("/people", 1,
+                                                                 &PlannerNode::human_tracking_callback, this);
+    }
+    else {
+        human_tracking_sub_ = nh_.subscribe<people_msgs::PositionMeasurementArray>("/people_tracker_measurements", 1,
+                                                                       &PlannerNode::human_detection_callback, this);
+    }
 
     // publishers
     goal_reached_pub_ = nh_.advertise<std_msgs::Bool>("/planner/goal_reached", 1);
@@ -501,6 +505,8 @@ void PlannerNode::human_detection_callback(const people_msgs::PositionMeasuremen
         xh_meas_(1) = pos_arr_msg->people[person_id].pos.y;
 
         t_meas_last_ = pos_arr_msg->header.stamp.toSec();
+
+        std::cout << "measurement at t = " << t_meas_last_ << " is: " << xh_meas_.transpose() << std::endl;
     }
 }
 

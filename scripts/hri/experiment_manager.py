@@ -172,7 +172,7 @@ class ExperimentManager(object):
         self.comm_sub = rospy.Subscriber("/planner/communication", String, self.comm_callback)
 
         # load goals
-        protocol_file = rospy.get_param("~protocol_file", "../../resources/exp_protocols/protocol.txt")
+        protocol_file = rospy.get_param("~protocol_file", "../../resources/exp_protocols/protocol45.txt")
 
         self.xr_goal = []
         self.xh_goal = []

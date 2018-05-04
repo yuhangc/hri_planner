@@ -11,7 +11,7 @@
   <rosparam command="load" file="$(arg settings_rp)" ns="rp"/>
 
   <node name="experiment_manager" pkg="hri_planner" type="experiment_manager.py" output="screen">
-    <param name="protocol_file" value="$(find hri_planner)/resources/exp_protocols/protocol.txt"/>
+    <param name="protocol_file" value="$(find hri_planner)/resources/exp_protocols/protocol45.txt"/>
 	<param name="save_path" value="$(env HOME)/Documents/hri_log/exp_data/$(arg exp_id)"/>
     <remap from="/planner/communication" to="/haptic_control" />
   </node>
