@@ -471,33 +471,17 @@ void Planner::compute_plan(double t_max)
         optimizer_no_comm_->set_time_limit(t_max);
     }
 
-//    // FIXME: hard-code the iteration limit
-//    optimizer_comm_->set_max_iter(25);
-//    optimizer_no_comm_->set_max_iter(25);
-
     // optimize for no communication
     std::vector<double> cost_ni_no_comm;
     Trajectory robot_traj_opt_n(DIFFERENTIAL_MODEL, T_, dt_);
     Trajectory human_traj_hp_opt_n(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt_n(CONST_ACC_MODEL, T_, dt_);
 
-//    cost_no_comm = optimizer_no_comm_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_,
-//                                                acomm_, tcomm_, robot_traj_opt_n, &human_traj_hp_opt_n,
-//                                                &human_traj_rp_opt_n);
-//    optimizer_no_comm_->get_partial_cost(cost_hp_no_comm, cost_rp_no_comm);
-//    ROS_INFO("min cost no communication is: %f", cost_no_comm);
-
     // optimize for communication
     std::vector<double> cost_ni_comm;
     Trajectory robot_traj_opt(DIFFERENTIAL_MODEL, T_, dt_);
     Trajectory human_traj_hp_opt(CONST_ACC_MODEL, T_, dt_);
     Trajectory human_traj_rp_opt(CONST_ACC_MODEL, T_, dt_);
-
-//    cost_comm = optimizer_comm_->optimize(robot_traj_init_, human_traj_hp_init_, human_traj_rp_init_, intent_, 0.0,
-//                                          robot_traj_opt, &human_traj_hp_opt, &human_traj_rp_opt);
-//    optimizer_comm_->get_partial_cost(cost_hp_comm, cost_rp_comm);
-//    ROS_INFO("min cost with communication is: %f", cost_comm);
-//    cost_comm += comm_cost_;
 
 //    using namespace std::chrono;
 //    steady_clock::time_point t1 = steady_clock::now();
@@ -544,6 +528,15 @@ void Planner::compute_plan(double t_max)
 //              << ", nested iterations: (" << neval_hp << ", " << neval_rp << ")"  << std::endl;
 
     cost_comm_ += comm_cost_;
+
+    // check for abnormal solution (nan)
+    if (std::isnan(cost_comm_) || std::isnan(cost_no_comm_)) {
+        flag_plan_succeeded_ = false;
+        flag_gen_init_guesses_ = true;
+    }
+    else {
+        flag_plan_succeeded_ = true;
+    }
 
     // compare the cost and choose optimal actions
     if (cost_comm_ < cost_no_comm_) {

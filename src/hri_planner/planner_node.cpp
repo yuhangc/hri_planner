@@ -285,19 +285,15 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
 
         // predict robot pose approximately with linear model
         double th = xr_meas_(2);
-        xr_meas_(0) += ur_meas_(0) * std::cos(th) * dt_planning_;
-        xr_meas_(1) += ur_meas_(0) * std::sin(th) * dt_planning_;
-        xr_meas_(2) += ur_meas_(1) * dt_planning_;
-
-        th = xr_meas_(2);
-        xr_meas_(0) += ur_meas_(0) * std::cos(th) * dt_planning_;
-        xr_meas_(1) += ur_meas_(0) * std::sin(th) * dt_planning_;
-        xr_meas_(2) += ur_meas_(1) * dt_planning_;
+        xr_pred(0) += ur_meas_(0) * std::cos(th) * dt_planning_;
+        xr_pred(1) += ur_meas_(0) * std::sin(th) * dt_planning_;
+        xr_pred(2) += ur_meas_(1) * dt_planning_;
 
         // predict human pose with steer model
-        Eigen::VectorXd xh_pred0(4);
-        planner->propagate_steer_acc(xh_meas_, xh_goal_, xh_pred0, 0.5);
-        planner->propagate_steer_acc(xh_pred0, xh_goal_, xh_pred, 0.3);
+        // the prediction step is based on velocity
+        double v = xh_meas_.tail(2).norm();
+        double dt_pred = 0.5 - 0.25 * v;
+        planner->propagate_steer_acc(xh_meas_, xh_goal_, xh_pred, dt_pred);
 
         // set planning initial condition with the predicted states
         planner->set_robot_state(xr_pred, ur_meas_);

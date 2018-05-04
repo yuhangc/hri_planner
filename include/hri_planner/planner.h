@@ -192,6 +192,9 @@ private:
     double cost_hp_comm_;
     double cost_rp_comm_;
 
+    // plan failed
+    bool flag_plan_succeeded_;
+
     // whether to publish the full plan and belief/costs
     bool flag_publish_full_plan_;
     bool flag_publish_belief_cost_;
