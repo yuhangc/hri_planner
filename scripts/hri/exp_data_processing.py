@@ -158,6 +158,6 @@ def plot_comm_region(path, cond, human_traj_id):
 
 
 if __name__ == "__main__":
-    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/0428/test5", 0)
+    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/test1", 8)
 
     # plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config7", "hp", 0)

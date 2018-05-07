@@ -172,14 +172,7 @@ class ExperimentManager(object):
         self.comm_sub = rospy.Subscriber("/planner/communication", String, self.comm_callback)
 
         # load goals
-        protocol_file = rospy.get_param("~protocol_file", "../../resources/exp_protocols/protocol45.txt")
-
-        self.xr_goal = []
-        self.xh_goal = []
-        self.xh_init = []
-        self.intent = []
-
-        self.load_goals(protocol_file)
+        protocol_file = rospy.get_param("~protocol_file", "../../resources/exp_protocols/protocol.txt")
 
         self.acomm = ""
         self.flag_comm_updated = False
@@ -189,6 +182,13 @@ class ExperimentManager(object):
         # create a planner data logger
         self.save_path = rospy.get_param("~save_path", "exp_data")
         self.logger = PlannerDataLogger(self.save_path)
+
+        self.xr_goal = []
+        self.xh_goal = []
+        self.xh_init = []
+        self.intent = []
+
+        self.load_goals(protocol_file)
 
         # subscribers and publishers
         self.goal_reach_sub = rospy.Subscriber("controller/goal_reached", Bool, self.goal_reached_callback)
@@ -206,6 +206,9 @@ class ExperimentManager(object):
         self.xh_goal = proto_data[:, 4:6]
         self.xh_init = proto_data[:, 6:8]
         self.intent = proto_data[:, 8]
+
+        # save protocol file to save path
+        np.savetxt(self.save_path + "/protocol.txt", proto_data, delimiter=', ', fmt="%.3f")
 
     def run(self, trial_start=0):
         rate = rospy.Rate(20)

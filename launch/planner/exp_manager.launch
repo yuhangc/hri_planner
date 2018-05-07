@@ -2,6 +2,7 @@
   <arg name="settings_hp" default="$(find hri_planner)/resources/planner_setting/exp_settings_hp.yaml" />
   <arg name="settings_rp" default="$(find hri_planner)/resources/planner_setting/exp_settings_rp.yaml" />
   <arg name="exp_id" default="test0" />
+  <arg name="cond" default="0" />
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_rviz_launchers)/rviz/navigation.rviz">
     <remap from="/move_base_simple/goal" to="/rviz_navigation_goal"/>
@@ -11,7 +12,7 @@
   <rosparam command="load" file="$(arg settings_rp)" ns="rp"/>
 
   <node name="experiment_manager" pkg="hri_planner" type="experiment_manager.py" output="screen">
-    <param name="protocol_file" value="$(find hri_planner)/resources/exp_protocols/protocol45.txt"/>
+    <param name="protocol_file" value="$(find hri_planner)/resources/exp_protocols/protocol$(arg cond).txt"/>
 	<param name="save_path" value="$(env HOME)/Documents/hri_log/exp_data/$(arg exp_id)"/>
     <remap from="/planner/communication" to="/haptic_control" />
   </node>

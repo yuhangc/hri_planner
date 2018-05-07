@@ -3,7 +3,7 @@
 // Human Robot Interaction Planning Framework
 //
 // Created on   : 3/24/2018
-// Last revision: 4/23/2018
+// Last revision: 05/05/2018
 // Author       : Che, Yuhang <yuhangc@stanford.edu>
 // Contact      : Che, Yuhang <yuhangc@stanford.edu>
 //
@@ -279,20 +279,20 @@ void PlannerNode::plan(const std::shared_ptr<hri_planner::PlannerBase> &planner)
 
     // use simple prediction to take into account the planning time
     if (mode_ != "simulation") {
-        // FIXME: this doesn't seem to be helpful?
         Eigen::VectorXd xr_pred = xr_meas_;
         Eigen::VectorXd xh_pred = xh_meas_;
 
         // predict robot pose approximately with linear model
         double th = xr_meas_(2);
-        xr_pred(0) += ur_meas_(0) * std::cos(th) * dt_planning_;
-        xr_pred(1) += ur_meas_(0) * std::sin(th) * dt_planning_;
-        xr_pred(2) += ur_meas_(1) * dt_planning_;
+        double dt_pred = dt_planning_ * 0.1;
+        xr_pred(0) += ur_meas_(0) * std::cos(th) * dt_pred;
+        xr_pred(1) += ur_meas_(0) * std::sin(th) * dt_pred;
+        xr_pred(2) += ur_meas_(1) * dt_pred;
 
         // predict human pose with steer model
         // the prediction step is based on velocity
         double v = xh_meas_.tail(2).norm();
-        double dt_pred = 0.5 - 0.25 * v;
+        dt_pred = 0.75 - 0.3 * v;
         planner->propagate_steer_acc(xh_meas_, xh_goal_, xh_pred, dt_pred);
 
         // set planning initial condition with the predicted states
@@ -502,7 +502,7 @@ void PlannerNode::human_detection_callback(const people_msgs::PositionMeasuremen
 
         t_meas_last_ = pos_arr_msg->header.stamp.toSec();
 
-        std::cout << "measurement at t = " << t_meas_last_ << " is: " << xh_meas_.transpose() << std::endl;
+//        std::cout << "measurement at t = " << t_meas_last_ << " is: " << xh_meas_.transpose() << std::endl;
     }
 }
 
