@@ -151,6 +151,7 @@ void HatTracker::load_config(const std::string &path)
 
     // initialize flags
     for (int id = 0; id < n_hats_; id++) {
+        nframes_lost_.push_back(0);
         flag_hat_initialized_.push_back(false);
         flag_hat_lost_.push_back(false);
     }
@@ -169,6 +170,7 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
     for (int id = 0; id < n_hats_; id++) {
         if (!flag_hat_initialized_[id] || flag_hat_lost_[id]) {
             if (detect_and_init_hat(id, im_out)) {
+                nframes_lost_[id] = 0;
                 flag_hat_initialized_[id] = true;
                 flag_hat_lost_[id] = false;
             }
@@ -194,6 +196,11 @@ void HatTracker::track(const cv::Mat im_in, bool flag_vis)
 
             if (hat_qual < 0) {
                 std::cout << "Cannot find hat " << id << " !!!!!" << std::endl;
+                ++nframes_lost_[id];
+                if (nframes_lost_[id] > 30) {
+                    flag_hat_lost_[id] = true;
+                    flag_hat_initialized_[id] = false;
+                }
             } else {
                 // transform to global image coordinates
                 hat_detection.x += roi.x;

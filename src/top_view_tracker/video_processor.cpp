@@ -366,9 +366,9 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
                 pose_meas.at<double>(2) = std::atan2(r_world.at<double>(1, 1), r_world.at<double>(0, 1));
 
                 // filter out outliers
+                // do not check for angular change
                 cv::Mat diff = robot_pose_filter_->statePost.rowRange(0, 3) - pose_meas;
-                wrap_to_pi(diff.at<double>(2));
-                if (cv::norm(diff) > 0.5) {
+                if (cv::norm(diff.rowRange(0, 2)) > 0.5) {
                     ROS_WARN("Measurement is an outlier!");
                     pose_meas.at<double>(0) = -1;
                     pose_meas.at<double>(1) = -1;

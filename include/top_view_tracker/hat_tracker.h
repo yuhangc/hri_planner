@@ -113,6 +113,8 @@ private:
 
     double disp_scale_;
 
+    std::vector<int> nframes_lost_;
+
     // flags
     std::vector<bool> flag_hat_initialized_;
     std::vector<bool> flag_hat_lost_;

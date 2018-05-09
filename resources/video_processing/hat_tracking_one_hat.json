@@ -13,7 +13,7 @@
     "FPS": 60,
 
     "ratio_threshold_high_hat": 1.25,
-    "ratio_threshold_low_hat": 0.20,
+    "ratio_threshold_low_hat": 0.10,
     "ratio_threshold_high_cap": 1.5,
     "ratio_threshold_low_cap": 0.08,
 
