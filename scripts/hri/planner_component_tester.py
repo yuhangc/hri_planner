@@ -63,7 +63,7 @@ def nested_optimizer_client(xh, uh, xr, ur, xh0, xr0, weights, acomm, tcomm, log
         print "Service call failed: %s"%e
 
 
-def test_belief_update(user_id, cond, trial, acomm, tcomm):
+def test_belief_update(user_id, cond, trial, acomm, tcomm, flag_plot=True):
     # load data
     path = rospy.get_param("~data_path", "/home/yuhang/Documents/irl_data/winter18")
     path += "/user" + str(user_id) + "/processed/" + cond
@@ -88,32 +88,67 @@ def test_belief_update(user_id, cond, trial, acomm, tcomm):
     belief_data = np.loadtxt(log_path + "/log_belief.txt")
 
     # plotting
-    fig, axes = plt.subplots(2, 1, gridspec_kw={"height_ratios": [2, 1]})
-    axes[0].plot(xh[:, 0], xh[:, 1], '--ok', lw=1, fillstyle="none", label="human")
-    axes[0].plot(xr[:, 0], xr[:, 1], '-or', lw=1, fillstyle="none", label="robot")
-    axes[0].plot(xr[-1, 0], xr[-1, 1], 'or', markersize=10)
-    axes[0].plot(xh[-1, 0], xh[-1, 1], 'ok', markersize=10)
-    axes[0].axis("equal")
-    axes[0].legend()
+    if flag_plot:
+        fig, axes = plt.subplots(2, 1, gridspec_kw={"height_ratios": [2, 1]})
+        axes[0].plot(xh[:, 0], xh[:, 1], '--ok', lw=1, fillstyle="none", label="human")
+        axes[0].plot(xr[:, 0], xr[:, 1], '-or', lw=1, fillstyle="none", label="robot")
+        axes[0].plot(xr[-1, 0], xr[-1, 1], 'or', markersize=10)
+        axes[0].plot(xh[-1, 0], xh[-1, 1], 'ok', markersize=10)
+        axes[0].axis("equal")
+        axes[0].legend()
 
-    # axes[1].plot(belief_data[0], '-ob', lw=1, fillstyle="none")
-    # axes[1].plot(belief_data[1], '--xk', lw=1, fillstyle="none")
-    axes[1].plot(belief_data, '-sb', lw=1.5, fillstyle="none")
+        # axes[1].plot(belief_data[0], '-ob', lw=1, fillstyle="none")
+        # axes[1].plot(belief_data[1], '--xk', lw=1, fillstyle="none")
+        axes[1].plot(belief_data, '-sb', lw=1.5, fillstyle="none")
 
-    if cond == "hp":
-        title = "human priority"
-    else:
-        title = "robot priority"
-
-    if tcomm < 0:
-        title += ", no explicit communication"
-    else:
-        if acomm == 0:
-            title += ", comm. is: human priority, t = " + str(tcomm)
+        if cond == "hp":
+            title = "human priority"
         else:
-            title += ", comm. is: robot priority, t = " + str(tcomm)
+            title = "robot priority"
 
-    plt.suptitle(title, fontsize=16)
+        if tcomm < 0:
+            title += ", no explicit communication"
+        else:
+            if acomm == 0:
+                title += ", comm. is: human priority, t = " + str(tcomm)
+            else:
+                title += ", comm. is: robot priority, t = " + str(tcomm)
+
+        plt.suptitle(title, fontsize=16)
+        plt.show()
+
+    return belief_data
+
+
+def plot_belief_update_examples(user_id, cond, trial):
+    # perform simulation for all different communication options
+    belief_data_nc = test_belief_update(user_id, cond, trial, 0, -20, flag_plot=False)
+    belief_data_hp = test_belief_update(user_id, cond, trial, 0, 1, flag_plot=False)
+    belief_data_rp = test_belief_update(user_id, cond, trial, 1, 1, flag_plot=False)
+
+    # load data
+    path = rospy.get_param("~data_path", "/home/yuhang/Documents/irl_data/winter18")
+    path += "/user" + str(user_id) + "/processed/" + cond
+
+    traj_data = np.loadtxt(path + "/block" + str(trial) + ".txt", delimiter=',')
+    init_data = np.loadtxt(path + "/init.txt", delimiter=",")
+
+    xh = traj_data[:, 0:4]
+    uh = traj_data[:, 4:6]
+    xr = traj_data[:, 6:9]
+    ur = traj_data[:, 9:11]
+    xh0 = init_data[trial, 0:4]
+    xr0 = init_data[trial, 4:7]
+
+    # create plots
+    fig = plt.figure(figsize=(8, 10))
+    ax0 = plt.subplot2grid((5, 3), (0, 0), rowspan=2)
+    ax1 = plt.subplot2grid((5, 3), (0, 1), rowspan=2)
+    ax2 = plt.subplot2grid((5, 3), (0, 2), rowspan=2)
+    ax3 = plt.subplot2grid((5, 3), (2, 0), colspan=3)
+    ax3 = plt.subplot2grid((5, 3), (3, 0), colspan=3)
+    ax4 = plt.subplot2grid((5, 3), (4, 0), colspan=3)
+
     plt.show()
 
 
@@ -260,17 +295,19 @@ def test_nested_optimizer(user_id, cond, trial, acomm, tcomm):
 
 
 if __name__ == "__main__":
-    # no communication
-    test_belief_update(0, "hp", 0, 0, -20)
-    # communication matches action
-    test_belief_update(0, "hp", 0, 0, 0)
-    # communication doesn't match action
-    test_belief_update(0, "hp", 0, 1, 0)
+    # # no communication
+    # test_belief_update(0, "hp", 0, 0, -20)
+    # # communication matches action
+    # test_belief_update(0, "hp", 0, 0, 0)
+    # # communication doesn't match action
+    # test_belief_update(0, "hp", 0, 1, 0)
+    #
+    # # robot priority scenarios
+    # test_belief_update(0, "rp", 0, 0, -20)
+    # test_belief_update(0, "rp", 0, 0, 0)
+    # test_belief_update(0, "rp", 0, 1, 0)
 
-    # robot priority scenarios
-    test_belief_update(0, "rp", 0, 0, -20)
-    test_belief_update(0, "rp", 0, 0, 0)
-    test_belief_update(0, "rp", 0, 1, 0)
+    plot_belief_update_examples(0, "hp", 0)
 
     # # test the cost features
     # test_cost_features(0, "hp", 0)
