@@ -3,6 +3,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from plotting_utils import add_arrow
+
 
 def visualize_frame(ax, t, xh, xr, robot_plan, pred_hp, pred_rp, xr_goal, xh_goal):
     # plot previous trajectories
@@ -128,40 +130,6 @@ def visualize_trial(test_dir, trial_id, T=15, n_cols=5):
     axes[1].legend()
 
     plt.show()
-
-
-def add_arrow(line, position=None, direction='right', size=15, color=None):
-    """
-    add an arrow to a line.
-
-    line:       Line2D object
-    position:   x-position of the arrow. If None, mean of xdata is taken
-    direction:  'left' or 'right'
-    size:       size of the arrow in fontsize points
-    color:      if None, line color is taken.
-    """
-    if color is None:
-        color = line.get_color()
-
-    xdata = line.get_xdata()
-    ydata = line.get_ydata()
-
-    if position is None:
-        position = xdata.mean()
-
-    # find closest index
-    start_ind = np.argmin(np.absolute(xdata - position))
-    if direction == 'right':
-        end_ind = start_ind + 1
-    else:
-        end_ind = start_ind - 1
-
-    line.axes.annotate('',
-                       xytext=(xdata[start_ind], ydata[start_ind]),
-                       xy=(xdata[end_ind], ydata[end_ind]),
-                       arrowprops=dict(arrowstyle="-|>", color=color),
-                       size=size
-                       )
 
 
 def visualize_trial_video_single(path, cond, trial_id, save_figure=False):

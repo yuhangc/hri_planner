@@ -2,10 +2,12 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 import rospy
-
 from hri_planner.srv import *
+
+from plotting_utils import add_arrow
 
 
 def belief_update_client(xh, uh, xr, ur, xh0, xr0, weights, acomm, tcomm, log_path):
@@ -120,7 +122,7 @@ def test_belief_update(user_id, cond, trial, acomm, tcomm, flag_plot=True):
     return belief_data
 
 
-def plot_belief_update_examples(user_id, cond, trial):
+def plot_belief_update_examples(user_id, cond, trial, t_plot):
     # perform simulation for all different communication options
     belief_data_nc = test_belief_update(user_id, cond, trial, 0, -20, flag_plot=False)
     belief_data_hp = test_belief_update(user_id, cond, trial, 0, 1, flag_plot=False)
@@ -141,15 +143,75 @@ def plot_belief_update_examples(user_id, cond, trial):
     xr0 = init_data[trial, 4:7]
 
     # create plots
-    fig = plt.figure(figsize=(8, 10))
-    ax0 = plt.subplot2grid((5, 3), (0, 0), rowspan=2)
-    ax1 = plt.subplot2grid((5, 3), (0, 1), rowspan=2)
-    ax2 = plt.subplot2grid((5, 3), (0, 2), rowspan=2)
-    ax3 = plt.subplot2grid((5, 3), (2, 0), colspan=3)
-    ax3 = plt.subplot2grid((5, 3), (3, 0), colspan=3)
-    ax4 = plt.subplot2grid((5, 3), (4, 0), colspan=3)
+    fig = plt.figure(figsize=(7.5, 5))
+    gs = gridspec.GridSpec(2, 3, height_ratios=[1.5, 1])
+    ax0 = plt.subplot(gs[0, 0])
+    ax1 = plt.subplot(gs[0, 1])
+    ax2 = plt.subplot(gs[0, 2])
+    ax3 = plt.subplot(gs[1, :])
+    # ax4 = plt.subplot(gs[2, :])
+    # ax5 = plt.subplot(gs[3, :])
+
+    # ax0 = plt.subplot2grid((4, 3), (0, 0), rowspan=1)
+    # ax1 = plt.subplot2grid((4, 3), (0, 1), rowspan=1)
+    # ax2 = plt.subplot2grid((4, 3), (0, 2), rowspan=1)
+    # ax3 = plt.subplot2grid((4, 3), (1, 0), colspan=3)
+    # ax4 = plt.subplot2grid((4, 3), (2, 0), colspan=3)
+    # ax5 = plt.subplot2grid((4, 3), (3, 0), colspan=3)
+
+    # plot the trajectories
+    visualize_frame(ax0, xh, xr, t_plot[0], "/home/yuhang/Documents/exp_maps/atrium0201/my_map.jpg")
+    visualize_frame(ax1, xh, xr, t_plot[1], "/home/yuhang/Documents/exp_maps/atrium0201/my_map.jpg")
+    visualize_frame(ax2, xh, xr, t_plot[2], "/home/yuhang/Documents/exp_maps/atrium0201/my_map.jpg")
+
+    # plot beliefs
+    ax3.plot(belief_data_nc, '-s', lw=2, color=(0.2, 0.2, 0.6), markersize=7, fillstyle="none", label="no comm.")
+    ax3.plot(belief_data_hp, '-o', lw=2, color=(0.0, 0.0, 0.2), markersize=7, fillstyle="none", label="h.p.")
+    ax3.plot(belief_data_rp, '-^', lw=2, color=(0.4, 0.4, 0.9), markersize=7, fillstyle="none", label="r.p.")
+    ax3.axis([0, 16, -0.1, 1.5])
+    ax3.set_yticks(np.arange(0, 1.1, 0.5))
+    ax3.legend(ncol=3, fontsize=12)
+    # ax4.axis([0, 16, -0.2, 1.2])
+    # ax5.axis([0, 16, -0.2, 1.2])
 
     plt.show()
+
+
+def visualize_frame(ax, xh, xr, t, map_path):
+    img = plt.imread(map_path)
+    usize = 80
+    xstart = 400
+    ystart = 280
+    xend = xstart + 4.5 * usize
+    yend = ystart + 7.5 * usize
+
+    field_range = [-0.5, 5, -0.5, 8]
+
+    ax.imshow(img[ystart:yend, xstart:xend], extent=field_range, cmap="gray")
+    # ax.plot(xh[:t-2, 0], xh[:t-2, 1], '-', color=(0.8, 0.8, 0.8), lw=1.5)
+    # ax.plot(xr[:t-2, 0], xr[:t-2, 1], '-', color=(0.8, 0.8, 0.8), lw=1.5)
+
+    human_traj = ax.plot(xh[:t+1, 0], xh[:t+1, 1], '-k', lw=1.5, label="human")
+    add_arrow(human_traj[0], position=xh[t-1, 0], size=15)
+    robot_traj = ax.plot(xr[:t+1, 0], xr[:t+1, 1], '-r', lw=1.5, label="robot")
+    add_arrow(robot_traj[0], position=xr[t-1, 0], size=15)
+
+    ax.axis("equal")
+    ax.axis(field_range)
+
+    ax.tick_params(
+        axis='x',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        bottom='off',      # ticks along the bottom edge are off
+        top='off',         # ticks along the top edge are off
+        labelbottom='off') # labels along the bottom edge are off
+
+    ax.tick_params(
+        axis='y',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        left='off',      # ticks along the bottom edge are off
+        right='off',         # ticks along the top edge are off
+        labelleft='off') # labels along the bottom edge are off
 
 
 def test_cost_features(user_id, cond, trial):
@@ -307,7 +369,7 @@ if __name__ == "__main__":
     # test_belief_update(0, "rp", 0, 0, 0)
     # test_belief_update(0, "rp", 0, 1, 0)
 
-    plot_belief_update_examples(0, "hp", 0)
+    plot_belief_update_examples(0, "hp", 0, [4, 7, 14])
 
     # # test the cost features
     # test_cost_features(0, "hp", 0)
