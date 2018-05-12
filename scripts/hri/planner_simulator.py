@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 import rospy
 from std_msgs.msg import String
@@ -17,6 +18,8 @@ from people_msgs.msg import People
 from people_msgs.msg import Person
 
 from hri_planner.msg import PlannedTrajectories
+
+from plotting_utils import *
 
 
 def wrap_to_pi(ang):
@@ -64,6 +67,12 @@ class PlannerSimulator(object):
         self.xh0 = np.zeros((self.nXh_, ))
         self.robot_traj = []
         self.human_traj = []
+
+        # stores the plan/prediction
+        self.robot_plan = []
+        self.human_pred = []
+
+        self.comm_hist = []
 
         # stores the beliefs and cost history
         self.belief_hist = []
@@ -114,7 +123,7 @@ class PlannerSimulator(object):
         np.savetxt(path + "/block" + str(test_id) + ".txt", traj_data, delimiter=',')
 
     # main function to run
-    def run_simulation(self, robot_intent, Tsim=-1, show_plot=True):
+    def run_simulation(self, robot_intent, Tsim=-1, show_plot=True, generate_plot=True):
         # if not specified, total "simulation" time is length of pre-defined human trajectory
         if Tsim < 0:
             Tsim = len(self.human_traj)
@@ -124,7 +133,8 @@ class PlannerSimulator(object):
         n_cols = 5
         n_rows = (Tsim - 1) / n_cols + 1
 
-        fig1, axes = plt.subplots(n_rows, n_cols)
+        if generate_plot:
+            fig1, axes = plt.subplots(n_rows, n_cols)
 
         self.xh_ = self.xh0.copy()
         self.xr_ = self.xr0.copy()
@@ -189,10 +199,24 @@ class PlannerSimulator(object):
                 self.flag_comm_updated = False
                 self.tcomm_ = t * self.dt_
 
+                self.comm_hist.append(self.acomm_)
+            else:
+                self.comm_hist.append(-1)
+
+            # save plan/prediction
+            self.robot_plan.append(self.robot_traj_opt_.reshape(self.T_, self.nXr_))
+
+            if self.human_traj_hp_opt_.size > 0:
+                self.human_pred.append((self.human_traj_hp_opt_.reshape(self.T_, self.nXh_),
+                                        self.human_traj_rp_opt_.reshape(self.T_, self.nXh_)))
+            else:
+                self.human_pred.append((self.human_traj_hp_opt_, self.human_traj_rp_opt_))
+
             # visualize the plan
-            row = t / n_cols
-            col = t % n_cols
-            self.visualize_frame(axes[row][col], t+1)
+            if generate_plot:
+                row = t / n_cols
+                col = t % n_cols
+                self.visualize_frame(axes[row][col], t+1)
 
         # tell the planner to stop
         ctrl_data = String()
@@ -200,18 +224,19 @@ class PlannerSimulator(object):
         self.planner_ctrl_pub.publish(ctrl_data)
 
         # visualize beliefs and partial costs
-        fig2, fig3 = self.visualize_belief_and_costs()
+        if generate_plot:
+            fig2, fig3 = self.visualize_belief_and_costs()
 
-        # set tight plot layout
-        fig1.tight_layout()
-        fig2.tight_layout()
-        fig3.tight_layout()
+            # set tight plot layout
+            fig1.tight_layout()
+            fig2.tight_layout()
+            fig3.tight_layout()
 
-        # show visualization
-        if show_plot:
-            plt.show()
+            # show visualization
+            if show_plot:
+                plt.show()
 
-        return fig1, fig2, fig3
+            return fig1, fig2, fig3
 
     # helper functions
     def publish_states(self):
@@ -445,7 +470,84 @@ class PlannerSimulator(object):
             xr_inits = xr_inits.reshape(1, xr_inits.shape[0])
 
         self.clear_hist(xr_inits[test_init_id], xr_goals[test_goal_id])
-        self.run_simulation(intent, Tsim=15, show_plot=False)
+        self.run_simulation(intent, show_plot=False, generate_plot=True)
+
+        self.visualize_test_result([2, 3, 6, 10, 14])
+        plt.show()
+
+    def visualize_test_result(self, t_plot):
+        fig = plt.figure(figsize=(9.6, 4.2))
+        nplots = len(t_plot)
+
+        gs = gridspec.GridSpec(2, nplots, height_ratios=[1.2, 1])
+        traj_ax = [plt.subplot(gs[0, i]) for i in range(nplots)]
+        vel_ax = plt.subplot(gs[1, :])
+
+        self.robot_traj = np.asarray(self.robot_traj)
+        self.human_traj = np.asarray(self.human_traj)
+
+        for ax, t in zip(traj_ax, t_plot):
+            robot_traj = np.asarray(self.robot_traj)[0:t, 0:self.nXr_].reshape(t, self.nXr_)
+            human_traj = np.asarray(self.human_traj)[0:t, 0:self.nXh_].reshape(t, self.nXh_)
+
+            rj = ax.plot(robot_traj[:, 0], robot_traj[:, 1], "-",
+                         color=(1.0, 0.3, 0.3), fillstyle="none", lw=1.5, label="robot_traj")
+            hj = ax.plot(human_traj[:, 0], human_traj[:, 1], "-",
+                         color=(0.0, 0.0, 0.0), fillstyle="none", lw=1.5, label="human_traj")
+
+            add_arrow(rj[0], position=robot_traj[t-2, 0], size=12)
+            add_arrow(hj[0], position=human_traj[t-2, 0], size=12)
+
+            # plot the plan
+            robot_plan = self.robot_plan[t]
+            robot_plan = np.vstack((robot_traj[(t-1):t, :], robot_plan))
+            ax.plot(robot_plan[:, 0], robot_plan[:, 1], "-",
+                    color=(0.9, 0.3, 0.3, 0.5), lw=1.0, label="robot_plan")
+
+            human_plan_hp, human_plan_rp = self.human_pred[t]
+            if self.human_traj_hp_opt_.size > 0:
+                human_plan_hp = np.vstack((human_traj[(t-1):t, 0:self.nXh_], human_plan_hp))
+                human_plan_rp = np.vstack((human_traj[(t-1):t, 0:self.nXh_], human_plan_rp))
+                ax.plot(human_plan_hp[:, 0], human_plan_hp[:, 1], "-",
+                        color=(0.1, 0.1, 0.1, 0.5), lw=1.0, label="human_pred_hp")
+
+            if self.human_traj_rp_opt_.size > 0:
+                ax.plot(human_plan_rp[:, 0], human_plan_rp[:, 1], "--",
+                        color=(0.1, 0.1, 0.1, 0.5), lw=1.0, label="human_pred_rp")
+
+            # plot the goals
+            ax.plot(self.xr_goal[0], self.xr_goal[1], 'or', fillstyle="none")
+
+            ax.axis("equal")
+            ax.axis([-0.5, 5, 0, 7])
+
+            turn_off_axes_labels(ax)
+
+            # place a text box in bottom left in axes coords
+            props = dict(boxstyle='square', facecolor='white')
+            ax.text(0.05, 0.04, "t="+str(t*0.5)+"s", transform=ax.transAxes, fontsize=14,
+                    verticalalignment='bottom', bbox=props)
+
+        # plot the velocity profile
+        vr = self.robot_traj[:, self.nXr_]
+        vh = np.linalg.norm(self.human_traj[:, 2:4], axis=1)
+        tv = np.arange(0, len(vr)) * 0.5
+
+        vel_ax.plot(tv, vr, '--k', lw=2, label="robot")
+        vel_ax.plot(tv, vh, '-k', lw=2, label="human")
+        vel_ax.set_yticks(np.arange(0, 1.21, 0.4))
+
+        # highlight the communication region
+        for tt in t_plot:
+            if self.comm_hist[tt-1] > 0:
+                color = (0.8, 0.5, 0.5)
+            else:
+                color = (0.5, 0.5, 0.7)
+            vel_ax.axvspan(tv[tt]-0.2, tv[tt]+0.2, facecolor=color, edgecolor="none", alpha=0.5)
+
+        vel_ax.legend()
+
+        # fig.tight_layout()
         plt.show()
 
     def clear_hist(self, x_init, x_goal):
@@ -455,6 +557,11 @@ class PlannerSimulator(object):
         # stores the beliefs and cost history
         self.belief_hist = []
         self.cost_hist = []
+
+        # plan/predictions/comm
+        self.robot_plan = []
+        self.human_pred = []
+        self.comm_hist = []
 
         # flags for data update
         self.flag_plan_updated = False
@@ -526,5 +633,5 @@ if __name__ == "__main__":
     # simulator.run_simulation(0)
     # simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
 
-    simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 8)
-    # simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 0, 4, 0, test_init_id=103)
+    # simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 9)
+    simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 0, 4, 1, test_init_id=103)

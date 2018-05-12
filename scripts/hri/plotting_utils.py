@@ -42,3 +42,19 @@ def add_arrow(line, position=None, direction='right', size=15, color=None):
                        arrowprops=dict(arrowstyle="-|>", color=color),
                        size=size
                        )
+
+
+def turn_off_axes_labels(ax):
+    ax.tick_params(
+        axis='x',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        bottom='off',      # ticks along the bottom edge are off
+        top='off',         # ticks along the top edge are off
+        labelbottom='off') # labels along the bottom edge are off
+
+    ax.tick_params(
+        axis='y',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        left='off',      # ticks along the bottom edge are off
+        right='off',         # ticks along the top edge are off
+        labelleft='off') # labels along the bottom edge are off

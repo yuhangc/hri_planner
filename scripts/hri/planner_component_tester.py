@@ -143,7 +143,7 @@ def plot_belief_update_examples(user_id, cond, trial, t_plot):
     xr0 = init_data[trial, 4:7]
 
     # create plots
-    fig = plt.figure(figsize=(7.5, 5))
+    fig = plt.figure(figsize=(7.0, 4.8))
     gs = gridspec.GridSpec(2, 3, height_ratios=[1.5, 1])
     ax0 = plt.subplot(gs[0, 0])
     ax1 = plt.subplot(gs[0, 1])
@@ -160,32 +160,43 @@ def plot_belief_update_examples(user_id, cond, trial, t_plot):
     # ax5 = plt.subplot2grid((4, 3), (3, 0), colspan=3)
 
     # plot the trajectories
-    visualize_frame(ax0, xh, xr, t_plot[0], "/home/yuhang/Documents/exp_maps/atrium0201/my_map.jpg")
-    visualize_frame(ax1, xh, xr, t_plot[1], "/home/yuhang/Documents/exp_maps/atrium0201/my_map.jpg")
-    visualize_frame(ax2, xh, xr, t_plot[2], "/home/yuhang/Documents/exp_maps/atrium0201/my_map.jpg")
+    visualize_frame(ax0, xh, xr, t_plot[0], "/home/yuhang/Documents/exp_maps/atrium0201/my_map_obs.jpg")
+    visualize_frame(ax1, xh, xr, t_plot[1], "/home/yuhang/Documents/exp_maps/atrium0201/my_map_obs.jpg")
+    visualize_frame(ax2, xh, xr, t_plot[2], "/home/yuhang/Documents/exp_maps/atrium0201/my_map_obs.jpg")
+    ax0.legend(fontsize=12, loc='upper left')
 
     # plot beliefs
-    ax3.plot(belief_data_nc, '-s', lw=2, color=(0.2, 0.2, 0.6), markersize=7, fillstyle="none", label="no comm.")
-    ax3.plot(belief_data_hp, '-o', lw=2, color=(0.0, 0.0, 0.2), markersize=7, fillstyle="none", label="h.p.")
-    ax3.plot(belief_data_rp, '-^', lw=2, color=(0.4, 0.4, 0.9), markersize=7, fillstyle="none", label="r.p.")
-    ax3.axis([0, 16, -0.1, 1.5])
+    t = np.arange(0, len(belief_data_nc)) * 0.5
+    ax3.plot(t, belief_data_nc, '-s', lw=2, color=(0.2, 0.2, 0.6), markersize=7, fillstyle="none", label="no comm.")
+    ax3.plot(t, belief_data_hp, '-o', lw=2, color=(0.0, 0.0, 0.2), markersize=7, fillstyle="none", label="h.p.")
+    ax3.plot(t, belief_data_rp, '-^', lw=2, color=(0.4, 0.4, 0.9), markersize=7, fillstyle="none", label="r.p.")
+    ax3.axis([0, max(t), -0.1, 1.5])
     ax3.set_yticks(np.arange(0, 1.1, 0.5))
-    ax3.legend(ncol=3, fontsize=12)
+
+    for tt in t_plot:
+        ax3.axvspan(tt*0.5-0.25, tt*0.5+0.25, facecolor=(0.5, 0.5, 0.5), edgecolor="none", alpha=0.5)
+
+    ax3.legend(ncol=3, fontsize=14)
     # ax4.axis([0, 16, -0.2, 1.2])
     # ax5.axis([0, 16, -0.2, 1.2])
 
+    plt.tight_layout()
     plt.show()
 
 
 def visualize_frame(ax, xh, xr, t, map_path):
     img = plt.imread(map_path)
-    usize = 80
-    xstart = 400
-    ystart = 280
-    xend = xstart + 4.5 * usize
-    yend = ystart + 7.5 * usize
+    xorig = 460
+    yorig = 360
 
-    field_range = [-0.5, 5, -0.5, 8]
+    field_range = [-1.5, 5.5, -0.6, 7.7]
+    xsize = 80
+    ysize = 65
+
+    xstart = int(xorig + xsize * field_range[0])
+    ystart = int(yorig + ysize * field_range[2])
+    xend = int(xstart + xsize * field_range[1])
+    yend = int(ystart + ysize * field_range[3])
 
     ax.imshow(img[ystart:yend, xstart:xend], extent=field_range, cmap="gray")
     # ax.plot(xh[:t-2, 0], xh[:t-2, 1], '-', color=(0.8, 0.8, 0.8), lw=1.5)
@@ -198,6 +209,12 @@ def visualize_frame(ax, xh, xr, t, map_path):
 
     ax.axis("equal")
     ax.axis(field_range)
+
+    props = dict(boxstyle='square', facecolor='white')
+
+    # place a text box in bottom left in axes coords
+    ax.text(0.05, 0.04, "t="+str(t*0.5)+"s", transform=ax.transAxes, fontsize=14,
+            verticalalignment='bottom', bbox=props)
 
     ax.tick_params(
         axis='x',          # changes apply to the x-axis
@@ -370,6 +387,7 @@ if __name__ == "__main__":
     # test_belief_update(0, "rp", 0, 1, 0)
 
     plot_belief_update_examples(0, "hp", 0, [4, 7, 14])
+    # plot_belief_update_examples(0, "rp", 6, [4, 7, 14])
 
     # # test the cost features
     # test_cost_features(0, "hp", 0)
