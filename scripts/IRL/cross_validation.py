@@ -3,6 +3,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+import sys
+sys.path.insert(0, '../hri')
+
+from plotting_utils import *
+
 
 def load_prediction(load_path, usr_id, cond, trial_id, t_start):
     if t_start > 0:
@@ -47,33 +52,41 @@ def load_and_plot(load_path, usr_id, cond, trial_id, meta_data=(15, 6, 4)):
 
     # load and plot the figures
     n_plots = (t_total - t_plan) / t_inc + 1
-    fig, axes = plt.subplots(1, n_plots, figsize=(9, 4))
+    fig, axes = plt.subplots(1, n_plots, figsize=(5.5, 2.67))
 
     k = 0
     for t in range(0, t_total-t_plan, t_inc):
         x_opt, u_opt = load_prediction(load_path + "/prediction", usr_id, cond, trial_id, t)
 
         # plot the "past" trajectory
-        axes[k].plot(xh[:t+1, 0], xh[:t+1, 1], '-', lw=2, color=(0.8, 0.8, 0.8))
-        axes[k].plot(xr[:t+1, 0], xr[:t+1, 1], '-', lw=2, color=(1.0, 0.7, 0.7))
+        axes[k].plot(xh[:t+1, 0], xh[:t+1, 1], '-', lw=1.5, color=(0.8, 0.8, 0.8))
+        axes[k].plot(xr[:t+1, 0], xr[:t+1, 1], '-', lw=1.5, color=(0.8, 0.7, 0.7))
 
-        axes[k].plot(xh[t:, 0], xh[t:, 1], '--k', lw=1, fillstyle="none", label="measured")
-        axes[k].plot(xr[t:, 0], xr[t:, 1], '-r', lw=1, fillstyle="none", label="robot")
-        axes[k].plot(x_opt[:, 0], x_opt[:, 1], '-k', lw=1, fillstyle="none", label="predicted")
+        h_xh = axes[k].plot(xh[t:, 0], xh[t:, 1], '--k', lw=1, fillstyle="none", label="measured")
+        h_xopt = axes[k].plot(x_opt[:, 0], x_opt[:, 1], '-k', lw=1, fillstyle="none", label="predicted")
+        h_xr = axes[k].plot(xr[t:, 0], xr[t:, 1], '-r', lw=1, fillstyle="none", label="robot")
+        add_arrow(h_xh[0], position=xh[-2, 0], size=7)
+        add_arrow(h_xr[0], position=xr[-2, 0], size=7)
+        add_arrow(h_xopt[0], position=x_opt[-2, 0], size=7)
 
-        axes[k].plot(x_goal[0], x_goal[1], 'ok', markersize=8, fillstyle="none")
-        axes[k].plot(xr[-1, 0], xr[-1, 1], 'or', markersize=8, fillstyle="none")
-        axes[k].plot(obs_data[0], obs_data[1], 'ob', markersize=10)
+        # axes[k].plot(x_goal[0], x_goal[1], 'ok', markersize=8, fillstyle="none")
+        # axes[k].plot(xr[-1, 0], xr[-1, 1], 'or', markersize=8, fillstyle="none")
+        axes[k].plot(obs_data[0], obs_data[1], 'ok', markersize=8)
 
-        axes[k].set_title("t = " + str(t / 2))
         axes[k].axis("equal")
 
-        if k == n_plots-1:
-            axes[k].legend()
+        turn_off_axes_labels(axes[k])
+
+        props = dict(boxstyle='square', facecolor='white')
+        axes[k].text(0.05, 0.04, "t="+str(t*0.5)+"s", transform=axes[k].transAxes, fontsize=14,
+                     verticalalignment='bottom', bbox=props)
 
         k += 1
 
-    fig.tight_layout()
+    axes[0].legend(bbox_to_anchor=(0., 1.02, 2.8, .102), loc=3,
+                   ncol=3, mode="expand", borderaxespad=0., fontsize=14)
+
+    fig.subplots_adjust(left=0.03, bottom=0.07, right=0.97, top=0.82, wspace=0.1, hspace=0.2)
     plt.show()
 
 
@@ -191,10 +204,10 @@ def gen_init_conditions(path, xrange, yrange, resolution, offset):
 
 
 if __name__ == "__main__":
-    # load_and_plot("/home/yuhang/Documents/irl_data/winter18", 0, "hp", 0)
+    load_and_plot("/home/yuhang/Documents/irl_data/winter18", 0, "rp", 6)
 
-    gen_init_conditions("/home/yuhang/Documents/hri_log/test_data/test_config4",
-                        (-1, 1), (-2, 2), (0.2, 0.2), (0.5, 3.0, 0.4))
+    # gen_init_conditions("/home/yuhang/Documents/hri_log/test_data/test_config4",
+    #                     (-1, 1), (-2, 2), (0.2, 0.2), (0.5, 3.0, 0.4))
 
     # compute_prediction_err("/home/yuhang/Documents/irl_data/winter18",
     #                        "/home/yuhang/Documents/irl_data/winter18/cross_validation",

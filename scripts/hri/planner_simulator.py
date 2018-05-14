@@ -264,13 +264,13 @@ class PlannerSimulator(object):
 
         # human state
         # check if human is within detection range
-        x_diff = self.xh_[0:2] - self.xr_[0:2]
-        if np.linalg.norm(x_diff) > self.dist_th_detection_:
-            return
-
-        th_rel = wrap_to_pi(np.arctan2(x_diff[1], x_diff[0]) - self.xr_[2])
-        if np.abs(th_rel) > self.ang_th_detection_:
-            return
+        # x_diff = self.xh_[0:2] - self.xr_[0:2]
+        # if np.linalg.norm(x_diff) > self.dist_th_detection_:
+        #     return
+        #
+        # th_rel = wrap_to_pi(np.arctan2(x_diff[1], x_diff[0]) - self.xr_[2])
+        # if np.abs(th_rel) > self.ang_th_detection_:
+        #     return
 
         people_states = People()
         person_state = Person()
@@ -539,7 +539,7 @@ class PlannerSimulator(object):
 
         # highlight the communication region
         for tt in t_plot:
-            if self.comm_hist[tt-1] > 0:
+            if self.comm_hist[tt] > 0:
                 color = (0.8, 0.5, 0.5)
             else:
                 color = (0.5, 0.5, 0.7)
@@ -634,4 +634,4 @@ if __name__ == "__main__":
     # simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
 
     # simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 9)
-    simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 0, 4, 1, test_init_id=103)
+    simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 4, 5, 1, test_init_id=102)
