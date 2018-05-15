@@ -7,6 +7,11 @@ from std_msgs.msg import Bool
 from std_msgs.msg import String
 from std_msgs.msg import Float64MultiArray
 
+import actionlib
+import move_base_msgs.msg
+from actionlib_msgs.msg import GoalStatus
+from geometry_msgs.msg import PoseStamped
+
 from hri_planner.msg import PlannedTrajectories
 
 import tty, termios, sys
@@ -197,6 +202,7 @@ class ExperimentManager(object):
         self.goal_pub = rospy.Publisher("/planner/set_goal", Float64MultiArray, queue_size=1)
         self.planner_ctrl_pub = rospy.Publisher("/planner/ctrl", String, queue_size=1)
         self.tracking_test_pub = rospy.Publisher("/test_human_tracking_start", Bool, queue_size=1)
+        self.haptic_ctrl_pub = rospy.Publisher("/haptic_control", String, queue_size=1)
 
     def load_goals(self, protocol_file):
         proto_data = np.loadtxt(protocol_file, delimiter=',')
@@ -256,6 +262,74 @@ class ExperimentManager(object):
 
                 rospy.loginfo("started!")
 
+    def run_baseline(self, trial_start=0):
+        rate = rospy.Rate(20)
+
+        # create an actionlib client
+        rospy.loginfo("Creating human aware navigation client.")
+        hri_nav_client = actionlib.SimpleActionClient(
+            'human_aware_navigation',
+            move_base_msgs.msg.MoveBaseAction
+        )
+        hri_nav_client.wait_for_server()
+        rospy.loginfo("...done")
+
+        print "Please press any key to start:"
+        getchar()
+
+        trial = trial_start
+        seq = 0
+        while not rospy.is_shutdown():
+            rate.sleep()
+
+            print "Please press 's' to start:"
+            while getchar() != 's':
+                rate.sleep()
+                print "Please press 's' to start:"
+
+            # send the haptic signal
+            haptic_msg = String()
+            if self.intent[trial] == 0:
+                haptic_msg.data = "Attract"
+            else:
+                haptic_msg.data = "Repel"
+            self.haptic_ctrl_pub.publish(haptic_msg)
+
+            # set and send a navigation goal
+            goal = move_base_msgs.msg.MoveBaseGoal()
+            goal.target_pose.pose.position.x = self.xr_goal[trial][0]
+            goal.target_pose.pose.position.y = self.xr_goal[trial][1]
+            th = self.xr_goal[trial][2]
+            goal.target_pose.pose.orientation.z = np.sin(th * 0.5)
+            goal.target_pose.pose.orientation.w = np.cos(th * 0.5)
+            goal.target_pose.header.frame_id = "map"
+
+            seq += 1
+            goal.target_pose.header.seq = seq
+            goal.target_pose.header.stamp = rospy.get_rostime()
+
+            hri_nav_client.send_goal(goal)
+
+            # wait for result
+            hri_nav_client.wait_for_result()
+
+            # get result
+            res = hri_nav_client.get_result()
+            state = hri_nav_client.get_state()
+
+            if state == GoalStatus.SUCCEEDED:
+                rospy.loginfo("Goal reached!")
+
+                trial += 1
+                flag_goal_reached = False
+            else:
+                # cancel and resend goal
+                hri_nav_client.cancel_all_goals()
+
+            if trial >= len(self.xr_goal):
+                rospy.loginfo("trials ended!")
+                break
+
     def publish_goal(self, trial):
         goal_data = Float64MultiArray()
         for xr in self.xr_goal[trial]:
@@ -298,4 +372,10 @@ if __name__ == "__main__":
     exp_manager = ExperimentManager()
     rospy.sleep(0.5)
 
-    exp_manager.run(0)
+    # run differently based on mode
+    run_baseline_planner = rospy.get_param("~run_baseline_planner", False)
+
+    if run_baseline_planner:
+        exp_manager.run_baseline(0)
+    else:
+        exp_manager.run(0)
