@@ -168,11 +168,14 @@ def cross_validation(load_path, save_path, user_list, cond, start_trial, meta_da
 
     # average error w.r.t. start time
     err_seg_avg = np.mean(err_seg, axis=0)
+    err_seg_std = np.std(err_seg, axis=0)
+    x = np.arange(len(err_seg_avg))
 
-    fig, ax = plt.subplots(figsize=(3.5, 3))
-    ax.plot(err_seg_avg, '-s', fillstyle="none")
-    ax.set_xlabel("$T_{start}$ (s)")
-    ax.set_ylabel("Average prediction error (m)")
+    fig, ax = plt.subplots(figsize=(3, 2))
+    # ax.plot(err_seg_avg, '-s', fillstyle="none")
+    ax.errorbar(x, err_seg_avg, yerr=err_seg_std, marker='s', fillstyle="none")
+    ax.set_xlabel("$t$ (s)")
+    ax.set_ylabel("Prediction error (m)")
     fig.tight_layout()
 
     plt.show()
@@ -204,7 +207,7 @@ def gen_init_conditions(path, xrange, yrange, resolution, offset):
 
 
 if __name__ == "__main__":
-    load_and_plot("/home/yuhang/Documents/irl_data/winter18", 0, "rp", 6)
+    # load_and_plot("/home/yuhang/Documents/irl_data/winter18", 0, "rp", 6)
 
     # gen_init_conditions("/home/yuhang/Documents/hri_log/test_data/test_config4",
     #                     (-1, 1), (-2, 2), (0.2, 0.2), (0.5, 3.0, 0.4))
@@ -221,8 +224,8 @@ if __name__ == "__main__":
     #                        [62, 27, 61, 62],
     #                        traj2d_dist_naive)
 
-    # cross_validation("/home/yuhang/Documents/irl_data/winter18/cross_validation",
-    #                  "/home/yuhang/Documents/irl_data/winter18/cross_validation",
-    #                  [0, 1, 2, 3], "hp",
-    #                  [0, 0, 0, 0])
-    #                  # [40, 17, 20, 40])
+    cross_validation("/home/yuhang/Documents/irl_data/winter18/cross_validation",
+                     "/home/yuhang/Documents/irl_data/winter18/cross_validation",
+                     [0, 1, 2, 3], "hp",
+                     [0, 0, 0, 0])
+                     # [40, 17, 20, 40])

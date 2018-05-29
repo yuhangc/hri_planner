@@ -539,11 +539,11 @@ class PlannerSimulator(object):
 
         # highlight the communication region
         for tt in t_plot:
-            if self.comm_hist[tt] > 0:
+            if self.comm_hist[tt-1] > 0:
                 color = (0.8, 0.5, 0.5)
             else:
                 color = (0.5, 0.5, 0.7)
-            vel_ax.axvspan(tv[tt]-0.2, tv[tt]+0.2, facecolor=color, edgecolor="none", alpha=0.5)
+            vel_ax.axvspan(tv[tt]-0.05, tv[tt]+0.05, facecolor=color, edgecolor="none", alpha=0.5)
 
         vel_ax.legend()
 
@@ -634,4 +634,4 @@ if __name__ == "__main__":
     # simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
 
     # simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 9)
-    simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 4, 5, 1, test_init_id=102)
+    simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 0, 5, 0, test_init_id=103)

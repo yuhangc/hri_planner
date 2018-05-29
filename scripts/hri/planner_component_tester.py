@@ -174,9 +174,9 @@ def plot_belief_update_examples(user_id, cond, trial, t_plot):
     ax3.set_yticks(np.arange(0, 1.1, 0.5))
 
     for tt in t_plot:
-        ax3.axvspan(tt*0.5-0.25, tt*0.5+0.25, facecolor=(0.5, 0.5, 0.5), edgecolor="none", alpha=0.5)
+        ax3.axvspan(tt*0.5-0.05, tt*0.5+0.05, facecolor=(0.5, 0.5, 0.5), edgecolor="none", alpha=0.5)
 
-    ax3.legend(ncol=3, fontsize=14)
+    # ax3.legend(ncol=3, fontsize=14)
     # ax4.axis([0, 16, -0.2, 1.2])
     # ax5.axis([0, 16, -0.2, 1.2])
 
@@ -386,8 +386,8 @@ if __name__ == "__main__":
     # test_belief_update(0, "rp", 0, 0, 0)
     # test_belief_update(0, "rp", 0, 1, 0)
 
-    plot_belief_update_examples(0, "hp", 0, [4, 7, 14])
-    # plot_belief_update_examples(0, "rp", 6, [4, 7, 14])
+    # plot_belief_update_examples(0, "hp", 0, [4, 7, 14])
+    plot_belief_update_examples(0, "rp", 6, [4, 7, 14])
 
     # # test the cost features
     # test_cost_features(0, "hp", 0)

@@ -4,16 +4,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def generate_protocol(pt1, pt2, hpt1, hpt2, dd, n, save_path):
+def generate_protocol(pt1, pt2, hpt1, hpt2, dset, n, save_path):
     direction = pt1 - pt2
     direction /= np.linalg.norm(direction)
     direction[2] = 0
 
     n /= 2
 
+    dd, dnear, dfar = dset
+
     # generate the points
     pt1_set = [pt1 + float(i) * dd * direction for i in range(-n, n+1)]
     pt2_set = [pt2 + float(i) * dd * direction for i in range(-n, n+1)]
+
+    pt1_set.append(pt1 - dnear * direction)
+    pt1_set.append(pt1 + dfar * direction)
+    pt2_set.append(pt2 + dnear * direction)
+    pt2_set.append(pt2 - dfar * direction)
 
     # attach random zeros/ones as intent
     for i in range(len(pt1_set)):
@@ -53,9 +60,9 @@ def generate_protocol(pt1, pt2, hpt1, hpt2, dd, n, save_path):
 
 
 if __name__ == "__main__":
-    pt1 = np.array([0.160, 1.290, 2.490])
-    pt2 = np.array([-4.200, 1.300, -0.390])
+    pt1 = np.array([-0.560, 2.170, -2.800])
+    pt2 = np.array([-3.680, 0.210, 0.300])
     hpt1 = np.array([-4.36, 4.61])
     hpt2 = np.array([0.22, -2.24])
 
-    generate_protocol(pt1, pt2, hpt1, hpt2, 0.3, 5, "../../resources/exp_protocols/protocol-45.txt")
+    generate_protocol(pt1, pt2, hpt1, hpt2, (0.2, 0.8, 1.3), 3, "../../resources/exp_protocols/protocol0-1.txt")
