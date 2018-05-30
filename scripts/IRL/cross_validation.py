@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.insert(0, '../hri')
 
+from data_loader import wrap2pi
 from plotting_utils import *
 
 
@@ -98,6 +99,23 @@ def traj2d_dist_dtw(traj1, traj2):
     pass
 
 
+def check_wrong_side(traj1, traj2, obs):
+    om1 = 0.0
+    om2 = 0.0
+
+    for t in range(1, len(traj1)):
+        v1 = traj1[t, 0:2] - obs[0:2]
+        v2 = traj2[t, 0:2] - obs[0:2]
+
+        v1_last = traj1[t-1, 0:2] - obs[0:2]
+        v2_last = traj2[t-1, 0:2] - obs[0:2]
+
+        om1 += wrap2pi(np.arctan2(v1[1], v1[0]) - np.arctan2(v1_last[1], v1_last[0]))
+        om2 += wrap2pi(np.arctan2(v2[1], v2[0]) - np.arctan2(v2_last[1], v2_last[0]))
+
+    return om1 * om2 < 0.0
+
+
 def compute_prediction_err(load_path, save_path, user_list, cond, n_trial, dist_func, meta_data=(15, 6, 2)):
     t_total, t_plan, t_inc = meta_data
     errs = []
@@ -109,6 +127,7 @@ def compute_prediction_err(load_path, save_path, user_list, cond, n_trial, dist_
 
         n_seg = (t_total - t_plan) / t_inc + 1
         err_usr = np.zeros((n_seg, n_trial[usr]))
+        wrong_side = np.zeros((n_trial[usr], ))
 
         for trial in range(n_trial[usr]):
             xh, uh, xr, ur = load_measurement(path_meas, trial)
@@ -117,6 +136,14 @@ def compute_prediction_err(load_path, save_path, user_list, cond, n_trial, dist_
             for t in range(0, t_total-t_plan, t_inc):
                 x_opt, u_opt = load_prediction(path_pred, usr, cond, trial, t)
                 err_usr[k, trial] = dist_func(xh[t:t_total, :], x_opt)
+                if k == 0:
+                    wrong_side[trial] = check_wrong_side(xh[:t_total], x_opt, np.array([2.055939, 3.406737]))
+                    # if wrong_side[trial] > 0:
+                    #     fig, ax = plt.subplots()
+                    #     ax.plot(xh[:, 0], xh[:, 1])
+                    #     ax.plot(x_opt[:, 0], x_opt[:, 1])
+                    #     plt.show()
+
                 k += 1
 
         errs.append(err_usr)
@@ -124,6 +151,7 @@ def compute_prediction_err(load_path, save_path, user_list, cond, n_trial, dist_
         # save to text file
         file_name = save_path + "/" + cond + "/err_user" + str(usr) + ".txt"
         np.savetxt(file_name, err_usr, delimiter=',')
+        np.savetxt(save_path + "/" + cond + "/wrong_side" + str(usr) + ".txt", wrong_side, delimiter=', ')
 
     return errs
 
@@ -131,22 +159,40 @@ def compute_prediction_err(load_path, save_path, user_list, cond, n_trial, dist_
 def cross_validation(load_path, save_path, user_list, cond, start_trial, meta_data=(15, 6, 2)):
     t_total, t_plan, t_inc = meta_data
     err_dist = None
-    err_seg = []
+    err_cs = None
+    err_ws = None
 
     for usr in user_list:
         # load data
         file_name = load_path + "/" + cond + "/err_user" + str(usr) + ".txt"
         err_usr = np.loadtxt(file_name, delimiter=',')
+        wrong_side = np.loadtxt(load_path + "/" + cond + "/wrong_side" + str(usr) + ".txt", delimiter=',')
         err_usr = err_usr[:, start_trial[usr]:]
+        wrong_side = wrong_side[start_trial[usr]:]
 
+        idx = np.where(wrong_side > 0)
+        err_usr_ws = err_usr[:, idx[0]]
+        idx = np.where(wrong_side == 0)
+        err_usr_cs = err_usr[:, idx[0]]
         if err_dist is None:
             err_dist = err_usr.copy()
+            err_cs = err_usr_cs.copy()
+            err_ws = err_usr_ws.copy()
         else:
             err_dist = np.hstack((err_dist, err_usr))
+            err_cs = np.hstack((err_cs, err_usr_cs))
+            err_ws = np.hstack((err_ws, err_usr_ws))
 
         # compute average test error for each segment
-        err_seg_usr = np.mean(err_usr, axis=1)
-        err_seg.append(err_seg_usr)
+        # err_seg_usr = np.mean(err_usr, axis=1)
+        # err_seg.append(err_seg_usr)
+
+    # remove the outlier
+    idx_outlier = np.where(err_ws > 0.8)
+    print idx_outlier
+    idx_inlier = np.where(err_ws[2, :] < 0.8)
+    err_ws = err_ws[:, idx_inlier[0]]
+    err_cs = err_cs[:, idx_inlier[0]]
 
     # plots
     # overall distribution
@@ -154,7 +200,8 @@ def cross_validation(load_path, save_path, user_list, cond, start_trial, meta_da
 
     n_seg = (t_total - t_plan) / t_inc + 1
     for k in range(n_seg):
-        axes[k].plot(err_dist[k], np.ones_like(err_dist[k]), '.k', markersize=2)
+        axes[k].plot(err_cs[k], np.ones_like(err_cs[k]), '.k', markersize=2)
+        axes[k].plot(err_ws[k], np.ones_like(err_ws[k]), '.r', markersize=2)
         axes[k].tick_params(
                 axis='y',           # changes apply to the x-axis
                 which='both',       # both major and minor ticks are affected
@@ -167,17 +214,29 @@ def cross_validation(load_path, save_path, user_list, cond, start_trial, meta_da
     fig.tight_layout()
 
     # average error w.r.t. start time
-    err_seg_avg = np.mean(err_seg, axis=0)
-    err_seg_std = np.std(err_seg, axis=0)
-    x = np.arange(len(err_seg_avg))
+    err_avg_cs = np.mean(err_cs, axis=1)
+    err_std_cs = np.std(err_cs, axis=1)
+    err_avg_ws = np.mean(err_ws, axis=1)
+    err_std_ws = np.std(err_ws, axis=1)
+    x = np.arange(len(err_avg_cs))
 
-    fig, ax = plt.subplots(figsize=(3, 2))
+    fig, ax = plt.subplots(figsize=(4.5, 3))
     # ax.plot(err_seg_avg, '-s', fillstyle="none")
-    ax.errorbar(x, err_seg_avg, yerr=err_seg_std, marker='s', fillstyle="none")
-    ax.set_xlabel("$t$ (s)")
-    ax.set_ylabel("Prediction error (m)")
-    fig.tight_layout()
+    ax.errorbar(x, err_avg_cs, yerr=err_std_cs, marker='s', fillstyle="none", ls="-", lw=2,
+                color=(0.1, 0.1, 0.6), elinewidth=1.0, capsize=3, capthick=1, label="correct side")
+    ax.errorbar(x, err_avg_ws, yerr=err_std_ws, marker='s', fillstyle="none", ls="--", lw=2,
+                color=(0.6, 0.1, 0.1), elinewidth=1.0, capsize=3, capthick=1, label="wrong side")
+    ax.set_xlabel("$t$ (s)", fontsize=14)
+    ax.set_ylabel("Prediction error (m)", fontsize=14)
 
+    ax.legend(frameon=True, fancybox=False, edgecolor='k', fontsize=14)
+
+    for tick in ax.xaxis.get_major_ticks():
+        tick.label.set_fontsize(14)
+    for tick in ax.yaxis.get_major_ticks():
+        tick.label.set_fontsize(14)
+
+    fig.tight_layout()
     plt.show()
 
 
@@ -207,7 +266,7 @@ def gen_init_conditions(path, xrange, yrange, resolution, offset):
 
 
 if __name__ == "__main__":
-    # load_and_plot("/home/yuhang/Documents/irl_data/winter18", 0, "rp", 6)
+    load_and_plot("/home/yuhang/Documents/irl_data/winter18", 0, "rp", 6)
 
     # gen_init_conditions("/home/yuhang/Documents/hri_log/test_data/test_config4",
     #                     (-1, 1), (-2, 2), (0.2, 0.2), (0.5, 3.0, 0.4))
@@ -224,8 +283,8 @@ if __name__ == "__main__":
     #                        [62, 27, 61, 62],
     #                        traj2d_dist_naive)
 
-    cross_validation("/home/yuhang/Documents/irl_data/winter18/cross_validation",
-                     "/home/yuhang/Documents/irl_data/winter18/cross_validation",
-                     [0, 1, 2, 3], "hp",
-                     [0, 0, 0, 0])
-                     # [40, 17, 20, 40])
+    # cross_validation("/home/yuhang/Documents/irl_data/winter18/cross_validation",
+    #                  "/home/yuhang/Documents/irl_data/winter18/cross_validation",
+    #                  [0, 1, 2, 3], "hp",
+    #                  # [0, 0, 0, 0])
+    #                  [40, 17, 20, 40])

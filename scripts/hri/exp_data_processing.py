@@ -162,12 +162,37 @@ def visualize_trial_video_single(path, cond, trial_id, save_figure=False):
         plt.show()
 
 
-def visualize_trial_video(path, cond, trial_id=-1, ntrials=10):
+def visualize_trial_video(path, cond, trial_id=-1, ntrials=20):
     if trial_id == -1:
         for trial_id in range(ntrials):
             visualize_trial_video_single(path, cond, trial_id, save_figure=True)
     else:
         visualize_trial_video_single(path, cond, trial_id, save_figure=False)
+
+
+def visualize_user_video(path, cond, priority, nstart=0, ntrials=20):
+    # load the protocol file
+    proto = np.loadtxt(path + "/" + cond + "/" + "protocol.txt", delimiter=',')
+    pp = proto[1:, 8]
+
+    # plot all trajectories with given priority
+    fig, ax = plt.subplots()
+
+    priority = (priority == "rp")
+    for trial in range(nstart, ntrials):
+        if pp[trial] == priority:
+            traj_data = np.loadtxt(path + "/trajectories/" + "/" + cond +
+                                   "/block" + str(trial) + ".txt", delimiter=',')
+
+            xh = traj_data[:, 0:4]
+            xr = traj_data[:, 6:9]
+
+            ax.plot(xh[:, 0], xh[:, 1], lw=1)
+            ax.plot(xr[:, 0], xr[:, 1], lw=1)
+
+    ax.axis("equal")
+
+    plt.show()
 
 
 def plot_comm_region(path, cond, human_traj_id):
@@ -198,8 +223,10 @@ def plot_comm_region(path, cond, human_traj_id):
 
 
 if __name__ == "__main__":
-    visualize_trial("/home/yuhang/Documents/hri_log/exp_data/0506-0/test0", 3)
-    # visualize_trial_video("/home/yuhang/Videos/hri_planning/pilot0/trajectories", "haptics_0", 0)
-    # visualize_trial_video("/home/yuhang/Videos/hri_planning/pilot0/trajectories", "no_haptics_0")
+    # visualize_trial("/home/yuhang/Documents/hri_log/exp_data/0506-0/test0", 3)
+    # visualize_trial_video("/home/yuhang/Videos/hri_planning/0526/user0/trajectories", "haptics", 0)
+    # visualize_trial_video("/home/yuhang/Videos/hri_planning/0526/user0/trajectories", "haptics")
+
+    visualize_user_video("/home/yuhang/Documents/hri_log/exp_data/user1", "haptics", "hp", nstart=10)
 
     # plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config7", "hp", 0)

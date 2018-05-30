@@ -232,29 +232,29 @@ class DataLoader(object):
             u_plt = np.asarray(u)
 
             # plot for verification
-            fig, axes = plt.subplots(3, 1)
-
-            axes[0].plot(x_plt[:, 0], '-k')
-            axes[0].plot(x_plt[:, 1], '--k')
-            axes[0].plot(traj[1:, 0], '-b')
-            axes[0].plot(traj[1:, 1], '--b')
-
-            axes[1].plot(x_plt[:, 2], '-k')
-            axes[1].plot(x_plt[:, 3], '--k')
-            axes[1].plot(traj[1:, 2], '-b')
-            axes[1].plot(traj[1:, 3], '--b')
-
-            axes[2].plot(u_plt[:, 0], '-k')
-            axes[2].plot(u_plt[:, 1], '--k')
-
-            fig, axes = plt.subplots()
-            axes.plot(x_plt[:, 0], x_plt[:, 1], '-k', lw=2, marker='o', markersize=10, fillstyle="none")
-            axes.plot(traj[1:, 0], traj[1:, 1], '-b', lw=2, marker='o', markersize=10, fillstyle="none")
-            axes.plot(self.xr_block[i][:, 0], self.xr_block[i][:, 1])
-
-            axes.axis("equal")
-
-            plt.show()
+            # fig, axes = plt.subplots(3, 1)
+            #
+            # axes[0].plot(x_plt[:, 0], '-k')
+            # axes[0].plot(x_plt[:, 1], '--k')
+            # axes[0].plot(traj[1:, 0], '-b')
+            # axes[0].plot(traj[1:, 1], '--b')
+            #
+            # axes[1].plot(x_plt[:, 2], '-k')
+            # axes[1].plot(x_plt[:, 3], '--k')
+            # axes[1].plot(traj[1:, 2], '-b')
+            # axes[1].plot(traj[1:, 3], '--b')
+            #
+            # axes[2].plot(u_plt[:, 0], '-k')
+            # axes[2].plot(u_plt[:, 1], '--k')
+            #
+            # fig, axes = plt.subplots()
+            # axes.plot(x_plt[:, 0], x_plt[:, 1], '-k', lw=2, marker='o', markersize=10, fillstyle="none")
+            # axes.plot(traj[1:, 0], traj[1:, 1], '-b', lw=2, marker='o', markersize=10, fillstyle="none")
+            # axes.plot(self.xr_block[i][:, 0], self.xr_block[i][:, 1])
+            #
+            # axes.axis("equal")
+            #
+            # plt.show()
 
             # update trajectory
             self.xh_block[i] = np.asarray(x_filtered)
@@ -402,7 +402,7 @@ if __name__ == "__main__":
 
     # load and plot raw data
     # loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/user3", "_hp", max_range=-1)
-    loader.load_data_raw("/home/yuhang/Videos/hri_planning/pilot0/trajectories", "no_haptics_0", max_range=-1)
+    loader.load_data_raw("/home/yuhang/Videos/hri_planning/0526/user2/trajectories", "haptics", max_range=-1)
     # loader.plot_raw()
 
     # select and down sample trajectories
@@ -425,4 +425,4 @@ if __name__ == "__main__":
     loader.filter_human_trajectories(w=[1.0, 0.1, 0.1, 1.0])
 
     # save data to file
-    loader.save_trajectories("/home/yuhang/Videos/hri_planning/pilot0/trajectories/no_haptics_0")
+    loader.save_trajectories("/home/yuhang/Videos/hri_planning/0526/user2/trajectories/haptics")
