@@ -84,10 +84,10 @@ def load_and_plot(load_path, usr_id, cond, trial_id, meta_data=(15, 6, 4)):
 
         k += 1
 
-    axes[0].legend(bbox_to_anchor=(0., 1.02, 2.8, .102), loc=3,
-                   ncol=3, mode="expand", borderaxespad=0., fontsize=14)
+    axes[0].legend(bbox_to_anchor=(0., -0.2, 2.8, .102), loc=3,
+                   ncol=3, mode="expand", borderaxespad=0., fontsize=14, fancybox=False, edgecolor='k')
 
-    fig.subplots_adjust(left=0.03, bottom=0.07, right=0.97, top=0.82, wspace=0.1, hspace=0.2)
+    fig.subplots_adjust(left=0.03, bottom=0.2, right=0.97, top=0.97, wspace=0.1, hspace=0.2)
     plt.show()
 
 

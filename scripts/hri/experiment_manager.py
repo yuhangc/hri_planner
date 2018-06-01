@@ -262,13 +262,14 @@ class ExperimentManager(object):
 
                 rospy.loginfo("started!")
 
-    def run_baseline(self, trial_start=0):
+    def run_baseline(self, trial_start=0, server_name="move_base"):
         rate = rospy.Rate(20)
 
         # create an actionlib client
         rospy.loginfo("Creating human aware navigation client.")
         hri_nav_client = actionlib.SimpleActionClient(
-            'human_aware_navigation',
+            # 'human_aware_navigation',
+            server_name,
             move_base_msgs.msg.MoveBaseAction
         )
         hri_nav_client.wait_for_server()
@@ -288,12 +289,12 @@ class ExperimentManager(object):
                 print "Please press 's' to start:"
 
             # send the haptic signal
-            haptic_msg = String()
-            if self.intent[trial] == 0:
-                haptic_msg.data = "Attract"
-            else:
-                haptic_msg.data = "Repel"
-            self.haptic_ctrl_pub.publish(haptic_msg)
+            # haptic_msg = String()
+            # if self.intent[trial] == 0:
+            #     haptic_msg.data = "Attract"
+            # else:
+            #     haptic_msg.data = "Repel"
+            # self.haptic_ctrl_pub.publish(haptic_msg)
 
             # set and send a navigation goal
             goal = move_base_msgs.msg.MoveBaseGoal()
@@ -376,6 +377,6 @@ if __name__ == "__main__":
     run_baseline_planner = rospy.get_param("~run_baseline_planner", False)
 
     if run_baseline_planner:
-        exp_manager.run_baseline(0)
+        exp_manager.run_baseline(0, server_name="human_aware_navigation")
     else:
         exp_manager.run(0)

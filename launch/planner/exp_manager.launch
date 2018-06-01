@@ -18,4 +18,6 @@
     <param name="run_baseline_planner" value="$(arg baseline)" />
     <remap from="/planner/communication" to="/haptic_control" />
   </node>
+
+  <!--include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml" if="$(arg baseline)"/-->
 </launch>
