@@ -136,6 +136,10 @@ class DataLoader(object):
         # plot the raw human and robot trajectories
         fig, ax = plt.subplots()
 
+        # delete_range = range(0, 29)
+        # self.xh = np.delete(self.xh, delete_range, axis=0)
+        # self.xh[0:29, 0:2] -= np.array([-0.1, 0.1])
+
         for a in range(self.nA):
             xs = a * self.nXs
             ax.plot(self.xh[:, xs], self.xh[:, xs+1], color=plt.cm.viridis(a*0.5+0.3),
@@ -186,10 +190,10 @@ class DataLoader(object):
             # print segs[:, 1] - segs[:, 0]
             # print segs.shape
 
-            # fig, axes = plt.subplots()
-            # axes.plot(dist_goal0, '-b')
-            # axes.plot(dist_goal1, '--b')
-            # plt.show()
+            fig, axes = plt.subplots()
+            axes.plot(dist_goal0, '-b')
+            axes.plot(dist_goal1, '--b')
+            plt.show()
 
         # generate all trajectory segments
         for a, b in segs:
@@ -402,7 +406,7 @@ if __name__ == "__main__":
 
     # load and plot raw data
     # loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/user3", "_hp", max_range=-1)
-    loader.load_data_raw("/home/yuhang/Videos/hri_planning/user2/trajectories", "no_haptics", max_range=-1)
+    loader.load_data_raw("/home/yuhang/Videos/hri_planning/user2/trajectories", "baseline", max_range=-1)
     # loader.plot_raw()
 
     # select and down sample trajectories
@@ -425,4 +429,4 @@ if __name__ == "__main__":
     loader.filter_human_trajectories(w=[1.0, 0.1, 0.1, 1.0])
 
     # save data to file
-    loader.save_trajectories("/home/yuhang/Videos/hri_planning/user2/trajectories/no_haptics")
+    loader.save_trajectories("/home/yuhang/Videos/hri_planning/user2/trajectories/baseline")

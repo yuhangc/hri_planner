@@ -418,6 +418,8 @@ void VideoProcessor::process(std::string &video_path, std::string &save_path)
 
         // prediction step of the robot pose filter
         robot_pose_filter_->predict();
+        robot_pose_filter_->statePre.rowRange(3, 6) *= 0.95;
+        robot_pose_filter_->statePost.rowRange(3, 6) *= 0.95;
 
         //quit on ESC button
         if(cv::waitKey(1)==27)break;
