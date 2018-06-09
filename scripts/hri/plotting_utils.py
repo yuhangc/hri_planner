@@ -58,3 +58,22 @@ def turn_off_axes_labels(ax):
         left='off',      # ticks along the bottom edge are off
         right='off',         # ticks along the top edge are off
         labelleft='off') # labels along the bottom edge are off
+
+
+def visualize_explicit_model():
+    A = 100.0
+    M = 2.4
+
+    t_c = 0.0
+    t = np.arange(0, 20, 0.1)
+
+    P = (A * np.exp(t_c-t / M) + 1.0) / (A * np.exp(t_c-t / M) + 2.0)
+
+    fig, ax = plt.subplots(figsize=(3.5, 2))
+    ax.plot(t, P, '-', lw=1.5, color=(0.3, 0.3, 0.8))
+    ax.set_yticks([0.5, 0.75, 1.0])
+
+    plt.show()
+
+if __name__ == "__main__":
+    visualize_explicit_model()
