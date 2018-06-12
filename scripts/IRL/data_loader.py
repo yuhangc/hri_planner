@@ -136,8 +136,9 @@ class DataLoader(object):
         # plot the raw human and robot trajectories
         fig, ax = plt.subplots()
 
-        # delete_range = range(0, 29)
-        # self.xh = np.delete(self.xh, delete_range, axis=0)
+        delete_range = range(515, 530)
+        self.xh = np.delete(self.xh, delete_range, axis=0)
+        self.xr = np.delete(self.xr, delete_range, axis=0)
         # self.xh[0:29, 0:2] -= np.array([-0.1, 0.1])
 
         for a in range(self.nA):
@@ -406,7 +407,7 @@ if __name__ == "__main__":
 
     # load and plot raw data
     # loader.load_data_raw("/home/yuhang/Documents/irl_data/winter18/user3", "_hp", max_range=-1)
-    loader.load_data_raw("/home/yuhang/Videos/hri_planning/user2/trajectories", "baseline", max_range=-1)
+    loader.load_data_raw("/home/yuhang/Videos/hri_planning/user5/trajectories", "haptics", max_range=-1)
     # loader.plot_raw()
 
     # select and down sample trajectories
@@ -429,4 +430,4 @@ if __name__ == "__main__":
     loader.filter_human_trajectories(w=[1.0, 0.1, 0.1, 1.0])
 
     # save data to file
-    loader.save_trajectories("/home/yuhang/Videos/hri_planning/user2/trajectories/baseline")
+    loader.save_trajectories("/home/yuhang/Videos/hri_planning/user4/trajectories/haptics")

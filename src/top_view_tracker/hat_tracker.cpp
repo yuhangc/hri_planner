@@ -587,8 +587,8 @@ void HatTracker::set_rot_kf_cov(const double cap_qual, const cv::Mat &vel, const
 //----------------------------------------------------------------------------------
 void HatTracker::clip_roi(cv::Rect &roi)
 {
-    roi.x = std::min(roi.x, frame_.cols);
-    roi.y = std::min(roi.y, frame_.rows);
+    roi.x = std::min(roi.x, frame_.cols - 1);
+    roi.y = std::min(roi.y, frame_.rows - 1);
     roi.x = std::max(roi.x, 0);
     roi.y = std::max(roi.y, 0);
     roi.width = std::min(roi.width, frame_.cols - roi.x);

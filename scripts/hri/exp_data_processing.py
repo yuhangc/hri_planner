@@ -225,7 +225,7 @@ def plot_comm_region(path, cond, human_traj_id):
 if __name__ == "__main__":
     # visualize_trial("/home/yuhang/Documents/hri_log/exp_data/0506-0/test0", 3)
     # visualize_trial_video("/home/yuhang/Videos/hri_planning/0526/user0/trajectories", "haptics", 0)
-    visualize_trial_video("/home/yuhang/Videos/hri_planning/user2/trajectories", "baseline")
+    visualize_trial_video("/home/yuhang/Videos/hri_planning/user4/trajectories", "haptics")
 
     # visualize_user_video("/home/yuhang/Documents/hri_log/exp_data/user0", "no_haptics", "hp", nstart=10)
 
