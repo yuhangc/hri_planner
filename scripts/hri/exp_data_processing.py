@@ -138,26 +138,35 @@ def visualize_trial_video_single(path, cond, trial_id, save_figure=False):
 
     xh = traj_data[:, 0:4]
     xr = traj_data[:, 6:9]
+    ur = traj_data[:, 9:11]
 
-    t_plot = [3, 7, 11, 18]
+    t_plot = [3, 7, 11, 21]
     nplots = len(t_plot)
     dt = 0.5
 
-    fig, axes = plt.subplots(1, nplots, figsize=(10, 3))
+    fig, axes = plt.subplots(1, nplots, figsize=(8, 3))
     for i in range(nplots):
         lh = axes[i].plot(xh[0:(t_plot[i]+1), 0], xh[0:(t_plot[i]+1), 1], 'k-', lw=1, label="human")
         lr = axes[i].plot(xr[0:(t_plot[i]+1), 0], xr[0:(t_plot[i]+1), 1], 'r-', lw=1, label="robot")
         add_arrow(lh[0], position=xh[t_plot[i]-1, 0], size=10)
         add_arrow(lr[0], position=xr[t_plot[i]-1, 0], size=10)
         axes[i].axis("equal")
-        axes[i].axis([0, 5, 0, 7])
+        axes[i].axis([0, 5, -1, 7])
         axes[i].legend()
         axes[i].set_title("t=" + str(t_plot[i]*dt) + "s")
 
-    # fig.tight_layout()
+    fig.tight_layout()
+
+    fig1, axes1 = plt.subplots(figsize=(6, 3))
+    vh = np.sqrt(xh[:, 2]**2 + xh[:, 3]**2)
+    axes1.plot(vh, label="human")
+    axes1.plot(ur[:, 0], label="robot")
+    axes1.legend()
+    fig1.tight_layout()
 
     if save_figure:
-        plt.savefig(path + "/" + cond + "/block" + str(trial_id) + ".pdf")
+        fig.savefig(path + "/" + cond + "/block" + str(trial_id) + ".pdf")
+        fig1.savefig(path + "/" + cond + "/block" + str(trial_id) + "_vel.pdf")
     else:
         plt.show()
 
@@ -224,8 +233,8 @@ def plot_comm_region(path, cond, human_traj_id):
 
 if __name__ == "__main__":
     # visualize_trial("/home/yuhang/Documents/hri_log/exp_data/0506-0/test0", 3)
-    # visualize_trial_video("/home/yuhang/Videos/hri_planning/0526/user0/trajectories", "haptics", 0)
-    visualize_trial_video("/home/yuhang/Videos/hri_planning/user4/trajectories", "haptics")
+    # visualize_trial_video("/home/yuhang/Videos/hri_planning/user6/trajectories", "haptics", 13)
+    visualize_trial_video("/home/yuhang/Videos/hri_planning/user6/trajectories", "baseline")
 
     # visualize_user_video("/home/yuhang/Documents/hri_log/exp_data/user0", "no_haptics", "hp", nstart=10)
 

@@ -133,15 +133,23 @@ def compute_risk_metric(xr, xh, ur):
     return risk
 
 
-def compute_path_length(x, l_default=0.5, sm=2, em=2):
+def compute_path_length(x, l_default=0.5, sm=0):
     path_length = 0.0
 
-    for i in range(sm+1, len(x)-em):
+    # find direction
+    ydir = x[-1, 1] - x[0, 1]
+
+    if ydir > 0:
+        em = np.argmax(x[:, 1])
+    else:
+        em = np.argmin(x[:, 1])
+
+    for i in range(sm+1, em+1):
         path_length += np.linalg.norm(x[i, 0:2] - x[i-1, 0:2])
 
-    l_straight = np.linalg.norm(x[-em-1, 0:2] - x[sm, 0:2])
+    l_straight = np.linalg.norm(x[em, 0:2] - x[sm, 0:2])
     # return path_length - l_straight + l_default
-    return path_length
+    return path_length - 6.0
 
 
 def compute_effort(uh):
@@ -189,7 +197,7 @@ def safety_efficiency_user(path, usr, cond_list, nstart=10, ntrials=20):
     return safety_metric, path_length, effort, risk
 
 
-def compute_efficiency(xr, xh, ur, th=1.5):
+def compute_efficiency(xr, xh, ur, th=2.0):
     efficiency = 0.0
 
     count = 0.0
@@ -200,7 +208,9 @@ def compute_efficiency(xr, xh, ur, th=1.5):
 
         if np.linalg.norm(x_rel) < th:
             efficiency += wr * ur[t, 0] + wh * np.linalg.norm(xh[t, 2:4])
+            # efficiency += np.linalg.norm(xh[t, 2:4]) / np.linalg.norm(x_rel)
             count += 1.0
+            # count += np.linalg.norm(xh[t, 0:2] - xh[t-1, 0:2])
 
     if count == 0:
         return compute_efficiency(xr, xh, ur, th+0.5)
@@ -327,8 +337,8 @@ def compute_and_plot_stats(path, usr_list, cond_list):
 
     fig.tight_layout()
 
-    print np.asarray(path_length[0])
-    print np.asarray(path_length[1])
+    # print np.asarray(path_length[0])
+    # print np.asarray(path_length[1])
 
     # r_hp_mean = np.mean(risk[0], axis=1)
     # r_hp_std = np.std(risk[0], axis=1)
@@ -363,38 +373,38 @@ def compute_and_plot_stats(path, usr_list, cond_list):
     #
     # fig.tight_layout()
 
-    e_hp_mean = np.mean(efficiency[0], axis=1)
-    e_hp_std = np.std(efficiency[0], axis=1)
-    e_rp_mean = np.mean(efficiency[1], axis=1)
-    e_rp_std = np.std(efficiency[1], axis=1)
-
-    # print np.asarray(efficiency[1])
-
-    fig, ax = plt.subplots(figsize=(4, 3))
-
-    index = np.arange(n_cond)
-    bar_width = 0.35
-
-    opacity = 0.4
-    error_config = {'ecolor': '0.3'}
-
-    rects1 = ax.bar(index, e_hp_mean, bar_width,
-                    alpha=opacity, color='b',
-                    yerr=e_hp_std, error_kw=error_config,
-                    label='Low Priority')
-
-    rects2 = ax.bar(index + bar_width, e_rp_mean, bar_width,
-                    alpha=opacity, color='r',
-                    yerr=e_rp_std, error_kw=error_config,
-                    label='High Priority')
-
-    ax.set_xlabel('condition')
-    ax.set_ylabel('efficiency')
-    ax.set_xticks(index + bar_width / 2)
-    ax.set_xticklabels(cond_list)
-    ax.legend()
-
-    fig.tight_layout()
+    # e_hp_mean = np.mean(efficiency[0], axis=1)
+    # e_hp_std = np.std(efficiency[0], axis=1)
+    # e_rp_mean = np.mean(efficiency[1], axis=1)
+    # e_rp_std = np.std(efficiency[1], axis=1)
+    #
+    # # print np.asarray(efficiency[1])
+    #
+    # fig, ax = plt.subplots(figsize=(4, 3))
+    #
+    # index = np.arange(n_cond)
+    # bar_width = 0.35
+    #
+    # opacity = 0.4
+    # error_config = {'ecolor': '0.3'}
+    #
+    # rects1 = ax.bar(index, e_hp_mean, bar_width,
+    #                 alpha=opacity, color='b',
+    #                 yerr=e_hp_std, error_kw=error_config,
+    #                 label='Low Priority')
+    #
+    # rects2 = ax.bar(index + bar_width, e_rp_mean, bar_width,
+    #                 alpha=opacity, color='r',
+    #                 yerr=e_rp_std, error_kw=error_config,
+    #                 label='High Priority')
+    #
+    # ax.set_xlabel('condition')
+    # ax.set_ylabel('efficiency')
+    # ax.set_xticks(index + bar_width / 2)
+    # ax.set_xticklabels(cond_list)
+    # ax.legend()
+    #
+    # fig.tight_layout()
 
     plt.show()
 
@@ -402,5 +412,5 @@ def compute_and_plot_stats(path, usr_list, cond_list):
 if __name__ == "__main__":
     cond_list = ["haptics", "no_haptics", "baseline"]  # , "baseline"]
 
-    # passing_side_statistics("/home/yuhang/Documents/hri_log/exp_data", [0, 1, 2, 4, 5, 6], cond_list)
-    compute_and_plot_stats("/home/yuhang/Documents/hri_log/exp_data", [6], cond_list)
+    passing_side_statistics("/home/yuhang/Documents/hri_log/exp_data", [6], cond_list)
+    compute_and_plot_stats("/home/yuhang/Documents/hri_log/exp_data", [0, 1, 2, 4, 5, 6, 11, 13, 15], cond_list)
