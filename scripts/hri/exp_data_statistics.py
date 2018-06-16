@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import numpy as np
+import scipy.stats as stats
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import matplotlib.pyplot as plt
 
 from plotting_utils import add_arrow
@@ -13,6 +15,83 @@ from data_loader import wrap2pi
 # far and near trials
 far_trials = [6, 9, 17, 16]
 near_trials = [2, 3, 11, 18]
+
+
+def plot_metric_stat_box(ax, data_hp, data_rp, cond_list, metric_name):
+    l_hp_mean = np.mean(data_hp, axis=0)
+    l_hp_std = np.std(data_hp, axis=0)
+    l_rp_mean = np.mean(data_rp, axis=0)
+    l_rp_std = np.std(data_rp, axis=0)
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(4, 3))
+
+    index = np.arange(len(cond_list))
+    bar_width = 0.35
+
+    bplot1 = ax.boxplot(data_hp, positions=index, notch=False, vert=True,
+                        patch_artist=True, labels=cond_list)
+
+    bplot2 = ax.boxplot(data_rp, positions=index+bar_width, notch=False, vert=True,
+                        patch_artist=True, labels=cond_list)
+
+
+def plot_metric_stat_bar(ax, data_hp, data_rp, cond_list, metric_name):
+    l_hp_mean = np.mean(data_hp, axis=0)
+    l_hp_std = np.std(data_hp, axis=0)
+    l_rp_mean = np.mean(data_rp, axis=0)
+    l_rp_std = np.std(data_rp, axis=0)
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(4, 3))
+
+    index = np.arange(len(cond_list))
+    bar_width = 0.35
+
+    opacity = 1.0
+    error_config = {'ecolor': '0.3',
+                    'capsize': 2.5,
+                    'capthick': 1}
+
+    rects1 = ax.bar(index, l_hp_mean, bar_width,
+                    alpha=opacity, color=(34/255.0, 144/255.0, 196/255.0),
+                    yerr=l_hp_std, error_kw=error_config,
+                    label='Human Priority')
+
+    rects2 = ax.bar(index + bar_width, l_rp_mean, bar_width,
+                    alpha=opacity, color=(255/255.0, 142/255.0, 47/255.0),
+                    yerr=l_rp_std, error_kw=error_config,
+                    label='Robot Priority')
+
+    ax.set_ylabel(metric_name)
+    ax.set_xticks(index + bar_width / 2)
+    ax.set_xticklabels(["Imp+Exp", "Imp", "Base"])
+
+    # set y axis limit
+    ax.set_ylim(0, 1.4 * np.max(np.vstack((l_rp_mean, l_hp_mean))))
+
+    # ax.legend()
+
+
+def compute_anova(data_hp, data_rp, cond_list, metric_name):
+    # ANOVA for human priority trials
+    st, pval = stats.f_oneway(data_hp[:, 0], data_hp[:, 1], data_hp[:, 2])
+    print "Human priority trials statistics for ", metric_name, ": (F=", st, ", p=", pval, ")"
+
+    # post-hoc test to find pairwise differences
+    groups = np.tile(np.array(cond_list), (len(data_hp), 1))
+    tukey = pairwise_tukeyhsd(endog=data_hp.flatten(), groups=groups.flatten(), alpha=0.05)
+    # tukey.plot_simultaneous()
+    print tukey.summary()
+
+    # ANOVA for robot priority trials
+    st, pval = stats.f_oneway(data_rp[:, 0], data_rp[:, 1], data_rp[:, 2])
+    print "Human priority trials statistics for ", metric_name, ": (F=", st, ", p=", pval, ")"
+
+    # post-hoc test to find pairwise differences
+    tukey = pairwise_tukeyhsd(endog=data_rp.flatten(), groups=groups.flatten(), alpha=0.05)
+    # tukey.plot_simultaneous()
+    print tukey.summary()
 
 
 def check_passing_in_front(xr, xh):
@@ -55,7 +134,7 @@ def passing_side_statistics_user(path, usr, cond_list, nstart=10, ntrials=20):
     return n_passing_front
 
 
-def passing_side_statistics(path, usr_list, cond_list):
+def passing_side_statistics(path, usr_list, cond_list, ax=None):
     n_passing_front = []
 
     for usr in usr_list:
@@ -72,37 +151,13 @@ def passing_side_statistics(path, usr_list, cond_list):
             n_hp[i, k] = n_passing_front[i][k][0] / 3.0
             n_rp[i, k] = n_passing_front[i][k][1] / 3.0
 
-    n_hp_mean = np.mean(n_hp, axis=0)
-    n_hp_std = np.std(n_hp, axis=0)
-    n_rp_mean = np.mean(n_rp, axis=0)
-    n_rp_std = np.std(n_rp, axis=0)
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(4, 3))
 
-    fig, ax = plt.subplots(figsize=(4, 3))
+    plot_metric_stat_bar(ax, n_hp, n_rp, cond_list, "% passing in front")
 
-    index = np.arange(n_cond)
-    bar_width = 0.35
-
-    opacity = 0.4
-    error_config = {'ecolor': '0.3'}
-
-    rects1 = ax.bar(index, n_hp_mean, bar_width,
-                    alpha=opacity, color='b',
-                    yerr=n_hp_std, error_kw=error_config,
-                    label='Low Priority')
-
-    rects2 = ax.bar(index + bar_width, n_rp_mean, bar_width,
-                    alpha=opacity, color='r',
-                    yerr=n_rp_std, error_kw=error_config,
-                    label='High Priority')
-
-    ax.set_xlabel('condition')
-    ax.set_ylabel('percent go front')
-    ax.set_xticks(index + bar_width / 2)
-    ax.set_xticklabels(cond_list)
-    ax.legend()
-
-    fig.tight_layout()
-    plt.show()
+    # compute statistics
+    compute_anova(n_hp, n_rp, cond_list, "passing side")
 
 
 def compute_safety_buffer(xr, xh):
@@ -247,7 +302,7 @@ def compute_efficiency_user(path, usr, cond_list, nstart=10, ntrials=20):
     return efficiency
 
 
-def compute_and_plot_stats(path, usr_list, cond_list):
+def compute_and_plot_stats(path, usr_list, cond_list, ax=None):
     safety_metric = [[], []]
     path_length = [[], []]
     human_effort = [[], []]
@@ -304,113 +359,98 @@ def compute_and_plot_stats(path, usr_list, cond_list):
     #     axes[0].legend()
     #     axes[1].legend()
 
-    l_hp_mean = np.mean(path_length[0], axis=1)
-    l_hp_std = np.std(path_length[0], axis=1)
-    l_rp_mean = np.mean(path_length[1], axis=1)
-    l_rp_std = np.std(path_length[1], axis=1)
-
     n_cond = len(cond_list)
 
-    fig, ax = plt.subplots(figsize=(4, 3))
+    l_hp_trial = np.asarray(path_length[0]).transpose()
+    l_rp_trial = np.asarray(path_length[1]).transpose()
 
-    index = np.arange(n_cond)
-    bar_width = 0.35
+    l_hp = np.zeros((len(usr_list), n_cond))
+    l_rp = np.zeros_like(l_hp)
 
-    opacity = 0.4
-    error_config = {'ecolor': '0.3'}
+    for i in range(len(usr_list)):
+        for j in range(n_cond):
+            l_hp[i] += l_hp_trial[i*n_cond+j] / float(n_cond)
+            l_rp[i] += l_rp_trial[i*n_cond+j] / float(n_cond)
 
-    rects1 = ax.bar(index, l_hp_mean, bar_width,
-                    alpha=opacity, color='b',
-                    yerr=l_hp_std, error_kw=error_config,
-                    label='Low Priority')
+    # l_hp_mean = np.mean(path_length[0], axis=1)
+    # l_hp_std = np.std(path_length[0], axis=1)
+    # l_rp_mean = np.mean(path_length[1], axis=1)
+    # l_rp_std = np.std(path_length[1], axis=1)
 
-    rects2 = ax.bar(index + bar_width, l_rp_mean, bar_width,
-                    alpha=opacity, color='r',
-                    yerr=l_rp_std, error_kw=error_config,
-                    label='High Priority')
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(4, 3))
 
-    ax.set_xlabel('condition')
-    ax.set_ylabel('path length')
-    ax.set_xticks(index + bar_width / 2)
-    ax.set_xticklabels(cond_list)
-    ax.legend()
+    plot_metric_stat_bar(ax, l_hp, l_rp, cond_list, "path length")
+
+    compute_anova(l_hp, l_rp, cond_list, "path length")
+
+
+def plot_all_stats(path, usr_list, cond_list):
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3))
+
+    passing_side_statistics(path, usr_list, cond_list, ax=axes[0])
+    compute_and_plot_stats(path, usr_list, cond_list, ax=axes[1])
+
+    # compute and plot trust
+    trust_data = np.array([[6, 4, 3],
+                           [7, 4, 3],
+                           [7, 5, 3],
+                           [7, 6, 5],
+                           [6, 4, 4],
+                           [7, 5, 3],
+                           [6, 4, 2],
+                           [7, 5, 4],
+                           [7, 5, 4],
+                           [6, 4, 4],
+                           [6, 4, 2],
+                           [7, 5, 3]], dtype=float)
+
+    trust_mean = np.mean(trust_data, axis=0)
+    trust_std = np.std(trust_data, axis=0)
+
+    index = np.arange(len(cond_list))
+    bar_width = 0.6
+
+    opacity = 1.0
+    error_config = {'ecolor': '0.3',
+                    'capsize': 2.5,
+                    'capthick': 1}
+
+    rects = axes[2].bar(index, trust_mean, bar_width,
+                        alpha=opacity, color=(3/255.0, 125/255.0, 189/255.0),
+                        yerr=trust_std, error_kw=error_config) #, hatch="//", edgecolor=(255/255.0, 142/255.0, 47/255.0))
+    rects[1].set_color((71/255.0, 164/255.0, 212/255.0))
+    # rects[1].set_hatch("//")
+    # rects[1].set_edgecolor((255/255.0, 142/255.0, 47/255.0))
+    rects[2].set_color((157/255.0, 205/255.0, 232/255.0))
+    # rects[2].set_hatch("//")
+    # rects[2].set_edgecolor((255/255.0, 142/255.0, 47/255.0))
+
+    axes[2].set_ylabel('trust')
+    axes[2].set_xticks(index)
+    axes[2].set_xticklabels(["Imp+Exp", "Imp", "Base"])
+
+    # ANOVA for trust
+    st, pval = stats.f_oneway(trust_data[:, 0], trust_data[:, 1], trust_data[:, 2])
+    print "Statistics for trust: (F=", st, ", p=", pval, ")"
+
+    # post-hoc test to find pairwise differences
+    groups = np.tile(np.array(cond_list), (len(trust_data), 1))
+    tukey = pairwise_tukeyhsd(endog=trust_data.flatten(), groups=groups.flatten(), alpha=0.05)
+    # tukey.plot_simultaneous()
+    print tukey.summary()
 
     fig.tight_layout()
-
-    # print np.asarray(path_length[0])
-    # print np.asarray(path_length[1])
-
-    # r_hp_mean = np.mean(risk[0], axis=1)
-    # r_hp_std = np.std(risk[0], axis=1)
-    # r_rp_mean = np.mean(risk[1], axis=1)
-    # r_rp_std = np.std(risk[1], axis=1)
-    #
-    # n_cond = len(cond_list)
-    #
-    # fig, ax = plt.subplots(figsize=(4, 3))
-    #
-    # index = np.arange(n_cond)
-    # bar_width = 0.35
-    #
-    # opacity = 0.4
-    # error_config = {'ecolor': '0.3'}
-    #
-    # rects1 = ax.bar(index, r_hp_mean, bar_width,
-    #                 alpha=opacity, color='b',
-    #                 yerr=r_hp_std, error_kw=error_config,
-    #                 label='Low Priority')
-    #
-    # rects2 = ax.bar(index + bar_width, r_rp_mean, bar_width,
-    #                 alpha=opacity, color='r',
-    #                 yerr=r_rp_std, error_kw=error_config,
-    #                 label='High Priority')
-    #
-    # ax.set_xlabel('condition')
-    # ax.set_ylabel('risk')
-    # ax.set_xticks(index + bar_width / 2)
-    # ax.set_xticklabels(cond_list)
-    # ax.legend()
-    #
-    # fig.tight_layout()
-
-    # e_hp_mean = np.mean(efficiency[0], axis=1)
-    # e_hp_std = np.std(efficiency[0], axis=1)
-    # e_rp_mean = np.mean(efficiency[1], axis=1)
-    # e_rp_std = np.std(efficiency[1], axis=1)
-    #
-    # # print np.asarray(efficiency[1])
-    #
-    # fig, ax = plt.subplots(figsize=(4, 3))
-    #
-    # index = np.arange(n_cond)
-    # bar_width = 0.35
-    #
-    # opacity = 0.4
-    # error_config = {'ecolor': '0.3'}
-    #
-    # rects1 = ax.bar(index, e_hp_mean, bar_width,
-    #                 alpha=opacity, color='b',
-    #                 yerr=e_hp_std, error_kw=error_config,
-    #                 label='Low Priority')
-    #
-    # rects2 = ax.bar(index + bar_width, e_rp_mean, bar_width,
-    #                 alpha=opacity, color='r',
-    #                 yerr=e_rp_std, error_kw=error_config,
-    #                 label='High Priority')
-    #
-    # ax.set_xlabel('condition')
-    # ax.set_ylabel('efficiency')
-    # ax.set_xticks(index + bar_width / 2)
-    # ax.set_xticklabels(cond_list)
-    # ax.legend()
-    #
-    # fig.tight_layout()
-
     plt.show()
-
 
 if __name__ == "__main__":
     cond_list = ["haptics", "no_haptics", "baseline"]  # , "baseline"]
 
-    passing_side_statistics("/home/yuhang/Documents/hri_log/exp_data", [6], cond_list)
-    compute_and_plot_stats("/home/yuhang/Documents/hri_log/exp_data", [0, 1, 2, 4, 5, 6, 11, 13, 15], cond_list)
+    # passing_side_statistics("/home/yuhang/Documents/hri_log/exp_data",
+    #                         [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12], cond_list)
+    # compute_and_plot_stats("/home/yuhang/Documents/hri_log/exp_data",
+    #                        [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12], cond_list)
+    # plt.show()
+
+    plot_all_stats("/home/yuhang/Documents/hri_log/exp_data",
+                   [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12], cond_list)
