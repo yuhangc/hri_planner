@@ -6,6 +6,11 @@ import matplotlib.pyplot as plt
 from plotting_utils import add_arrow
 
 
+# far and near trials
+far_trials = [6, 9, 17, 16]
+near_trials = [2, 3, 11, 18]
+
+
 def visualize_frame(ax, t, xh, xr, robot_plan, pred_hp, pred_rp, xr_goal, xh_goal):
     # plot previous trajectories
     robot_traj = xr[0:t+1]
@@ -170,6 +175,9 @@ def visualize_trial_video_single(path, cond, trial_id, save_figure=False):
     else:
         plt.show()
 
+    plt.close(fig)
+    plt.close(fig1)
+
 
 def visualize_trial_video(path, cond, trial_id=-1, ntrials=20):
     if trial_id == -1:
@@ -231,10 +239,69 @@ def plot_comm_region(path, cond, human_traj_id):
     plt.show()
 
 
+def visualize_velocities_all(path_root, user_list, cond_list, nstart=10, ntrials=20):
+    vr_hp = [[], [], []]
+    vr_rp = [[], [], []]
+    drel_hp = [[], [], []]
+    drel_rp = [[], [], []]
+
+    # load all data
+    t_st = 0
+    t_int = 16
+
+    for usr in user_list:
+        path = path_root + "/user" + str(usr)
+        for num, cond in enumerate(cond_list):
+            proto = np.loadtxt(path + "/" + cond + "/" + "protocol.txt", delimiter=',')
+            pp = proto[1:, 8]
+
+            for trial in range(nstart, ntrials):
+                if trial in far_trials or trial in near_trials:
+                    continue
+
+                traj_data = np.loadtxt(path + "/trajectories/" + cond +
+                                       "/block" + str(trial) + ".txt", delimiter=',')
+                vr = traj_data[:, 9]
+                xh = traj_data[:, 0:4]
+                xr = traj_data[:, 6:9]
+                drel = np.linalg.norm(xh[:, 0:2] - xr[:, 0:2], axis=1)
+
+                if pp[trial] == 0:
+                    vr_hp[num].append(vr[:t_int])
+                    drel_hp[num].append(drel[t_st:t_int])
+                elif pp[trial] == 1:
+                    vr_rp[num].append(vr[t_st:t_int])
+                    drel_rp[num].append(drel[t_st:t_int])
+
+    # plot all
+    fig, axes = plt.subplots(3, 2)
+    for nc in range(len(cond_list)):
+        for trial in range(len(vr_hp[nc])):
+            axes[nc][0].plot(vr_hp[nc][trial])
+            axes[nc][1].plot(vr_rp[nc][trial])
+
+    fig, axes = plt.subplots(1, 2)
+    drel_hp = np.asarray(drel_hp)
+    drel_rp = np.asarray(drel_rp)
+
+    for nc in range(len(cond_list)):
+        axes[0].plot(np.mean(vr_hp[nc], axis=0), label=cond_list[nc])
+        axes[1].plot(np.mean(vr_rp[nc], axis=0), label=cond_list[nc])
+
+    axes[0].legend()
+    axes[1].legend()
+
+    plt.show()
+
+
 if __name__ == "__main__":
     # visualize_trial("/home/yuhang/Documents/hri_log/exp_data/0506-0/test0", 3)
     # visualize_trial_video("/home/yuhang/Videos/hri_planning/user6/trajectories", "haptics", 13)
-    visualize_trial_video("/home/yuhang/Videos/hri_planning/user6/trajectories", "baseline")
+
+    # visualize_trial_video("/home/yuhang/Videos/hri_planning/user5/trajectories", "baseline")
+    visualize_velocities_all("/home/yuhang/Documents/hri_log/exp_data",
+                             [6],
+                             ["haptics", "no_haptics", "baseline"])
 
     # visualize_user_video("/home/yuhang/Documents/hri_log/exp_data/user0", "no_haptics", "hp", nstart=10)
 

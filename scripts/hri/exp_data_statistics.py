@@ -3,6 +3,7 @@
 import numpy as np
 import scipy.stats as stats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
+from statsmodels.stats.libqsturng import psturng
 import matplotlib.pyplot as plt
 
 from plotting_utils import add_arrow
@@ -63,14 +64,12 @@ def plot_metric_stat_bar(ax, data_hp, data_rp, cond_list, metric_name):
                     yerr=l_rp_std, error_kw=error_config,
                     label='Robot Priority')
 
-    ax.set_ylabel(metric_name)
+    ax.set_ylabel(metric_name, fontsize=12)
     ax.set_xticks(index + bar_width / 2)
-    ax.set_xticklabels(["Imp+Exp", "Imp", "Base"])
+    ax.set_xticklabels(["Imp+Exp", "Imp", "Base"], fontsize=12)
 
     # set y axis limit
-    ax.set_ylim(0, 1.4 * np.max(np.vstack((l_rp_mean, l_hp_mean))))
-
-    # ax.legend()
+    ax.set_ylim(0, 1.5 * np.max(np.vstack((l_rp_mean, l_hp_mean))))
 
 
 def compute_anova(data_hp, data_rp, cond_list, metric_name):
@@ -84,14 +83,24 @@ def compute_anova(data_hp, data_rp, cond_list, metric_name):
     # tukey.plot_simultaneous()
     print tukey.summary()
 
+    # compute p-values
+    st_range = np.abs(tukey.meandiffs) / tukey.std_pairs
+    print "pvalues are: ", psturng(st_range, len(tukey.groupsunique), tukey.df_total)
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
     # ANOVA for robot priority trials
     st, pval = stats.f_oneway(data_rp[:, 0], data_rp[:, 1], data_rp[:, 2])
-    print "Human priority trials statistics for ", metric_name, ": (F=", st, ", p=", pval, ")"
+    print "Robot priority trials statistics for ", metric_name, ": (F=", st, ", p=", pval, ")"
 
     # post-hoc test to find pairwise differences
     tukey = pairwise_tukeyhsd(endog=data_rp.flatten(), groups=groups.flatten(), alpha=0.05)
     # tukey.plot_simultaneous()
     print tukey.summary()
+
+    # compute p-values
+    st_range = np.abs(tukey.meandiffs) / tukey.std_pairs
+    print "pvalues are: ", psturng(st_range, len(tukey.groupsunique), tukey.df_total)
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
 
 def check_passing_in_front(xr, xh):
@@ -154,7 +163,7 @@ def passing_side_statistics(path, usr_list, cond_list, ax=None):
     if ax is None:
         fig, ax = plt.subplots(figsize=(4, 3))
 
-    plot_metric_stat_bar(ax, n_hp, n_rp, cond_list, "% passing in front")
+    plot_metric_stat_bar(ax, n_hp, n_rp, cond_list, "% Passing in Front")
 
     # compute statistics
     compute_anova(n_hp, n_rp, cond_list, "passing side")
@@ -380,7 +389,7 @@ def compute_and_plot_stats(path, usr_list, cond_list, ax=None):
     if ax is None:
         fig, ax = plt.subplots(figsize=(4, 3))
 
-    plot_metric_stat_bar(ax, l_hp, l_rp, cond_list, "path length")
+    plot_metric_stat_bar(ax, l_hp, l_rp, cond_list, "Path Length Diff (m)")
 
     compute_anova(l_hp, l_rp, cond_list, "path length")
 
@@ -426,9 +435,11 @@ def plot_all_stats(path, usr_list, cond_list):
     # rects[2].set_hatch("//")
     # rects[2].set_edgecolor((255/255.0, 142/255.0, 47/255.0))
 
-    axes[2].set_ylabel('trust')
+    axes[2].set_ylabel('Trust', fontsize=12)
     axes[2].set_xticks(index)
-    axes[2].set_xticklabels(["Imp+Exp", "Imp", "Base"])
+    axes[2].set_xticklabels(["Imp+Exp", "Imp", "Base"], fontsize=12)
+
+    axes[2].set_ylim(0, 9)
 
     # ANOVA for trust
     st, pval = stats.f_oneway(trust_data[:, 0], trust_data[:, 1], trust_data[:, 2])
@@ -440,8 +451,17 @@ def plot_all_stats(path, usr_list, cond_list):
     # tukey.plot_simultaneous()
     print tukey.summary()
 
-    fig.tight_layout()
+    # compute p-values
+    st_range = np.abs(tukey.meandiffs) / tukey.std_pairs
+    print "pvalues are: ", psturng(st_range, len(tukey.groupsunique), tukey.df_total)
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+
+    axes[0].legend(bbox_to_anchor=(0., 1.05, 1.4, .102), loc=3, fontsize=12,
+                   ncol=2, mode="expand", borderaxespad=0., fancybox=False, edgecolor='k')
+
+    fig.subplots_adjust(left=0.07, bottom=0.10, right=0.98, top=0.85, wspace=0.25, hspace=0.2)
     plt.show()
+
 
 if __name__ == "__main__":
     cond_list = ["haptics", "no_haptics", "baseline"]  # , "baseline"]
