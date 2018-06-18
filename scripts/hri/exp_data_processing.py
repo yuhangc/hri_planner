@@ -2,8 +2,11 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import interpolate
+from scipy.signal import savgol_filter
 
 from plotting_utils import add_arrow
+from plotting_utils import turn_off_axes_labels
 
 
 # far and near trials
@@ -230,11 +233,18 @@ def plot_comm_region(path, cond, human_traj_id):
 
     pts_comm = init_data[np.where(comm_data == acomm)]
     pts_no_comm = init_data[np.where(comm_data != acomm)]
-    
-    plt.plot(pts_comm[:, 0], pts_comm[:, 1], 'r.')
-    plt.plot(pts_no_comm[:, 0], pts_no_comm[:, 1], 'b.')
-    plt.plot(goal_data[0], goal_data[1], 'bo', fillstyle="none")
-    plt.plot(traj_data[:, 0], traj_data[:, 1], '-', color=(0.5, 0.5, 0.5))
+
+    fig, ax = plt.subplots(figsize=(4, 4))
+
+    ax.plot(pts_comm[:, 0], pts_comm[:, 1], '.', markersize=2, color=(0.85, 0.3, 0.3))
+    ax.plot(pts_no_comm[:, 0], pts_no_comm[:, 1], '.', markersize=2, color=(0.5, 0.5, 0.5))
+
+    ax.plot(goal_data[0], goal_data[1], 'o', fillstyle="none", color=(0.85, 0.3, 0.3), markersize=5)
+    lh = ax.plot(traj_data[:-2, 0], traj_data[:-2, 1], '-', color=(0.05, 0.05, 0.05))
+    add_arrow(lh[0], position=traj_data[-4, 0], size=10)
+
+    ax.axis("equal")
+    turn_off_axes_labels(ax)
 
     plt.show()
 
@@ -267,7 +277,7 @@ def visualize_velocities_all(path_root, user_list, cond_list, nstart=10, ntrials
                 drel = np.linalg.norm(xh[:, 0:2] - xr[:, 0:2], axis=1)
 
                 if pp[trial] == 0:
-                    vr_hp[num].append(vr[:t_int])
+                    vr_hp[num].append(vr[t_st:t_int])
                     drel_hp[num].append(drel[t_st:t_int])
                 elif pp[trial] == 1:
                     vr_rp[num].append(vr[t_st:t_int])
@@ -284,12 +294,74 @@ def visualize_velocities_all(path_root, user_list, cond_list, nstart=10, ntrials
     drel_hp = np.asarray(drel_hp)
     drel_rp = np.asarray(drel_rp)
 
-    for nc in range(len(cond_list)):
-        axes[0].plot(np.mean(vr_hp[nc], axis=0), label=cond_list[nc])
-        axes[1].plot(np.mean(vr_rp[nc], axis=0), label=cond_list[nc])
+    axes[0].plot(np.mean(vr_hp[2], axis=0), label=cond_list[2])
+    axes[1].plot(np.mean(vr_rp[2], axis=0), label=cond_list[2])
+    axes[0].plot(np.mean(np.vstack((vr_hp[0], vr_hp[1])), axis=0), label="with human model")
+    axes[1].plot(np.mean(np.vstack((vr_rp[0], vr_rp[1])), axis=0), label="with human model")
 
     axes[0].legend()
     axes[1].legend()
+
+    plt.show()
+
+
+def visualize_velocities_single(path_root, usr, cond_list, trial_list, t_st_list):
+    vr_hp = []
+    vr_rp = []
+
+    t_int = 16
+
+    path = path_root + "/user" + str(usr)
+
+    for cond, trials, t_st in zip(cond_list, trial_list, t_st_list):
+        # human priority
+        traj_data = np.loadtxt(path + "/trajectories/" + cond +
+                               "/block" + str(trials[0]) + ".txt", delimiter=',')
+        vr = traj_data[:, 9]
+        vr_hp.append(vr[t_st[0]:(t_st[0]+t_int)])
+
+        # robot priority
+        traj_data = np.loadtxt(path + "/trajectories/" + cond +
+                               "/block" + str(trials[1]) + ".txt", delimiter=',')
+        vr = traj_data[:, 9]
+        vr_rp.append(vr[t_st[1]:(t_st[1]+t_int)])
+
+    # plot the result
+    conditions = ["Imp+Exp", "Imp", "Base"]
+    colors = [(3/255.0, 125/255.0, 189/255.0), (71/255.0, 164/255.0, 212/255.0), (157/255.0, 205/255.0, 232/255.0)]
+    # colors = [(0.1, 0.1, 0.1), (0.3, 0.3, 0.3), (0.5, 0.5, 0.5)]
+    styles = ['-', '--', '-.']
+    fig, axes = plt.subplots(2, 1, figsize=(4, 3))
+
+    t_slow = [2.1, 2.5, 3.5]
+    t_color = [(0.7, 0.7, 0.7), (0.8, 0.8, 0.8), (0.9, 0.9, 0.9)]
+    # for i in [2, 1, 0]:
+    #     axes[0].axvspan(0.0, t_slow[i], facecolor=t_color[i], edgecolor="none", alpha=0.5)
+
+    for i in [1, 0, 2]:
+        # interpolate and smooth velocity profile
+        t = np.arange(0, len(vr_hp[i])) * 0.5
+        f_hp = interpolate.interp1d(t, vr_hp[i])
+        f_rp = interpolate.interp1d(t, vr_rp[i])
+
+        t_plot = np.arange(0, np.max(t), 0.02)
+        vr_hp_raw = f_hp(t_plot)
+        vr_rp_raw = f_rp(t_plot)
+
+        win_size = 45
+        poly_order = 3
+        vr_hp_plot = savgol_filter(vr_hp_raw, win_size, poly_order)
+        vr_rp_plot = savgol_filter(vr_rp_raw, win_size, poly_order)
+
+        axes[0].plot(t_plot, vr_hp_plot, styles[i], label=conditions[i], color=colors[i])
+        axes[1].plot(t_plot, vr_rp_plot, styles[i], label=conditions[i], color=colors[i])
+
+        axes[0].axvspan(-0.5, t_slow[i], facecolor=t_color[i], edgecolor="k", alpha=0.5)
+
+    axes[0].set_xlim(axes[1].get_xlim())
+    axes[1].legend(bbox_to_anchor=(0.35, 0.15, 0.6, .102), loc=3, fontsize=12,
+                   ncol=2, mode="expand", borderaxespad=0., fancybox=False, edgecolor='k')
+    fig.subplots_adjust(left=0.10, bottom=0.10, right=0.98, top=0.95, wspace=0.25, hspace=0.25)
 
     plt.show()
 
@@ -299,10 +371,15 @@ if __name__ == "__main__":
     # visualize_trial_video("/home/yuhang/Videos/hri_planning/user6/trajectories", "haptics", 13)
 
     # visualize_trial_video("/home/yuhang/Videos/hri_planning/user5/trajectories", "baseline")
-    visualize_velocities_all("/home/yuhang/Documents/hri_log/exp_data",
-                             [6],
-                             ["haptics", "no_haptics", "baseline"])
+    # visualize_velocities_all("/home/yuhang/Documents/hri_log/exp_data",
+    #                          [12],
+    #                          ["haptics", "no_haptics", "baseline"])
+
+    visualize_velocities_single("/home/yuhang/Documents/hri_log/exp_data", 12,
+                                ["haptics", "no_haptics", "baseline"],
+                                [[19, 12], [19, 12], [15, 12]],
+                                [[0, 0], [1, 2], [0, 1]])
 
     # visualize_user_video("/home/yuhang/Documents/hri_log/exp_data/user0", "no_haptics", "hp", nstart=10)
 
-    # plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config7", "hp", 0)
+    # plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config6", "hp", 0)
