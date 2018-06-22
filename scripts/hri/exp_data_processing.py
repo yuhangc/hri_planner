@@ -236,14 +236,15 @@ def plot_comm_region(path, cond, human_traj_id):
 
     fig, ax = plt.subplots(figsize=(4, 4))
 
-    ax.plot(pts_comm[:, 0], pts_comm[:, 1], '.', markersize=2, color=(0.85, 0.3, 0.3))
-    ax.plot(pts_no_comm[:, 0], pts_no_comm[:, 1], '.', markersize=2, color=(0.5, 0.5, 0.5))
+    ax.plot(pts_comm[:, 0], pts_comm[:, 1], '+', markersize=3, color=(0.85, 0.3, 0.3))
+    ax.plot(pts_no_comm[:, 0], pts_no_comm[:, 1], '_', markersize=3, color=(0.5, 0.5, 0.5))
 
     ax.plot(goal_data[0], goal_data[1], 'o', fillstyle="none", color=(0.85, 0.3, 0.3), markersize=5)
     lh = ax.plot(traj_data[:-2, 0], traj_data[:-2, 1], '-', color=(0.05, 0.05, 0.05))
     add_arrow(lh[0], position=traj_data[-4, 0], size=10)
 
     ax.axis("equal")
+    ax.axis("off")
     turn_off_axes_labels(ax)
 
     plt.show()
@@ -356,7 +357,7 @@ def visualize_velocities_single(path_root, usr, cond_list, trial_list, t_st_list
         axes[0].plot(t_plot, vr_hp_plot, styles[i], label=conditions[i], color=colors[i])
         axes[1].plot(t_plot, vr_rp_plot, styles[i], label=conditions[i], color=colors[i])
 
-        axes[0].axvspan(-0.5, t_slow[i], facecolor=t_color[i], edgecolor="k", alpha=0.5)
+        axes[0].axvspan(-0.5, t_slow[i], facecolor=t_color[i], edgecolor="none", alpha=0.5)
 
     axes[0].set_xlim(axes[1].get_xlim())
     axes[1].legend(bbox_to_anchor=(0.35, 0.15, 0.6, .102), loc=3, fontsize=12,
@@ -375,11 +376,11 @@ if __name__ == "__main__":
     #                          [12],
     #                          ["haptics", "no_haptics", "baseline"])
 
-    visualize_velocities_single("/home/yuhang/Documents/hri_log/exp_data", 12,
-                                ["haptics", "no_haptics", "baseline"],
-                                [[19, 12], [19, 12], [15, 12]],
-                                [[0, 0], [1, 2], [0, 1]])
+    # visualize_velocities_single("/home/yuhang/Documents/hri_log/exp_data", 12,
+    #                             ["haptics", "no_haptics", "baseline"],
+    #                             [[19, 12], [19, 12], [15, 12]],
+    #                             [[0, 0], [1, 2], [0, 1]])
 
     # visualize_user_video("/home/yuhang/Documents/hri_log/exp_data/user0", "no_haptics", "hp", nstart=10)
 
-    # plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config6", "hp", 0)
+    plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config6", "hp", 0)
