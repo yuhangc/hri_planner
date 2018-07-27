@@ -386,8 +386,8 @@ if __name__ == "__main__":
     # test_belief_update(0, "rp", 0, 0, 0)
     # test_belief_update(0, "rp", 0, 1, 0)
 
-    # plot_belief_update_examples(0, "hp", 0, [4, 7, 14])
-    plot_belief_update_examples(0, "rp", 6, [4, 7, 14])
+    plot_belief_update_examples(0, "hp", 0, [4, 7, 14])
+    # plot_belief_update_examples(0, "rp", 6, [4, 7, 14])
 
     # # test the cost features
     # test_cost_features(0, "hp", 0)

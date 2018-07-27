@@ -357,12 +357,16 @@ def visualize_velocities_single(path_root, usr, cond_list, trial_list, t_st_list
         axes[0].plot(t_plot, vr_hp_plot, styles[i], label=conditions[i], color=colors[i])
         axes[1].plot(t_plot, vr_rp_plot, styles[i], label=conditions[i], color=colors[i])
 
-        axes[0].axvspan(-0.5, t_slow[i], facecolor=t_color[i], edgecolor="none", alpha=0.5)
+        # axes[0].axvspan(-0.5, t_slow[i], facecolor=t_color[i], edgecolor="none", alpha=0.5)
 
     axes[0].set_xlim(axes[1].get_xlim())
     axes[1].legend(bbox_to_anchor=(0.35, 0.15, 0.6, .102), loc=3, fontsize=12,
-                   ncol=2, mode="expand", borderaxespad=0., fancybox=False, edgecolor='k')
+                   ncol=2, mode="expand", borderaxespad=0., fancybox=False, edgecolor='w')
     fig.subplots_adjust(left=0.10, bottom=0.10, right=0.98, top=0.95, wspace=0.25, hspace=0.25)
+
+    for ax in axes:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
 
     plt.show()
 
@@ -376,11 +380,11 @@ if __name__ == "__main__":
     #                          [12],
     #                          ["haptics", "no_haptics", "baseline"])
 
-    # visualize_velocities_single("/home/yuhang/Documents/hri_log/exp_data", 12,
-    #                             ["haptics", "no_haptics", "baseline"],
-    #                             [[19, 12], [19, 12], [15, 12]],
-    #                             [[0, 0], [1, 2], [0, 1]])
+    visualize_velocities_single("/home/yuhang/Documents/hri_log/exp_data", 12,
+                                ["haptics", "no_haptics", "baseline"],
+                                [[19, 12], [19, 12], [15, 12]],
+                                [[0, 0], [1, 2], [0, 1]])
 
     # visualize_user_video("/home/yuhang/Documents/hri_log/exp_data/user0", "no_haptics", "hp", nstart=10)
 
-    plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config6", "hp", 0)
+    # plot_comm_region("/home/yuhang/Documents/hri_log/test_data/test_config6", "hp", 0)

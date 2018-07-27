@@ -3,6 +3,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from matplotlib import rcParams
+rcParams['font.family'] = 'serif'
+rcParams['font.serif'] = ['Times New Roman']
+
 
 def add_arrow(line, position=None, direction='right', size=15, color=None):
     """

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import numpy as np
-from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from scipy import interpolate
@@ -14,12 +13,9 @@ sys.path.insert(0, '../hri')
 from data_loader import wrap2pi
 from plotting_utils import *
 
-rcParams['font.family'] = 'serif'
-rcParams['font.serif'] = ['Times New Roman']
-
 
 def load_prediction(load_path, usr_id, cond, trial_id, t_start):
-    if t_start >= 0:
+    if t_start > 0:
         file_name = load_path + "/user" + str(usr_id) + "/" + cond + \
                     "/demo" + str(trial_id) + "_t" + str(t_start) + ".txt"
     else:
@@ -86,14 +82,14 @@ def load_and_plot(load_path, usr_id, cond, trial_id, meta_data=(15, 6, 4)):
 
         turn_off_axes_labels(axes[k])
 
-        props = dict(boxstyle='square', facecolor='white')
+        props = dict(boxstyle='square', facecolor='white', edgecolor='w')
         axes[k].text(0.05, 0.04, "t="+str(t*0.5)+"s", transform=axes[k].transAxes, fontsize=14,
                      verticalalignment='bottom', bbox=props)
 
         k += 1
 
     axes[0].legend(bbox_to_anchor=(0., -0.2, 2.8, .102), loc=3,
-                   ncol=3, mode="expand", borderaxespad=0., fontsize=14, fancybox=False, edgecolor='k')
+                   ncol=3, mode="expand", borderaxespad=0., fontsize=14, fancybox=False, edgecolor='w')
 
     fig.subplots_adjust(left=0.03, bottom=0.2, right=0.97, top=0.97, wspace=0.1, hspace=0.2)
     plt.show()
@@ -457,9 +453,7 @@ def predict_and_save_all_social_force(load_path, save_path, user_list, cond, ntr
 
 
 if __name__ == "__main__":
-    fm = mpl.font_manager
-    a = fm.findSystemFonts()
-    # load_and_plot("/home/yuhang/Documents/irl_data/winter18", 0, "rp", 6)
+    load_and_plot("/home/yuhang/Documents/irl_data/winter18", 0, "hp", 0)
 
     # gen_init_conditions("/home/yuhang/Documents/hri_log/test_data/test_config4",
     #                     (-1, 1), (-2, 2), (0.2, 0.2), (0.5, 3.0, 0.4))
@@ -500,5 +494,5 @@ if __name__ == "__main__":
     #                                   [0, 1, 2, 3], "rp",
     #                                   [62, 27, 61, 62], sf_params_rp)
 
-    cross_validation_all_cond("/home/yuhang/Documents/irl_data/winter18/cross_validation",
-                              [0, 1, 2, 3], [40, 17, 20, 40])
+    # cross_validation_all_cond("/home/yuhang/Documents/irl_data/winter18/cross_validation",
+    #                           [0, 1, 2, 3], [40, 17, 20, 40])

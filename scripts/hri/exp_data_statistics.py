@@ -456,8 +456,16 @@ def plot_all_stats(path, usr_list, cond_list):
     print "pvalues are: ", psturng(st_range, len(tukey.groupsunique), tukey.df_total)
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
 
-    axes[0].legend(bbox_to_anchor=(0., 1.05, 1.4, .102), loc=3, fontsize=12,
-                   ncol=2, mode="expand", borderaxespad=0., fancybox=False, edgecolor='k')
+    axes[0].legend(bbox_to_anchor=(0.5, 1.04, 1.3, .102), loc=3, fontsize=12,
+                   ncol=2, mode="expand", borderaxespad=0., fancybox=False, edgecolor='w')
+
+    for ax in axes:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+    # additional adjustments
+    axes[1].set_yticklabels(["6.0", "6.2", "6.4", "6.6", "6.8", "7.0", "7.2"])
+    axes[2].set_yticks([1.0, 3.0, 5.0, 7.0])
 
     fig.subplots_adjust(left=0.07, bottom=0.10, right=0.98, top=0.85, wspace=0.25, hspace=0.2)
     plt.show()

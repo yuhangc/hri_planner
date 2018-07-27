@@ -524,7 +524,7 @@ class PlannerSimulator(object):
             turn_off_axes_labels(ax)
 
             # place a text box in bottom left in axes coords
-            props = dict(boxstyle='square', facecolor='white')
+            props = dict(boxstyle='square', facecolor='white', edgecolor='w')
             ax.text(0.05, 0.04, "t="+str(t*0.5)+"s", transform=ax.transAxes, fontsize=14,
                     verticalalignment='bottom', bbox=props)
 
@@ -634,4 +634,4 @@ if __name__ == "__main__":
     # simulator.save_data("/home/yuhang/Documents/hri_log/test_data", 0)
 
     # simulator.run_tests("/home/yuhang/Documents/hri_log/test_data", 0, 9)
-    simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 0, 5, 0, test_init_id=103)
+    simulator.run_single_test("/home/yuhang/Documents/hri_log/test_data", 0, 5, 0, test_init_id=102)
